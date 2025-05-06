@@ -12,7 +12,6 @@ Definition bit_and (x y : bit) :=
   | _, _ => zero
   end.
 
-(* TODO REM *)
 Definition bit_or (x y : bit) :=
   match x, y with
   | zero, zero => zero
@@ -40,20 +39,6 @@ Require Import Lia.
 Lemma ltprv {i} {n} : S i < n -> i < n.
   lia.
 Qed.
-
-(* TODO replace v64_prvcarry with this *)
-(* Calculating cin in difficult; TODO create a wrapper that models the propagation *)
-(* Issue: The term "ltprv hidx" has type "i < SIZE" while it is expected to have type "p + 1 < SIZE" *)
-(*
-Fixpoint v64_prvcarry2 (x y : v64) {i} (hidx : (i + 1) < SIZE) :=
-  let a := v64_ith x (ltprv hidx) in
-  let b := v64_ith y (ltprv hidx) in
-  let c := match i with
-           | 0 => zero
-           | S p => @v64_prvcarry2 x y p (ltprv hidx)
-           end in
-  bit_or (bit_or (bit_and a b) (bit_and a c)) (bit_and b c).
-*)
 
 Definition p_from_pltq {p q} (pltq : p < q) := p.
 
@@ -112,27 +97,6 @@ Module otnum.
   Example vt3  := (cons (Some zero) (cons (Some zero) (cons (Some one) (cons (Some one) nil)))).
 End otnum.
 
-(* TODO REM; wrote down just as a reference for the usage of nth; main point: I do not have to generate proof for `i < SIZE`. *)
-Goal forall (v : otnum.t) i (hidx : i < SIZE), let ith := Vector.nth v (Fin.of_nat_lt hidx) in ith = Some one \/ ith = Some zero \/ ith = None.
-  intros v i hidx.
-  destruct (Vector.nth v (Fin.of_nat_lt hidx)).
-  destruct b; auto.
-  auto.
-Qed.
-
-(* TODO REM?
-(* I learned this way of representing sets from:
- * https://github.com/rocq-community/coq-100-theorems/blob/master/inclusionexclusion.v
- * (Must be a standard technique, though.)
- *)
-
-Definition v64set := v64 -> bool.
-Axiom alpha : v64set -> otnum.t.
-Axiom gamma : otnum.t -> v64set.
-
-Definition ingamma (x : v64) (T : otnum.t) := gamma T x = true.
- *)
-
 Definition ingamma (x : v64) (T : otnum.t) : Prop :=
     forall i (hidx : i < SIZE),
       (forall b, otnum.ith T hidx = Some b -> v64_ith x hidx = b).
@@ -143,14 +107,6 @@ Definition ingamma (x : v64) (T : otnum.t) : Prop :=
  *    of adding any concrete p and q (written less formally for simplicity).
  * 2. TODO optimality:
  *)
-
-(* Define an otnum_add that is trivially sound *)
-(* TODO REM; proving this is not easy (if possible at all), despite it being
- * trivially sound; I should go for the relationship method.
-
-Definition otnum_add (X Y : otnum.t) :=
-  otnum.cons None (otnum.cons None (otnum.cons None (otnum.cons None (otnum.nil)))).
-*)
 
 Axiom otnum_add : otnum.t -> otnum.t -> otnum.t.
 
@@ -171,19 +127,11 @@ Definition obit_xor (x y : option bit) :=
   | _, _ => None
   end.
 
-(* TODO REM? *)
-Lemma obit_xor_mu (x y : option bit) : (x = None \/ y = None) -> obit_xor x y = None.
-  intros H. destruct H as [ hx | hy ].
-  unfold obit_xor. rewrite hx. reflexivity.
-  unfold obit_xor. rewrite hy.
-  destruct x. destruct b; reflexivity. reflexivity.
-Qed.
-
 Lemma obit_xor_mu_right (x : option bit) : obit_xor x None = None.
   unfold obit_xor. destruct x. destruct b.
   reflexivity. reflexivity. reflexivity.
 Qed.
-  
+
 Lemma obit_xor_mu_left (y : option bit) : obit_xor None y = None.
   unfold obit_xor. destruct y; reflexivity.
 Qed.
@@ -254,7 +202,7 @@ Ltac destruct_bit :=
 
 (* TODO rename *)
 Ltac crush1 := compute; easy.
-Ltac crush2 := 
+Ltac crush2 :=
   match goal with
   | [ |- _ -> exists p q, Some ?x = Some p /\ Some ?y = Some q /\ bit_and p q = ?c ] => exists x
   | [ |- exists q, _ /\ Some ?x = Some q /\ _ ] => exists x
@@ -286,12 +234,6 @@ Ltac assert_or_rel H :=
         assert (forall y', y = Some y' -> q = y')
   end.
 
-(* TODO REM *)
-Lemma assert_or_rel x y c p q : obit_or x y = Some c -> bit_or p q = c.
-  intro H.
-  assert_or_rel H.
-Admitted.
-
 Ltac destruct_oband H :=
   let H' := fresh "H'" in
   let x := fresh "x" in
@@ -306,14 +248,6 @@ Ltac destruct_obor H :=
   let h2 := fresh "h2" in
   assert (H' := H); apply obit_or_imp in H'; destruct H' as [h1 | h2];
   try destruct_obor h1; try destruct_oband h1; try destruct_obor h2; try destruct_oband h2.
-(* TODO REM
-  destruct H' as (x & hx); remember hx as hx'; destruct hx'. *)
-
-(* TODO REM *)
-Goal forall a b c, obit_or a b = Some c -> exists d, a = Some d \/ b = Some d.
-  intros a b c H.
-  destruct_obor H; exists c; auto.
-Qed.
 
 Ltac ingam_rel P :=
   match goal with
@@ -322,46 +256,10 @@ Ltac ingam_rel P :=
     assert (H1 : forall b, otnum.ith P (ltprv hidx) = Some b -> v64_ith x (ltprv hidx) = b); auto
   end.
 
-Ltac crush_invalid_and := 
-  match goal with
-  | [ H : bit_and zero zero = one |- _ ] => unfold bit_and in H; simpl in H; try easy
-  | [ H : bit_and zero one = one |- _ ] => unfold bit_and in H; simpl in H; try easy
-  | [ H : bit_and one zero = one |- _ ] => unfold bit_and in H; simpl in H; try easy
-  | [ H : bit_and one one = zero |- _ ] => unfold bit_and in H; simpl in H; try easy
-  end.
-
-(* TODO Can I combine crush4_0 and crush4_1? Problem: when the context has both hypos, one masks the other. *)
-(* If P is not taken, `otnum.ith Q` would mask `otnum.ith P` if the context has both. *)
-Ltac crush4_0 H P :=
-  match goal with
-  | [ h : otnum.ith P _ = Some _ |- _ ] => repeat rewrite h in H; simpl in H; try easy
-  | _ => idtac
-  end.
-
-Ltac crush4_1 H P Q :=
-  match goal with
-  | [ h : otnum_prvcarry P Q _ = Some _ |- _ ] => repeat rewrite h in H; simpl in H; try easy
-  | _ => idtac
-  end.
-
-Ltac crush4 H P Q := try crush_invalid_and; crush4_0 H P; crush4_0 H Q; crush4_1 H P Q; simpl in H; try easy; try auto.
-
-Lemma test_crush4 P Q b {i} (hidx : S i < SIZE) : otnum.ith P hidx = Some b /\ otnum_prvcarry P Q (ltprv hidx) = Some b -> False.
-  intros. destruct H.
-  assert (H1 : otnum_prvcarry P Q (ltprv hidx) = None /\ otnum.ith P hidx = None -> True). intro H'. exact I.
-  crush4 H1 P Q.
-Admitted.
-
 Ltac rewrite_obit_and :=
   match goal with
   | [ h1 : ?P = _, h2 : obit_and ?P _ = _ |- _ ] => repeat rewrite h1 in h2
   | [ h1 : ?P = _, h2 : obit_and _ ?P = _ |- _ ] => repeat rewrite h1 in h2
-  end.
-
-Ltac crush_invalid_obit_and :=
-  match goal with
-  | [ h : obit_and None _ = Some _ |- _ ] => unfold obit_and in h; simpl in h; easy
-  | [ h : obit_and _ None = Some _ |- _ ] => unfold obit_and in h; simpl in h; easy
   end.
 
 (* Destructs unknown terms only *)
@@ -387,57 +285,25 @@ Ltac destruct_Ci P Q :=
          end
   end.
 
-(*
-Ltac rewrite_crush H :=
-  match goal with
-  | [ H : bit_and zero zero = one |- _ ] => unfold bit_and in H; simpl in H; easy
-*)
-
-Ltac destruct_conj3 :=
-  let x' := fresh "x'" in
-  let y' := fresh "y'" in
-  let z' := fresh "z'" in
-  match goal with
-  | [ h1 : ?x /\ ?y /\ ?z |- _ ] => destruct h1 as (x' & y' & z')
-  end.
-
 Ltac intro_obit_imp_bit :=
   let H := fresh "H" in
+  let b := fresh "b" in
   match goal with
   | [ |- obit_and _ _ = Some ?x -> bit_and _ _ = ?x ] =>
       intro H; try assert_or_rel H; try assert_and_rel H; auto
   | [ |- obit_or _ _ = Some ?x -> bit_or _ _ = ?x ] =>
       intro H; try assert_or_rel H; try assert_and_rel H; auto
-  end.
-
-Ltac intro_forall_obit_imp_bit :=
-  let b := fresh "b" in
-  match goal with
   | [ |- forall x, obit_and _ _ = Some x -> bit_and _ _ = x ] =>
       intro b; intro_obit_imp_bit
   | [ |- forall x, obit_or _ _ = Some x -> bit_or _ _ = x ] =>
       intro b; intro_obit_imp_bit
   end.
 
-(* TODO REM
-Lamma test_intro_obit_imp_bit : forall x, obit_or (Some one) (Some one) -> 
- *)
+(* TODO rename *)
+Ltac crush14 H H3 :=
+    try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
+    repeat destruct_bit; simpl in H3; try easy; try auto.
 
-Ltac crush13 := (* TODO rename meaningfully *)
-  match goal with
-    | [ H6 : obit_and ?x ?y = Some ?p,
-        H8 : forall y', ?y = Some y' -> ?z = y' |-
-                          obit_and ?x (Some ?z) = Some ?p ] => try rewrite H8 in H6; try assumption
-  end.
-(*
-  H6 : obit_and (Some one) (otnum.ith Q (ltprv hidx)) = Some zero
-  H7 : forall x' : bit, Some one = Some x' -> v64_ith x (ltprv hidx) = x'
-  H8 : forall y' : bit, otnum.ith Q (ltprv hidx) = Some y' -> v64_ith y (ltprv hidx) = y'
-  ============================
-  obit_and (Some one) (Some (v64_ith y (ltprv hidx))) = Some zero
-*)
-
-(* TODO prove *)
 Lemma matching_carry (P Q : otnum.t) (x y : v64) :
   ingamma x P /\ ingamma y Q ->
   forall i (hidx : i < SIZE),
@@ -453,50 +319,43 @@ Lemma matching_carry (P Q : otnum.t) (x y : v64) :
 
     destruct ingamXY as (ingamX & ingamY).
 
-    (* TODO subst. the new names OR remove altogether since assert_and_rel creates these hypos *)
+    (* TODO remove altogether since assert_and_rel creates these hypos (FIXME not in some cases) *)
     ingam_rel Q. assert (Qimpy := H0).
     ingam_rel P. assert (Pimpx := H2).
-    
+
     unfold otnum_prvcarry. fold otnum_prvcarry.
     unfold v64_prvcarry. fold v64_prvcarry.
 
     intro_obit_imp_bit.
-    intro_forall_obit_imp_bit.
+    intro_obit_imp_bit.
     destruct_Pi Q; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
+      crush14 H H3.
 
-    intro_forall_obit_imp_bit.
-    intro_forall_obit_imp_bit.
+    intro_obit_imp_bit.
+    intro_obit_imp_bit.
     destruct_Pi P; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
+      crush14 H H3.
 
-    intro_forall_obit_imp_bit.
+    intro_obit_imp_bit.
     destruct_Pi P; destruct_Pi Q; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
+      crush14 H H3.
 
-    intro_forall_obit_imp_bit.
+    intro_obit_imp_bit.
     destruct_Pi P; destruct_Pi Q; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
+      crush14 H H3.
 
     destruct_Pi P; destruct_Pi Q; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
+      crush14 H H3.
 
     destruct (v64_ith y (ltprv hidx)); simpl; auto.
-    
-    intro_forall_obit_imp_bit.
+
+    intro_obit_imp_bit.
     destruct_Pi P; destruct_Pi Q; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
+      crush14 H H3.
 
     destruct_Pi P; destruct_Pi Q; destruct_Ci P Q; (* TODO pick automatically *)
-      try rewrite H; try rewrite H3; try apply obit_and_imp2; auto;
-    repeat destruct_bit; simpl in H3; try easy; try auto.
-    
+      crush14 H H3.
+
     destruct (v64_ith y (ltprv hidx)); simpl; auto.
     destruct (v64_ith x (ltprv hidx)); simpl; auto.
 Qed.
@@ -534,11 +393,11 @@ Proof.
   destruct (otnum_prvcarry P Q hidx).
   exists b0. reflexivity.
   rewrite obit_xor_mu_left in Hri. easy.
-  
+
   destruct hpi as (bp & hbp).
   destruct hqi as (bq & hbq).
   destruct hci as (bc & hbc).
-  
+
   assert (hcarry : forall b, otnum_prvcarry P Q hidx = Some b -> v64_prvcarry x y hidx = b).
   apply matching_carry. assumption.
 
@@ -553,4 +412,3 @@ Proof.
 
   exact hbc. exact hbq. exact hbp. trivial.
 Qed.
-
