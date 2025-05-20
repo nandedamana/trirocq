@@ -12,6 +12,12 @@ Definition bit_and (x y : bit) :=
   | _, _ => zero
   end.
 
+Definition bit_not (x : bit) :=
+  match x with
+  | zero => one
+  | one => zero
+  end.
+
 Definition bit_or (x y : bit) :=
   match x, y with
   | zero, zero => zero
@@ -34,6 +40,18 @@ Definition v64_ith (v : v64) {i} (hidx : i < SIZE) :=
   Vector.nth v (Fin.of_nat_lt hidx).
 
 Axiom v64_add : v64 -> v64 -> v64.
+
+Axiom v64_and : v64 -> v64 -> v64.
+Axiom v64_and_rel : forall v1 v2 v3, v3 = v64_add v1 v2 -> forall i (hidx : i < SIZE), v64_ith v3 hidx = bit_and (v64_ith v1 hidx) (v64_ith v2 hidx).
+
+Axiom v64_neg : v64 -> v64.
+Axiom v64_neg_rel : forall v1 v2, v2 = v64_neg v1 -> forall i (hidx : i < SIZE), v64_ith v2 hidx = bit_not (v64_ith v1 hidx).
+
+Axiom v64_or : v64 -> v64 -> v64.
+Axiom v64_or_rel : forall v1 v2 v3, v3 = v64_or v1 v2 -> forall i (hidx : i < SIZE), v64_ith v3 hidx = bit_or (v64_ith v1 hidx) (v64_ith v2 hidx).
+
+Axiom v64_xor : v64 -> v64 -> v64.
+Axiom v64_xor_rel : forall v1 v2 v3, v3 = v64_xor v1 v2 -> forall i (hidx : i < SIZE), v64_ith v3 hidx = bit_xor (v64_ith v1 hidx) (v64_ith v2 hidx).
 
 Require Import Lia.
 Lemma ltprv {i} {n} : S i < n -> i < n.
@@ -64,16 +82,11 @@ Module tnum.
    *)
   Variant t := cons (v : v64) (m : v64) : t.
 
-  (* TODO rem if unused *)
-  Definition ith_v (tn : t) {i} (hidx : i < SIZE) :=
-    match tn with
-      cons v _ => Vector.nth v (Fin.of_nat_lt hidx)
-    end.
-
-  Definition ith_m (tn : t) {i} (hidx : i < SIZE) :=
-    match tn with
-      cons _ m => Vector.nth m (Fin.of_nat_lt hidx)
-    end.
+  Definition v P := match P with cons v _ => v end.
+  Definition m P := match P with cons _ m => m end.
+  
+  Definition ith_v (tn : t) {i} (hidx : i < SIZE) := v64_ith (v tn) hidx.
+  Definition ith_m (tn : t) {i} (hidx : i < SIZE) := v64_ith (m tn) hidx.
 End tnum.
 
 Module otnum.
@@ -184,6 +197,137 @@ Fixpoint otnum_prvcarry (P Q : otnum.t) {i} (hidx : i < SIZE) : option bit :=
 (* Analogue of v64_fulladd_result *)
 Axiom otnum_fulladd_result : forall (P Q R : otnum.t), R = otnum_add P Q -> forall i (hidx : i < SIZE), otnum.ith R hidx = obit_xor (otnum_prvcarry P Q hidx) (obit_xor (otnum.ith P hidx) (otnum.ith Q hidx)).
 
+(* TODO move; placed here for the time being because some trailing proofs are slow *)
+Section linux_tnum_addition.
+  (* The tnum addition routine in the kernel consists of half a dozen non-obvious steps.
+   * On the other hand, otnum addition is easier to reason about. Here we try to
+   * establish the relationship between the Linux tnum addition and our otnum addition.
+   * Once this is done, the correctness proof for otnum addition automatically
+   * becomes the correctness proof for Linux tnum addition.
+   *)
+
+  Definition tnum_eq_otnum (t : tnum.t) (o : otnum.t) :=
+    forall i (hidx : i < SIZE), (tnum.ith_m t hidx = one -> otnum.ith o hidx = None) /\
+                                  (tnum.ith_m t hidx = zero -> otnum.ith o hidx = Some (tnum.ith_v t hidx)).
+
+  (* Part of the otnum model; doesn't require a proof. *)
+  Axiom otnum_xor : otnum.t -> otnum.t -> otnum.t.
+  Axiom otnum_xor_ith : forall (a b : otnum.t) i (hidx : i < SIZE),
+    otnum.ith (otnum_xor a b) hidx = obit_xor (otnum.ith a hidx) (otnum.ith b hidx).
+
+  (* Mirrors the Linux kernel definition *)
+  (* TODO not exactly; add the mask neg part *)
+  Definition tnum_xor (a b : tnum.t) := tnum.cons (v64_xor (tnum.v a) (tnum.v b)) (v64_or (tnum.m a) (tnum.m b)).
+
+  Lemma tnum_xor_rel t1 t2 :
+    let t3 := tnum_xor t1 t2 in
+    forall i (hidx : i < SIZE), tnum.ith_v t3 hidx = bit_xor (tnum.ith_v t1 hidx) (tnum.ith_v t2 hidx) /\
+                                  tnum.ith_m t3 hidx = bit_or (tnum.ith_m t1 hidx) (tnum.ith_m t2 hidx).
+  Proof.
+    unfold tnum_xor. unfold tnum.ith_v. unfold tnum.ith_m. simpl;
+    intros; split; try apply v64_xor_rel; try apply v64_or_rel; auto.
+  Qed.
+
+  Lemma tnum_xor_rel_m t1 t2 :
+    let t3 := tnum_xor t1 t2 in
+    forall i (hidx : i < SIZE), tnum.ith_m t3 hidx = bit_or (tnum.ith_m t1 hidx) (tnum.ith_m t2 hidx).
+  Proof.
+    intros. apply tnum_xor_rel.
+  Qed.
+
+  Lemma tnum_xor_rel_v t1 t2 :
+    let t3 := tnum_xor t1 t2 in
+    forall i (hidx : i < SIZE), tnum.ith_v t3 hidx = bit_xor (tnum.ith_v t1 hidx) (tnum.ith_v t2 hidx).
+  Proof.
+    intros. apply tnum_xor_rel.
+  Qed.
+  
+  Ltac specialize_ith H :=
+    match goal with
+    | [ hidx : ?i < SIZE |- _ ] => match type of H with
+                                     forall i (hidx : i < SIZE), _ =>
+                                       let H' := fresh "H'" in assert (H' := H i hidx); auto;
+                                                               destruct H'
+                                 end
+    end.
+
+  Ltac rewrite_biteq_if_holds H :=
+    match type of H with
+    | ?b = ?b -> _ =>
+        let H1 := fresh "H1" in
+        let H2 := fresh "H2" in
+        assert (H1 : b = b); auto; assert (H2 := H H1); rewrite H2
+    end.
+  
+  Lemma tnum_xor_correct t1 t2 o1 o2 : tnum_eq_otnum t1 o1 /\ tnum_eq_otnum t2 o2 -> tnum_eq_otnum (tnum_xor t1 t2) (otnum_xor o1 o2).
+    unfold tnum_eq_otnum.
+    
+    intros H. destruct H as (eq1 & eq2).
+    intros i hidx.
+
+    rewrite tnum_xor_rel_m.
+    rewrite otnum_xor_ith.
+
+    specialize_ith eq1. specialize_ith eq2.
+    destruct (tnum.ith_m t1 hidx); destruct (tnum.ith_m t2 hidx);
+
+    try rewrite_biteq_if_holds H;
+      try rewrite_biteq_if_holds H0;
+      try rewrite_biteq_if_holds H1;
+      try rewrite_biteq_if_holds H2;
+
+      split; try easy; rewrite tnum_xor_rel_v;
+      destruct (tnum.ith_v t1 hidx); destruct (tnum.ith_v t2 hidx);
+      simpl; auto.
+  Qed.
+
+  
+(* TODO try to come up with a tnum addition routine based on otnum_fulladd_result instead of proving what's there in the kernel. *)
+  
+  (* Dealing with kernel addition part by part *)
+
+  Definition tnum_add_sm P Q := v64_add (tnum.m P) (tnum.m Q).
+  
+  (* sv masked with the newly computed mask forms the value part of the sum. *)  
+  Definition tnum_add_sv P Q := v64_add (tnum.v P) (tnum.v Q).
+
+  Lemma tnum_add_sound_sm t1 t2 msk o1 o2 o3 :
+    tnum_eq_otnum t1 o1 /\ tnum_eq_otnum t2 o2 /\ msk = tnum_add_sm t1 t2 /\ o3 = otnum_add o1 o2 ->
+    forall i (hidx : i < SIZE), (otnum.ith o3 hidx = None -> v64_ith msk hidx = one) /\ (exists b, otnum.ith o3 hidx = Some b -> v64_ith msk hidx = zero).
+
+    unfold tnum_eq_otnum.
+    intro H. destruct H as (eq1 & eq2 & hmsk & mo3).
+
+  (* TODO move above *)
+  Axiom tnum_add : tnum.t -> tnum.t -> tnum.t.
+  Axiom tnum_add_rel : forall P Q R, R = tnum_add P Q ->
+                                     let sv := v64_add (tnum.v P) (tnum.v Q) in
+                                     let sm := v64_add (tnum.m P) (tnum.m Q) in
+                                     let sig := v64_add sv sm in
+                                     let chi := v64_xor sig sv in
+                                     let eta := v64_or chi (v64_or (tnum.m P) (tnum.m Q)) in
+                                     R = tnum.cons (v64_and sv (v64_neg eta)) eta.
+
+  Lemma tnum_add_sound t1 t2 t3 o1 o2 o3 :
+    tnum_eq_otnum t1 o1 /\ tnum_eq_otnum t2 o2 /\ t3 = tnum_add t1 t2 /\ o3 = otnum_add o1 o2 ->
+    tnum_eq_otnum t3 o3.
+
+    unfold tnum_eq_otnum.
+    intros H. destruct H as (eq1 & eq2 & ht3 & ho3).
+    intros i hidx.
+    split.
+
+    intro t3one.
+    
+    rewrite tnum_add_rel with (P := t1) (Q := t2) (R := t3) in ht3.
+
+    assert (H : forall (i : nat) (hidx : i < SIZE), otnum.ith o3 hidx = obit_xor (otnum_prvcarry o1 o2 hidx) (obit_xor (otnum.ith o1 hidx) (otnum.ith o2 hidx))).
+    apply otnum_fulladd_result. auto.
+
+    
+
+End linux_tnum_addition.
+
 Lemma and_obit_bit a b c : obit_and (Some a) (Some b) = Some c -> bit_and a b = c.
   unfold obit_and. intro H. injection H. auto.
 Qed.
@@ -220,6 +364,9 @@ Lemma obit_or_imp x y c : obit_or x y = Some c -> x = Some c \/ y = Some c.
   unfold obit_or. repeat destruct_bit. all: compute; auto.
 Qed.
 
+(* TODO this works, but are the arg H and the H in the context actually matched? In other words, still works if the arg H is removed?
+ * -- maybe use `type of` like I did in specialize_ith
+ *)
 Ltac assert_and_rel H :=
   match goal with
     | [ H : obit_and ?x ?y = Some _ |- bit_and ?p ?q = _ ] =>
@@ -227,6 +374,9 @@ Ltac assert_and_rel H :=
         assert (forall y', y = Some y' -> q = y')
   end.
 
+(* TODO this works, but are the arg H and the H in the context actually matched? In other words, still works if the arg H is removed?
+ * -- maybe use `type of` like I did in specialize_ith
+ *)
 Ltac assert_or_rel H :=
   match goal with
     | [ H : obit_or ?x ?y = Some _ |- bit_or ?p ?q = _ ] =>
