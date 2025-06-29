@@ -155,43 +155,12 @@ Section linux_tnum_addition.
     let eta := bvec_or chi (bvec_or (tnum.m P) (tnum.m Q)) in
     tnum.cons SIZE (bvec_and sv (bvec_neg eta)) eta.
 
-  (* Why this thin wrapper? Because direct use of `rewrite bvec_and_rel` fails to find
-   * v1 and v2 automatically.
-   *)
-  Lemma bvec_ith_unwrap_and {SIZE} v1 v2 i (hidx : i < SIZE) :
-    bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
-  Proof.
-    apply bvec_and_rel.
-  Qed.
-
-  Lemma bvec_ith_unwrap_neg {SIZE} v i (hidx : i < SIZE) :
-    bvec_ith (bvec_neg v) hidx = bit_not (bvec_ith v hidx).
-  Proof.
-    apply bvec_neg_rel.
-  Qed.
-
-  Lemma bvec_ith_unwrap_or {SIZE} v1 v2 i (hidx : i < SIZE) :
-    bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
-  Proof.
-    apply bvec_or_rel.
-  Qed.
-
-  Lemma bvec_ith_unwrap_xor {SIZE} v1 v2 i (hidx : i < SIZE) :
-    bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
-  Proof.
-    apply bvec_xor_rel.
-  Qed.
-
   Ltac unwrap_bvec_ops := match goal with
-                           _ => repeat rewrite bvec_ith_unwrap_and;
-                                repeat rewrite bvec_ith_unwrap_neg;
-                                repeat rewrite bvec_ith_unwrap_or;
-                                repeat rewrite bvec_ith_unwrap_xor
+                           _ => repeat rewrite bvec_and_rel;
+                                repeat rewrite bvec_neg_rel;
+                                repeat rewrite bvec_or_rel;
+                                repeat rewrite bvec_xor_rel
                          end.
-
-  Lemma bit_xor_self x : bit_xor x x = zero.
-    destruct x; auto.
-  Qed.
 
   Ltac rewrite_if_holds H :=
     match type of H with
@@ -260,10 +229,6 @@ Section linux_tnum_addition.
     try rewrite bit_xor_left_zero;
     try rewrite bit_xor_right_zero;
     unfold bit_not.
-
-  Ltac destruct_some_x_eq_some_y := match goal with
-                                      [ |- Some ?x = Some _ -> _ ] => destruct x
-                                    end.
 
   (* Is chi is the mask bit of the incoming carry? No; it considers v bits as well. chi[i] in fact `tnum.ith_m (tnum_add P Q) hidx` excluding P.m[i] | Q.m[i] *)
   Lemma helper32 {SIZE} P Q :
@@ -541,7 +506,7 @@ Section linux_tnum_addition.
 
     pose (H'1 := helper33 x y P Q H).
 
-    unfold tnum.ith_m in H. (* TODO rename *)
+    unfold tnum.ith_m in H.
     destruct H as (wf1 & wf2 & igP & igQ).
 
     split. apply tnum_add_wellformed; auto.
@@ -552,7 +517,7 @@ Section linux_tnum_addition.
     intros i hidx rmskz.
 
     specialize (H'2 i hidx rmskz) as (xmskz & ymskz & cinmskz).
-    specialize (H'1 i hidx rmskz). (* TODO rename; TODO useless? *)
+    specialize (H'1 i hidx rmskz).
     revert rmskz.
 
     revert cinmskz.
@@ -561,7 +526,6 @@ Section linux_tnum_addition.
     rewrite tnum.ith_m_simplify.
     rewrite tnum.ith_v_simplify.
 
-    rewrite bvec_ith_unwrap_or.
     unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
     rewrite xmskz. rewrite ymskz. rewrite igP; auto. rewrite igQ; auto. simpl.
 
