@@ -32,24 +32,27 @@ Definition bit_xor (x y : bit) :=
   | one, one => zero
   end.
 
-Definition SIZE := 64. (* TODO use n *)
-Definition v64 := Vector.t bit SIZE.
-Definition v64_ith (v : v64) {i} (hidx : i < SIZE) :=
+Definition bvec SIZE := Vector.t bit SIZE.
+Definition bvec_ith {SIZE} (v : bvec SIZE) {i} (hidx : i < SIZE) :=
   Vector.nth v (Fin.of_nat_lt hidx).
 
-Axiom v64_add : v64 -> v64 -> v64.
+Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
 
-Axiom v64_and : v64 -> v64 -> v64.
-Axiom v64_and_rel : forall v1 v2 v3, v3 = v64_and v1 v2 -> forall i (hidx : i < SIZE), v64_ith v3 hidx = bit_and (v64_ith v1 hidx) (v64_ith v2 hidx).
+Axiom bvec_and : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+Axiom bvec_and_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+    bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
 
-Axiom v64_neg : v64 -> v64.
-Axiom v64_neg_rel : forall v1 v2, v2 = v64_neg v1 -> forall i (hidx : i < SIZE), v64_ith v2 hidx = bit_not (v64_ith v1 hidx).
+Axiom bvec_neg : forall {SIZE}, bvec SIZE -> bvec SIZE.
+Axiom bvec_neg_rel : forall {SIZE} (v1 : bvec SIZE) {i} (hidx : i < SIZE),
+    bvec_ith (bvec_neg v1) hidx = bit_not (bvec_ith v1 hidx).
 
-Axiom v64_or : v64 -> v64 -> v64.
-Axiom v64_or_rel : forall v1 v2 v3, v3 = v64_or v1 v2 -> forall i (hidx : i < SIZE), v64_ith v3 hidx = bit_or (v64_ith v1 hidx) (v64_ith v2 hidx).
+Axiom bvec_or : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+Axiom bvec_or_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+    bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
 
-Axiom v64_xor : v64 -> v64 -> v64.
-Axiom v64_xor_rel : forall v1 v2 v3, v3 = v64_xor v1 v2 -> forall i (hidx : i < SIZE), v64_ith v3 hidx = bit_xor (v64_ith v1 hidx) (v64_ith v2 hidx).
+Axiom bvec_xor : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+Axiom bvec_xor_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+    bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
 
 Require Import Lia.
 Lemma ltprv {i} {n} : S i < n -> i < n.
@@ -63,61 +66,62 @@ Definition p_from_pltq {p q} (pltq : p < q) := p.
  * - https://stackoverflow.com/questions/32060556/convoy-pattern-and-match-involving-inequality?rq=3
  *)
 (* Carry due to the addition of bits at position (i - 1); 0 for i = 0 *)
-Fixpoint v64_incarry (x y : v64) {i} (hidx : i < SIZE) : bit :=
+Fixpoint bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
   match i return i < SIZE -> bit with
   | 0 => fun _ => zero
-  | S i' => fun hidx => let a := v64_ith x (ltprv hidx) in
-                        let b := v64_ith y (ltprv hidx) in
-                        let cin := v64_incarry x y (ltprv hidx) in
+  | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
+                        let b := bvec_ith y (ltprv hidx) in
+                        let cin := bvec_incarry x y (ltprv hidx) in
                         bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin)
   end hidx.
 
 (* Takes away the convoy pattern, making some upcoming proofs simpler *)
-Lemma v64_incarry_Si (x y : v64) {i} (hidx : S i < SIZE) :
-  v64_incarry x y hidx = let a := v64_ith x (ltprv hidx) in
-                          let b := v64_ith y (ltprv hidx) in
-                          let cin := v64_incarry x y (ltprv hidx) in
+Lemma bvec_incarry_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
+  bvec_incarry x y hidx = let a := bvec_ith x (ltprv hidx) in
+                          let b := bvec_ith y (ltprv hidx) in
+                          let cin := bvec_incarry x y (ltprv hidx) in
                           bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin).
 Proof.
   auto.
 Qed.
 
-Axiom v64_fulladd_result : forall x y [i] (hidx : i < SIZE), v64_ith (v64_add x y) hidx = bit_xor (v64_incarry x y hidx) (bit_xor (v64_ith x hidx) (v64_ith y hidx)).
+Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_add x y) hidx = bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
 
 Module tnum.
   (* Type tnum reflects the Kernel tnum, which is a record consisting of
    * v, the value bits, and m, the mask bits (Greek mu).
    *)
-  Variant t := cons (v : v64) (m : v64) : t.
+  Variant t SIZE := cons (v : bvec SIZE) (m : bvec SIZE).
 
-  Definition v P := match P with cons v _ => v end.
-  Definition m P := match P with cons _ m => m end.
+  Definition v {SIZE} (P : t SIZE) := match P with cons _ v _ => v end.
+  Definition m {SIZE} (P : t SIZE) := match P with cons _ _ m => m end.
 
-  Definition ith_v (tn : t) {i} (hidx : i < SIZE) := v64_ith (v tn) hidx.
-  Definition ith_m (tn : t) {i} (hidx : i < SIZE) := v64_ith (m tn) hidx.
+  Definition ith_v {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (v tn) hidx.
+  Definition ith_m {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (m tn) hidx.
 
-  Definition wellformed (tn : t) := forall {i} (hidx : i < SIZE), v64_ith (m tn) hidx = one -> v64_ith (v tn) hidx = zero.
+  Definition wellformed {SIZE} (tn : t SIZE) :=
+    forall {i} (hidx : i < SIZE), bvec_ith (m tn) hidx = one -> bvec_ith (v tn) hidx = zero.
   (*
-  Definition wellformed_hari (tn : t) := v64_and (v tn) (m tn) = zero64. (* TODO prove my wellformed <-> wellformed_hari *)
+    Definition wellformed_hari (tn : t) := bvec_and (v tn) (m tn) = zero64. (* TODO prove my wellformed <-> wellformed_hari *)
    *)
 
-  Lemma ith_m_simplify n1 n2 i (hidx : i < SIZE) : ith_m (cons n1 n2) hidx = v64_ith n2 hidx.
+  Lemma ith_m_simplify {SIZE} n1 n2 i (hidx : i < SIZE) : ith_m (cons SIZE n1 n2) hidx = bvec_ith n2 hidx.
     unfold ith_m. simpl. reflexivity.
   Qed.
 
-  Lemma ith_v_simplify n1 n2 i (hidx : i < SIZE) : ith_v (cons n1 n2) hidx = v64_ith n1 hidx.
+  Lemma ith_v_simplify {SIZE} n1 n2 i (hidx : i < SIZE) : ith_v (cons SIZE n1 n2) hidx = bvec_ith n1 hidx.
     unfold ith_v. simpl. reflexivity.
   Qed.
 End tnum.
 
-Definition ingamma (x : v64) (T : tnum.t) : Prop :=
+Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
   forall i (hidx : i < SIZE),
-    tnum.ith_m T hidx = zero -> v64_ith x hidx = tnum.ith_v T hidx.
+    tnum.ith_m T hidx = zero -> bvec_ith x hidx = tnum.ith_v T hidx.
 
 (* Based on Harishankar et al. *)
 (* TODO prove member <-> ingamma *)
-Definition member (x : v64) (T : tnum.t) : Prop :=
-  v64_and x (v64_neg (tnum.m T)) = tnum.v T.
+Definition member {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
+  bvec_and x (bvec_neg (tnum.m T)) = tnum.v T.
 
 (* On my own *)
 (* We need to define otnum addition with the following properties:
@@ -136,53 +140,53 @@ Section linux_tnum_addition.
 
   (* Mirrors the Linux kernel definition *)
 
-  Definition tnum_ith_chi P Q [i] (hidx : i < SIZE) :=
-    let sv := v64_add (tnum.v P) (tnum.v Q) in
-    let sm := v64_add (tnum.m P) (tnum.m Q) in
-    let sig := v64_add sv sm in
-    let chi := v64_xor sig sv in
-    v64_ith chi hidx.
+  Definition tnum_ith_chi {SIZE} P Q [i] (hidx : i < SIZE) :=
+    let sv := bvec_add (tnum.v P) (tnum.v Q) in
+    let sm := bvec_add (tnum.m P) (tnum.m Q) in
+    let sig := bvec_add sv sm in
+    let chi := bvec_xor sig sv in
+    bvec_ith chi hidx.
 
-  Definition tnum_add P Q :=
-    let sv := v64_add (tnum.v P) (tnum.v Q) in
-    let sm := v64_add (tnum.m P) (tnum.m Q) in
-    let sig := v64_add sv sm in
-    let chi := v64_xor sig sv in
-    let eta := v64_or chi (v64_or (tnum.m P) (tnum.m Q)) in
-    tnum.cons (v64_and sv (v64_neg eta)) eta.
+  Definition tnum_add {SIZE} P Q :=
+    let sv := bvec_add (tnum.v P) (tnum.v Q) in
+    let sm := bvec_add (tnum.m P) (tnum.m Q) in
+    let sig := bvec_add sv sm in
+    let chi := bvec_xor sig sv in
+    let eta := bvec_or chi (bvec_or (tnum.m P) (tnum.m Q)) in
+    tnum.cons SIZE (bvec_and sv (bvec_neg eta)) eta.
 
-  (* Why this thin wrapper? Because direct use of `rewrite v64_and_rel` fails to find
+  (* Why this thin wrapper? Because direct use of `rewrite bvec_and_rel` fails to find
    * v1 and v2 automatically.
    *)
-  Lemma v64_ith_unwrap_and v1 v2 i (hidx : i < SIZE) :
-    v64_ith (v64_and v1 v2) hidx = bit_and (v64_ith v1 hidx) (v64_ith v2 hidx).
+  Lemma bvec_ith_unwrap_and {SIZE} v1 v2 i (hidx : i < SIZE) :
+    bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
   Proof.
-    apply v64_and_rel. reflexivity.
+    apply bvec_and_rel.
   Qed.
 
-  Lemma v64_ith_unwrap_neg v i (hidx : i < SIZE) :
-    v64_ith (v64_neg v) hidx = bit_not (v64_ith v hidx).
+  Lemma bvec_ith_unwrap_neg {SIZE} v i (hidx : i < SIZE) :
+    bvec_ith (bvec_neg v) hidx = bit_not (bvec_ith v hidx).
   Proof.
-    apply v64_neg_rel. reflexivity.
+    apply bvec_neg_rel.
   Qed.
 
-  Lemma v64_ith_unwrap_or v1 v2 i (hidx : i < SIZE) :
-    v64_ith (v64_or v1 v2) hidx = bit_or (v64_ith v1 hidx) (v64_ith v2 hidx).
+  Lemma bvec_ith_unwrap_or {SIZE} v1 v2 i (hidx : i < SIZE) :
+    bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
   Proof.
-    apply v64_or_rel. reflexivity.
+    apply bvec_or_rel.
   Qed.
 
-  Lemma v64_ith_unwrap_xor v1 v2 i (hidx : i < SIZE) :
-    v64_ith (v64_xor v1 v2) hidx = bit_xor (v64_ith v1 hidx) (v64_ith v2 hidx).
+  Lemma bvec_ith_unwrap_xor {SIZE} v1 v2 i (hidx : i < SIZE) :
+    bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
   Proof.
-    apply v64_xor_rel. reflexivity.
+    apply bvec_xor_rel.
   Qed.
 
-  Ltac unwrap_v64_ops := match goal with
-                           _ => repeat rewrite v64_ith_unwrap_and;
-                                repeat rewrite v64_ith_unwrap_neg;
-                                repeat rewrite v64_ith_unwrap_or;
-                                repeat rewrite v64_ith_unwrap_xor
+  Ltac unwrap_bvec_ops := match goal with
+                           _ => repeat rewrite bvec_ith_unwrap_and;
+                                repeat rewrite bvec_ith_unwrap_neg;
+                                repeat rewrite bvec_ith_unwrap_or;
+                                repeat rewrite bvec_ith_unwrap_xor
                          end.
 
   Lemma bit_xor_self x : bit_xor x x = zero.
@@ -196,12 +200,12 @@ Section linux_tnum_addition.
 
   (* TODO rename *)
   (* Unused, but still an interesting observation. *)
-  Lemma helper14 v1 v2 {i} (hidx : i < SIZE) :
-    v64_ith (v64_xor (v64_add v1 v2) v1) hidx = bit_xor (v64_ith v2 hidx) (v64_incarry v1 v2 hidx).
+  Lemma helper14 {SIZE} v1 v2 {i} (hidx : i < SIZE) :
+    bvec_ith (bvec_xor (bvec_add v1 v2) v1) hidx = bit_xor (bvec_ith v2 hidx) (bvec_incarry v1 v2 hidx).
   Proof.
-    unwrap_v64_ops.
-    rewrite v64_fulladd_result with (x := v1) (y := v2).
-    destruct (v64_ith v1 hidx); destruct (v64_ith v2 hidx); destruct (v64_incarry v1 v2 hidx); auto.
+    unwrap_bvec_ops.
+    rewrite bvec_fulladd_result with (x := v1) (y := v2).
+    destruct (bvec_ith v1 hidx); destruct (bvec_ith v2 hidx); destruct (bvec_incarry v1 v2 hidx); auto.
   Qed.
 
   Lemma bit_and_left_zero x : bit_and zero x = zero.
@@ -262,7 +266,7 @@ Section linux_tnum_addition.
                                     end.
 
   (* Is chi is the mask bit of the incoming carry? No; it considers v bits as well. chi[i] in fact `tnum.ith_m (tnum_add P Q) hidx` excluding P.m[i] | Q.m[i] *)
-  Lemma helper32 P Q :
+  Lemma helper32 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_add P Q) hidx = zero ->
@@ -277,11 +281,11 @@ Section linux_tnum_addition.
     destruct i;
       unfold tnum_add;
       rewrite tnum.ith_m_simplify;
-      unwrap_v64_ops; unfold tnum.ith_m;
-      rewrite v64_fulladd_result;
-      unfold v64_incarry;
-      destruct (v64_ith (tnum.m P) hidx);
-      destruct (v64_ith (tnum.m Q) hidx);
+      unwrap_bvec_ops; unfold tnum.ith_m;
+      rewrite bvec_fulladd_result;
+      unfold bvec_incarry;
+      destruct (bvec_ith (tnum.m P) hidx);
+      destruct (bvec_ith (tnum.m Q) hidx);
       repeat simplify_bit_ops; split; try easy.
   Qed.
 
@@ -290,34 +294,34 @@ Section linux_tnum_addition.
                     [ H : ?x = ?x -> zero = one |- _ ] => specialize (H eq_refl); easy
                   end.
 
-  Lemma helper66 P Q :
+  Lemma helper66 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
-      bit_and (v64_incarry (tnum.m P) (tnum.m Q) hidx)
-        (v64_incarry (tnum.v P) (tnum.v Q) hidx) = zero.
+      bit_and (bvec_incarry (tnum.m P) (tnum.m Q) hidx)
+        (bvec_incarry (tnum.v P) (tnum.v Q) hidx) = zero.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     intros wfp wfq.
     induction i.
-    - unfold v64_incarry. auto.
+    - unfold bvec_incarry. auto.
     - intros hidx.
-      repeat rewrite v64_incarry_Si. simpl.
-      repeat rewrite v64_fulladd_result.
+      repeat rewrite bvec_incarry_Si. simpl.
+      repeat rewrite bvec_fulladd_result.
 
       specialize (IHi (ltprv hidx)).
       specialize (wfp i (ltprv hidx)).
       specialize (wfq i (ltprv hidx)).
 
-      destruct (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct (v64_ith (tnum.m P) (ltprv hidx));
-        destruct (v64_ith (tnum.m Q) (ltprv hidx));
+      destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.m P) (ltprv hidx));
+        destruct (bvec_ith (tnum.m Q) (ltprv hidx));
         try rewrite_if_holds wfp;
         try rewrite_if_holds wfq;
-        destruct (v64_ith (tnum.v P) (ltprv hidx));
-        destruct (v64_ith (tnum.v Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.v P) (ltprv hidx));
+        destruct (bvec_ith (tnum.v Q) (ltprv hidx));
 
-        destruct (v64_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-        destruct (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
+        destruct (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
+        destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy.
   Qed.
 
@@ -325,57 +329,57 @@ Section linux_tnum_addition.
    * difficult, if not impossible. I suppose it is because that way the
    * induction hypothesis becomes weaker.
    *)
-  Lemma helper63 P Q :
+  Lemma helper63 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
-      bit_and (v64_incarry (tnum.m P) (tnum.m Q) hidx)
-        (v64_incarry (v64_add (tnum.v P) (tnum.v Q))
-           (v64_add (tnum.m P) (tnum.m Q)) hidx) = zero /\
-        bit_and (v64_incarry (tnum.v P) (tnum.v Q) hidx)
-          (v64_incarry (v64_add (tnum.v P) (tnum.v Q))
-             (v64_add (tnum.m P) (tnum.m Q)) hidx) = zero.
+      bit_and (bvec_incarry (tnum.m P) (tnum.m Q) hidx)
+        (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+           (bvec_add (tnum.m P) (tnum.m Q)) hidx) = zero /\
+        bit_and (bvec_incarry (tnum.v P) (tnum.v Q) hidx)
+          (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+             (bvec_add (tnum.m P) (tnum.m Q)) hidx) = zero.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     intros wfp wfq.
     induction i.
-    - unfold v64_incarry. auto.
+    - unfold bvec_incarry. auto.
     - intros hidx.
-      repeat rewrite v64_incarry_Si. simpl.
-      repeat rewrite v64_fulladd_result.
+      repeat rewrite bvec_incarry_Si. simpl.
+      repeat rewrite bvec_fulladd_result.
 
       specialize (IHi (ltprv hidx)).
 
-      assert (h66 : bit_and (v64_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
-                      (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx)) = zero).
+      assert (h66 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
+                      (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx)) = zero).
       apply helper66; auto.
 
       specialize (wfp i (ltprv hidx)).
       specialize (wfq i (ltprv hidx)).
 
-      destruct (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct (v64_incarry (v64_add (tnum.v P) (tnum.v Q))
-                    (v64_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
+      destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
+        destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+                    (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
 
-        destruct (v64_ith (tnum.m P) (ltprv hidx));
-        destruct (v64_ith (tnum.m Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.m P) (ltprv hidx));
+        destruct (bvec_ith (tnum.m Q) (ltprv hidx));
         try rewrite_if_holds wfp;
         try rewrite_if_holds wfq;
-        destruct (v64_ith (tnum.v P) (ltprv hidx));
-        destruct (v64_ith (tnum.v Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.v P) (ltprv hidx));
+        destruct (bvec_ith (tnum.v Q) (ltprv hidx));
 
-        destruct (v64_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-        destruct (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
+        destruct (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
+        destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy.
   Qed.
 
-  Lemma helper45 x y P Q :
+  Lemma helper45 {SIZE} x y P Q :
     tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
     forall [i] (hidx : S i < SIZE),
-      v64_incarry (tnum.m P) (tnum.m Q) hidx = zero ->
-      let sv := v64_add (tnum.v P) (tnum.v Q) in
-      let sm := v64_add (tnum.m P) (tnum.m Q) in
-      v64_incarry sv sm hidx = zero ->
-      v64_incarry x y hidx = v64_incarry (tnum.v P) (tnum.v Q) hidx.
+      bvec_incarry (tnum.m P) (tnum.m Q) hidx = zero ->
+      let sv := bvec_add (tnum.v P) (tnum.v Q) in
+      let sm := bvec_add (tnum.m P) (tnum.m Q) in
+      bvec_incarry sv sm hidx = zero ->
+      bvec_incarry x y hidx = bvec_incarry (tnum.v P) (tnum.v Q) hidx.
   Proof.
     unfold tnum.wellformed.
     unfold ingamma.
@@ -384,9 +388,9 @@ Section linux_tnum_addition.
 
     induction i.
     - intro hidx.
-      rewrite v64_incarry_Si. simpl.
-      repeat rewrite v64_fulladd_result.
-      unfold v64_incarry.
+      rewrite bvec_incarry_Si. simpl.
+      repeat rewrite bvec_fulladd_result.
+      unfold bvec_incarry.
       repeat simplify_bit_ops.
 
       specialize (wfp 0 (ltprv hidx)).
@@ -394,35 +398,35 @@ Section linux_tnum_addition.
       specialize (igp 0 (ltprv hidx)).
       specialize (igq 0 (ltprv hidx)).
 
-      destruct (v64_ith (tnum.m P) (ltprv hidx));
-        destruct (v64_ith (tnum.m Q) (ltprv hidx));
+      destruct (bvec_ith (tnum.m P) (ltprv hidx));
+        destruct (bvec_ith (tnum.m Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy;
         try rewrite_if_holds wfp;
         try rewrite_if_holds wfq;
         try rewrite_if_holds igp;
         try rewrite_if_holds igq;
         repeat simplify_bit_ops; try easy;
-        destruct (v64_ith (tnum.v P) (ltprv hidx));
-        destruct (v64_ith (tnum.v Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.v P) (ltprv hidx));
+        destruct (bvec_ith (tnum.v Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy.
     - intro hidx.
-      rewrite v64_incarry_Si.
-      rewrite v64_incarry_Si with (x := x).
-      repeat rewrite v64_incarry_Si with (hidx := hidx).
-      repeat rewrite v64_fulladd_result.
+      rewrite bvec_incarry_Si.
+      rewrite bvec_incarry_Si with (x := x).
+      repeat rewrite bvec_incarry_Si with (hidx := hidx).
+      repeat rewrite bvec_fulladd_result.
 
       specialize (IHi (ltprv hidx)).
 
-      assert (h66 : bit_and (v64_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
-                      (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx)) = zero).
+      assert (h66 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
+                      (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx)) = zero).
       apply helper66; auto.
 
-      assert (h64 : bit_and (v64_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
-                      (v64_incarry (v64_add (tnum.v P) (tnum.v Q))
-                         (v64_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero /\
-                      bit_and (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx))
-                        (v64_incarry (v64_add (tnum.v P) (tnum.v Q))
-                           (v64_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero).
+      assert (h64 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
+                      (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+                         (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero /\
+                      bit_and (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx))
+                        (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+                           (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero).
       apply helper63; auto.
 
 
@@ -431,13 +435,13 @@ Section linux_tnum_addition.
       specialize (igp (S i) (ltprv hidx)).
       specialize (igq (S i) (ltprv hidx)).
 
-      destruct(v64_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-        destruct (v64_incarry (v64_add (tnum.v P) (tnum.v Q))
-                    (v64_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
-        destruct (v64_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
+      destruct(bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
+        destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+                    (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
+        destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy;
-        destruct (v64_ith (tnum.m P) (ltprv hidx));
-        destruct (v64_ith (tnum.m Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.m P) (ltprv hidx));
+        destruct (bvec_ith (tnum.m Q) (ltprv hidx));
 
         try rewrite_if_holds wfp;
         try rewrite_if_holds wfq;
@@ -445,12 +449,12 @@ Section linux_tnum_addition.
         try rewrite_if_holds igq;
         repeat simplify_bit_ops; try easy;
 
-        destruct (v64_ith (tnum.v P) (ltprv hidx));
-        destruct (v64_ith (tnum.v Q) (ltprv hidx));
+        destruct (bvec_ith (tnum.v P) (ltprv hidx));
+        destruct (bvec_ith (tnum.v Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy;
 
-        destruct (v64_ith x (ltprv hidx));
-        destruct (v64_ith y (ltprv hidx));
+        destruct (bvec_ith x (ltprv hidx));
+        destruct (bvec_ith y (ltprv hidx));
         repeat simplify_bit_ops; try easy;
         try crush10.
   Qed.
@@ -471,30 +475,30 @@ Section linux_tnum_addition.
     unfold bit_xor. unfold bit_and. destruct x; destruct y; auto.
   Qed.
 
-  Lemma helper33 x y P Q :
+  Lemma helper33 {SIZE} x y P Q :
     tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_add P Q) hidx = zero ->
-      v64_incarry x y hidx = v64_incarry (tnum.v P) (tnum.v Q) hidx.
+      bvec_incarry x y hidx = bvec_incarry (tnum.v P) (tnum.v Q) hidx.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     intro H.
     destruct H as (wfp & wfq & igP & igQ).
     destruct i.
-    - unfold v64_incarry. auto.
+    - unfold bvec_incarry. auto.
     -
       intros hidx.
       unfold tnum_add.
       rewrite tnum.ith_m_simplify.
-      unwrap_v64_ops. repeat rewrite v64_fulladd_result.
+      unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
 
       intro H.
-      assert (hmp : v64_ith (tnum.m P) hidx = zero). revert H.
-      destruct (v64_ith (tnum.m P) hidx);
+      assert (hmp : bvec_ith (tnum.m P) hidx = zero). revert H.
+      destruct (bvec_ith (tnum.m P) hidx);
         repeat simplify_bit_ops; try easy.
 
-      assert (hmq : v64_ith (tnum.m Q) hidx = zero). revert H.
-      destruct (v64_ith (tnum.m Q) hidx);
+      assert (hmq : bvec_ith (tnum.m Q) hidx = zero). revert H.
+      destruct (bvec_ith (tnum.m Q) hidx);
         repeat simplify_bit_ops; try easy.
 
       apply bit_or_zero_zero in H as (H1 & H2).
@@ -509,16 +513,16 @@ Section linux_tnum_addition.
       apply helper45; auto.
   Qed.
 
-  Lemma wellformed_general inval mu :
+  Lemma wellformed_general {SIZE} inval mu :
     forall [i] (hidx : i < SIZE),
-      v64_ith mu hidx = one -> v64_ith (v64_and inval (v64_neg mu)) hidx = zero.
+      bvec_ith mu hidx = one -> bvec_ith (bvec_and inval (bvec_neg mu)) hidx = zero.
   Proof.
     intros i hidx H.
-    unwrap_v64_ops. rewrite H. simpl.
-    destruct (v64_ith inval hidx); auto.
+    unwrap_bvec_ops. rewrite H. simpl.
+    destruct (bvec_ith inval hidx); auto.
   Qed.
 
-  Lemma tnum_add_wellformed P Q :
+  Lemma tnum_add_wellformed {SIZE} (P Q : tnum.t SIZE) :
     tnum.wellformed P /\ tnum.wellformed Q -> tnum.wellformed (tnum_add P Q).
   Proof.
     unfold tnum.wellformed.
@@ -527,10 +531,10 @@ Section linux_tnum_addition.
     apply wellformed_general.
   Qed.
 
-  Lemma tnum_add_sound x y P Q :
+  Lemma tnum_add_sound {SIZE} x y (P Q : tnum.t SIZE) :
     tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
     tnum.wellformed (tnum_add P Q) /\
-      ingamma (v64_add x y) (tnum_add P Q).
+      ingamma (bvec_add x y) (tnum_add P Q).
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     intro H.
@@ -557,8 +561,8 @@ Section linux_tnum_addition.
     rewrite tnum.ith_m_simplify.
     rewrite tnum.ith_v_simplify.
 
-    rewrite v64_ith_unwrap_or.
-    unwrap_v64_ops. repeat rewrite v64_fulladd_result.
+    rewrite bvec_ith_unwrap_or.
+    unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
     rewrite xmskz. rewrite ymskz. rewrite igP; auto. rewrite igQ; auto. simpl.
 
     unfold tnum.ith_v.
