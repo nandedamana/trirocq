@@ -32,27 +32,74 @@ Definition bit_xor (x y : bit) :=
   | one, one => zero
   end.
 
-Definition bvec SIZE := Vector.t bit SIZE.
-Definition bvec_ith {SIZE} (v : bvec SIZE) {i} (hidx : i < SIZE) :=
-  Vector.nth v (Fin.of_nat_lt hidx).
+Section bitops_simplification.
+  Lemma bit_and_left_zero x : bit_and zero x = zero.
+    unfold bit_and; destruct x; simpl; reflexivity.
+  Qed.
 
-Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  Lemma bit_and_right_zero x : bit_and x zero = zero.
+    unfold bit_and; destruct x; simpl; reflexivity.
+  Qed.
 
-Axiom bvec_and : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-Axiom bvec_and_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
-    bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+  Lemma bit_and_left_one x : bit_and one x = x.
+    unfold bit_and; destruct x; simpl; reflexivity.
+  Qed.
 
-Axiom bvec_neg : forall {SIZE}, bvec SIZE -> bvec SIZE.
-Axiom bvec_neg_rel : forall {SIZE} (v1 : bvec SIZE) {i} (hidx : i < SIZE),
-    bvec_ith (bvec_neg v1) hidx = bit_not (bvec_ith v1 hidx).
+  Lemma bit_and_right_one x : bit_and x one = x.
+    unfold bit_and; destruct x; simpl; reflexivity.
+  Qed.
 
-Axiom bvec_or : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-Axiom bvec_or_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
-    bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+  Lemma bit_or_left_zero x : bit_or zero x = x.
+    unfold bit_or; destruct x; simpl; reflexivity.
+  Qed.
 
-Axiom bvec_xor : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-Axiom bvec_xor_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
-    bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+  Lemma bit_or_right_zero x : bit_or x zero = x.
+    unfold bit_or; destruct x; simpl; reflexivity.
+  Qed.
+
+  Lemma bit_or_left_one x : bit_or one x = one.
+    unfold bit_or; destruct x; simpl; reflexivity.
+  Qed.
+
+  Lemma bit_or_right_one x : bit_or x one = one.
+    unfold bit_or; destruct x; simpl; reflexivity.
+  Qed.
+
+  Lemma bit_xor_left_zero x : bit_xor zero x = x.
+    unfold bit_xor; destruct x; simpl; reflexivity.
+  Qed.
+
+  Lemma bit_xor_right_zero x : bit_xor x zero = x.
+    unfold bit_xor; destruct x; simpl; reflexivity.
+  Qed.
+
+  Lemma bit_xor_x_y_zero x y : bit_xor x y = zero -> x = y.
+    intros. destruct x; destruct y; auto.
+  Qed.
+
+  Lemma bit_xor_x_y_z_y x y z : bit_xor x (bit_xor y z) = y -> bit_xor x z = zero.
+    intros. destruct x; destruct y; destruct z; easy.
+  Qed.
+
+  Lemma bit_or_zero_zero x y : bit_or x y = zero -> x = zero /\ y = zero.
+    intros. destruct x; destruct y; auto.
+  Qed.
+End bitops_simplification.
+
+(* Not accessible from other sections if put inside bitops_simplification. *)
+Ltac simplify_bit_ops :=
+  try rewrite bit_and_left_zero;
+  try rewrite bit_and_right_zero;
+  try rewrite bit_and_left_one;
+  try rewrite bit_and_right_one;
+  try rewrite bit_or_left_zero;
+  try rewrite bit_or_right_zero;
+  try rewrite bit_or_left_one;
+  try rewrite bit_or_right_one;
+  try rewrite bit_xor_left_zero;
+  try rewrite bit_xor_right_zero;
+  unfold bit_not.
+
 
 Require Import Lia.
 Lemma ltprv {i} {n} : S i < n -> i < n.
@@ -61,31 +108,56 @@ Qed.
 
 Definition p_from_pltq {p q} (pltq : p < q) := p.
 
-(* Uses the "convoy pattern" to solve the issue noted above
- * - http://adam.chlipala.net/cpdt/html/MoreDep.html
- * - https://stackoverflow.com/questions/32060556/convoy-pattern-and-match-involving-inequality?rq=3
- *)
-(* Carry due to the addition of bits at position (i - 1); 0 for i = 0 *)
-Fixpoint bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
-  match i return i < SIZE -> bit with
-  | 0 => fun _ => zero
-  | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
-                        let b := bvec_ith y (ltprv hidx) in
-                        let cin := bvec_incarry x y (ltprv hidx) in
-                        bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin)
-  end hidx.
+  
+Section bvec.
+  Definition bvec SIZE := Vector.t bit SIZE.
+  Definition bvec_ith {SIZE} (v : bvec SIZE) {i} (hidx : i < SIZE) :=
+    Vector.nth v (Fin.of_nat_lt hidx).
 
-(* Takes away the convoy pattern, making some upcoming proofs simpler *)
-Lemma bvec_incarry_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
-  bvec_incarry x y hidx = let a := bvec_ith x (ltprv hidx) in
+  Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+
+  Axiom bvec_and : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  Axiom bvec_and_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+      bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+
+  Axiom bvec_neg : forall {SIZE}, bvec SIZE -> bvec SIZE.
+  Axiom bvec_neg_rel : forall {SIZE} (v1 : bvec SIZE) {i} (hidx : i < SIZE),
+      bvec_ith (bvec_neg v1) hidx = bit_not (bvec_ith v1 hidx).
+
+  Axiom bvec_or : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  Axiom bvec_or_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+      bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+
+  Axiom bvec_xor : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  Axiom bvec_xor_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+      bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+
+  (* Uses the "convoy pattern" to solve the issue noted above
+   * - http://adam.chlipala.net/cpdt/html/MoreDep.html
+   * - https://stackoverflow.com/questions/32060556/convoy-pattern-and-match-involving-inequality?rq=3
+   *)
+  (* Carry due to the addition of bits at position (i - 1); 0 for i = 0 *)
+  Fixpoint bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
+    match i return i < SIZE -> bit with
+    | 0 => fun _ => zero
+    | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
                           let b := bvec_ith y (ltprv hidx) in
                           let cin := bvec_incarry x y (ltprv hidx) in
-                          bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin).
-Proof.
-  auto.
-Qed.
+                          bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin)
+    end hidx.
 
-Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_add x y) hidx = bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+  (* Takes away the convoy pattern, making some upcoming proofs simpler *)
+  Lemma bvec_incarry_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
+    bvec_incarry x y hidx = let a := bvec_ith x (ltprv hidx) in
+                            let b := bvec_ith y (ltprv hidx) in
+                            let cin := bvec_incarry x y (ltprv hidx) in
+                            bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin).
+  Proof.
+    auto.
+  Qed.
+
+  Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_add x y) hidx = bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+End bvec.
 
 Module tnum.
   (* Type tnum reflects the Kernel tnum, which is a record consisting of
@@ -176,59 +248,6 @@ Section linux_tnum_addition.
     rewrite bvec_fulladd_result with (x := v1) (y := v2).
     destruct (bvec_ith v1 hidx); destruct (bvec_ith v2 hidx); destruct (bvec_incarry v1 v2 hidx); auto.
   Qed.
-
-  Lemma bit_and_left_zero x : bit_and zero x = zero.
-    unfold bit_and; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_and_right_zero x : bit_and x zero = zero.
-    unfold bit_and; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_and_left_one x : bit_and one x = x.
-    unfold bit_and; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_and_right_one x : bit_and x one = x.
-    unfold bit_and; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_or_left_zero x : bit_or zero x = x.
-    unfold bit_or; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_or_right_zero x : bit_or x zero = x.
-    unfold bit_or; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_or_left_one x : bit_or one x = one.
-    unfold bit_or; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_or_right_one x : bit_or x one = one.
-    unfold bit_or; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_xor_left_zero x : bit_xor zero x = x.
-    unfold bit_xor; destruct x; simpl; reflexivity.
-  Qed.
-
-  Lemma bit_xor_right_zero x : bit_xor x zero = x.
-    unfold bit_xor; destruct x; simpl; reflexivity.
-  Qed.
-
-  Ltac simplify_bit_ops :=
-    try rewrite bit_and_left_zero;
-    try rewrite bit_and_right_zero;
-    try rewrite bit_and_left_one;
-    try rewrite bit_and_right_one;
-    try rewrite bit_or_left_zero;
-    try rewrite bit_or_right_zero;
-    try rewrite bit_or_left_one;
-    try rewrite bit_or_right_one;
-    try rewrite bit_xor_left_zero;
-    try rewrite bit_xor_right_zero;
-    unfold bit_not.
 
   (* Is chi is the mask bit of the incoming carry? No; it considers v bits as well. chi[i] in fact `tnum.ith_m (tnum_add P Q) hidx` excluding P.m[i] | Q.m[i] *)
   Lemma helper32 {SIZE} P Q :
@@ -422,18 +441,6 @@ Section linux_tnum_addition.
         destruct (bvec_ith y (ltprv hidx));
         repeat simplify_bit_ops; try easy;
         try crush10.
-  Qed.
-
-  Lemma bit_xor_x_y_zero x y : bit_xor x y = zero -> x = y.
-    intros. destruct x; destruct y; auto.
-  Qed.
-
-  Lemma bit_xor_x_y_z_y x y z : bit_xor x (bit_xor y z) = y -> bit_xor x z = zero.
-    intros. destruct x; destruct y; destruct z; easy.
-  Qed.
-
-  Lemma bit_or_zero_zero x y : bit_or x y = zero -> x = zero /\ y = zero.
-    intros. destruct x; destruct y; auto.
   Qed.
 
   Lemma helper82 [x] [y] : bit_xor x y = zero -> bit_and y x = zero -> x = zero /\ y = zero.
