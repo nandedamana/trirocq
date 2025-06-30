@@ -195,21 +195,7 @@ Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
 Definition member {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
   bvec_and x (bvec_neg (tnum.m T)) = tnum.v T.
 
-(* On my own *)
-(* We need to define otnum addition with the following properties:
- * 1. Soundness: the result of adding abstract numbers P and Q include the results
- *    of adding any concrete p and q (written less formally for simplicity).
- * 2. TODO optimality.
- *)
-
 Section linux_tnum_addition.
-  (* The tnum addition routine in the kernel consists of half a dozen non-obvious steps.
-   * On the other hand, otnum addition is easier to reason about. Here we try to
-   * establish the relationship between the Linux tnum addition and our otnum addition.
-   * Once this is done, the correctness proof for otnum addition automatically
-   * becomes the correctness proof for Linux tnum addition.
-   *)
-
   (* Mirrors the Linux kernel definition *)
 
   Definition tnum_ith_chi {SIZE} P Q [i] (hidx : i < SIZE) :=
