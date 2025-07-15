@@ -567,6 +567,88 @@ Section linux_tnum_addition.
     rewrite bit_and_right_one.
     auto.
   Qed.
+
+  Section tnum_add_optimality.
+    (* Finding the bits that can be uncertain (by propagation) involves taking the
+     * difference of the maximum concrete sum and the minimum concrete sum of P and Q.
+     * The idea comes from https://dougallj.wordpress.com/2020/01/13/bit-twiddling-addition-with-unknown-bits/
+     *)
+    Definition minsum {SIZE} (P : tnum.t SIZE) Q := bvec_add (tnum.v P) (tnum.v Q).
+    Definition maxsum {SIZE} (P : tnum.t SIZE) Q :=
+      bvec_add (bvec_or (tnum.v P) (tnum.m P)) (bvec_or (tnum.v Q) (tnum.m Q)).
+    Definition minmask {SIZE} (P : tnum.t SIZE) Q := bvec_xor (minsum P Q) (maxsum P Q).
+
+    (* TODO better, directly work on the result of tnum_add(). *)
+    (* TODO FIXME wait, why just chi? ith `mu = chi | a.mask | b.mask`, right?
+     * does this mean `a.mask | b.mask` is irrelevant? Not according to my brute-force experi.
+     * Also, this looks unprovable:
+     * bit_or (tnum_ith_chi P Q hidx) (bit_or (bvec_ith (tnum.m P) hidx) (bvec_ith (tnum.m Q) hidx)) = bvec_ith (minmask P Q) hidx.
+     *)
+    Lemma tnum_add_optimal {SIZE} P Q :
+      tnum.wellformed P -> tnum.wellformed Q ->
+      forall [i] (hidx : i < SIZE),
+        tnum_ith_chi P Q hidx = bvec_ith (minmask P Q) hidx.
+    Proof.
+      unfold tnum.wellformed.
+      intros wfp wfq i hidx.
+      unfold tnum_ith_chi. unfold minmask. unfold maxsum. unfold minsum.
+      induction i.
+      -
+        specialize (wfp 0 hidx).
+        specialize (wfq 0 hidx).
+
+        unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
+        unfold bvec_incarry. unwrap_bvec_ops. repeat simplify_bit_ops.
+
+        destruct (bvec_ith (tnum.m P) hidx);
+        destruct (bvec_ith (tnum.m Q) hidx);
+        try rewrite_if_holds wfp;
+        try rewrite_if_holds wfq;
+        destruct (bvec_ith (tnum.v P) hidx);
+        destruct (bvec_ith (tnum.v Q) hidx);
+        repeat simplify_bit_ops; try easy.
+      -
+        assert (wfpi : bvec_ith (tnum.m P) hidx = one -> bvec_ith (tnum.v P) hidx = zero). apply wfp.
+        assert (wfqi : bvec_ith (tnum.m Q) hidx = one -> bvec_ith (tnum.v Q) hidx = zero). apply wfq.
+        assert (wfpp : bvec_ith (tnum.m P) (ltprv hidx) = one -> bvec_ith (tnum.v P) (ltprv hidx) = zero). apply wfp.
+        assert (wfqp : bvec_ith (tnum.m Q) (ltprv hidx) = one -> bvec_ith (tnum.v Q) (ltprv hidx) = zero). apply wfq.
+        specialize (IHi (ltprv hidx)).
+
+        assert (h66 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
+                        (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx)) = zero).
+        apply helper66; auto.
+
+        assert (h64 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
+                        (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+                           (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero /\
+                        bit_and (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx))
+                          (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
+                             (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero).
+        apply helper63; auto.
+
+        revert IHi.
+        unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
+        repeat rewrite bvec_incarry_Si. unwrap_bvec_ops. repeat simplify_bit_ops.
+        repeat rewrite bvec_fulladd_result.
+
+        destruct (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
+          destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
+          destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q)) (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
+          destruct (bvec_incarry (bvec_or (tnum.v P) (tnum.m P)) (bvec_or (tnum.v Q) (tnum.m Q)) (ltprv hidx)); try easy;
+          destruct (bvec_ith (tnum.m P) (ltprv hidx));
+          destruct (bvec_ith (tnum.m Q) (ltprv hidx));
+          try rewrite_if_holds wfpp;
+          try rewrite_if_holds wfqp;
+          destruct (bvec_ith (tnum.v P) (ltprv hidx));
+          destruct (bvec_ith (tnum.v Q) (ltprv hidx)); try easy;
+          destruct (bvec_ith (tnum.m P) hidx);
+          destruct (bvec_ith (tnum.m Q) hidx);
+          try rewrite_if_holds wfpi;
+          try rewrite_if_holds wfqi;
+          destruct (bvec_ith (tnum.v P) hidx);
+          destruct (bvec_ith (tnum.v Q) hidx); try easy.
+    Qed.
+  End tnum_add_optimality.
 End linux_tnum_addition.
 
 Section linux_tnum_subtraction.
