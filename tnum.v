@@ -132,58 +132,156 @@ Section bvec.
   Axiom bvec_xor_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
       bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
 
-  Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  (* ------------------------------------------------------------------------ *)
 
-  (* Uses the "convoy pattern" to solve the issue noted above
-   * - http://adam.chlipala.net/cpdt/html/MoreDep.html
-   * - https://stackoverflow.com/questions/32060556/convoy-pattern-and-match-involving-inequality?rq=3
-   *)
-  (* Carry due to the addition of bits at position (i - 1); 0 for i = 0 *)
-  Fixpoint bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
-    match i return i < SIZE -> bit with
-    | 0 => fun _ => zero
-    | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
-                          let b := bvec_ith y (ltprv hidx) in
-                          let cin := bvec_incarry x y (ltprv hidx) in
-                          bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin)
-    end hidx.
+  Section bvec_addition.
+    Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
 
-  (* Takes away the convoy pattern, making some upcoming proofs simpler *)
-  Lemma bvec_incarry_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
-    bvec_incarry x y hidx = let a := bvec_ith x (ltprv hidx) in
+    (* Uses the "convoy pattern" to solve the issue noted above
+     * - http://adam.chlipala.net/cpdt/html/MoreDep.html
+     * - https://stackoverflow.com/questions/32060556/convoy-pattern-and-match-involving-inequality?rq=3
+     *)
+    (* Carry due to the addition of bits at position (i - 1); 0 for i = 0 *)
+    Fixpoint bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
+      match i return i < SIZE -> bit with
+      | 0 => fun _ => zero
+      | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
                             let b := bvec_ith y (ltprv hidx) in
                             let cin := bvec_incarry x y (ltprv hidx) in
-                            bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin).
-  Proof.
-    auto.
-  Qed.
+                            bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin)
+      end hidx.
 
-  Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_add x y) hidx = bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+    (* Takes away the convoy pattern, making some upcoming proofs simpler *)
+    Lemma bvec_incarry_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
+      bvec_incarry x y hidx = let a := bvec_ith x (ltprv hidx) in
+                              let b := bvec_ith y (ltprv hidx) in
+                              let cin := bvec_incarry x y (ltprv hidx) in
+                              bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin).
+    Proof.
+      auto.
+    Qed.
 
-  (* TODO verify these axioms related to subtraction *)
+    Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_add x y) hidx = bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+  End bvec_addition.
 
-  Axiom bvec_sub : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  (* ------------------------------------------------------------------------ *)
 
-  Fixpoint bvec_inborrow {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
-    match i return i < SIZE -> bit with
-    | 0 => fun _ => zero
-    | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
-                          let b := bvec_ith y (ltprv hidx) in
-                          let bin := bvec_inborrow x y (ltprv hidx) in
-                          bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin)
-    end hidx.
+  Section bvec_subtraction.
+    (* TODO verify these axioms related to subtraction *)
 
-  (* Takes away the convoy pattern, making some upcoming proofs simpler *)
-  Lemma bvec_inborrow_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
-    bvec_inborrow x y hidx = let a := bvec_ith x (ltprv hidx) in
-                             let b := bvec_ith y (ltprv hidx) in
-                             let bin := bvec_inborrow x y (ltprv hidx) in
-                             bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin).
-  Proof.
-    auto.
-  Qed.
+    Axiom bvec_sub : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
 
-  Axiom bvec_fullsub_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_sub x y) hidx = bit_xor (bvec_inborrow x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+    Fixpoint bvec_inborrow {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
+      match i return i < SIZE -> bit with
+      | 0 => fun _ => zero
+      | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
+                            let b := bvec_ith y (ltprv hidx) in
+                            let bin := bvec_inborrow x y (ltprv hidx) in
+                            bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin)
+      end hidx.
+
+    (* Takes away the convoy pattern, making some upcoming proofs simpler *)
+    Lemma bvec_inborrow_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
+      bvec_inborrow x y hidx = let a := bvec_ith x (ltprv hidx) in
+                               let b := bvec_ith y (ltprv hidx) in
+                               let bin := bvec_inborrow x y (ltprv hidx) in
+                               bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin).
+    Proof.
+      auto.
+    Qed.
+
+    Axiom bvec_fullsub_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_sub x y) hidx = bit_xor (bvec_inborrow x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+  End bvec_subtraction.
+
+  (* ------------------------------------------------------------------------ *)
+
+  Check Vector.cons.
+  (* TODO doc somewhere above: I've checked this and found not of much use:
+     https://docs.rocq-prover.org/v8.16/stdlib/Coq.Bool.Bvector.html
+   *)
+
+  Section bvec_multiplication.
+    Fixpoint zerovec SIZE := match SIZE with
+                             | 0 => Vector.nil bit
+                             | S p => Vector.cons bit zero p (zerovec p)
+                             end.
+
+    Definition bvec_mul_single {SIZE} y (x : bvec SIZE) := match y with
+                                                           | zero => zerovec SIZE
+                                                           | one => x
+                                                           end.
+
+    Check (zerovec 4 : Vector.t bit 4).
+    (* Compute zerovec 4. *)
+
+    Lemma ltprv2 {i} {n} : S i < S n -> i < n.
+      lia.
+    Qed.
+
+    (* TODO confirm the semantics of << and >> (zero-ext vs sign-ext) *)
+
+    (* Because splitat takes Vector.t ?A (?l + ?r) *)
+    Lemma bvec_splitcast1 {SIZE} {i} (x : Vector.t bit SIZE) (hidx : i <= SIZE) : Vector.t bit (SIZE - i + i).
+      assert (H : SIZE - i + i = SIZE). lia.
+      rewrite H. assumption.
+    Qed.
+
+    Lemma bvec_splitcast2 {SIZE} {i} (x : Vector.t bit SIZE) (hidx : i <= SIZE) : Vector.t bit (i + (SIZE - i)).
+      assert (H : i + (SIZE - i) = SIZE). lia.
+      rewrite H. assumption.
+    Qed.
+
+    Lemma bvec_splitcast2_rev {SIZE} {i} (x : Vector.t bit (i + (SIZE - i))) (hidx : i <= SIZE) : Vector.t bit SIZE.
+      assert (H : i + (SIZE - i) = SIZE). lia.
+      rewrite <- H. assumption.
+    Qed.
+
+    Definition bvec_lshift {SIZE} (x : Vector.t _ SIZE) {i} (hidx : i <= SIZE) : bvec SIZE :=
+      let splt := Vector.splitat (SIZE - i) (bvec_splitcast1 x hidx) in
+      let shiftres := Vector.append (zerovec i) (fst splt) in
+      bvec_splitcast2_rev shiftres hidx.
+
+    (* TODO test *)
+    Definition bvec_rshift {SIZE} (x : Vector.t _ SIZE) {i} (hidx : i <= SIZE) : bvec SIZE :=
+      let splt := Vector.splitat i (bvec_splitcast2 x hidx) in
+      let shiftres := Vector.append (fst splt) (zerovec (SIZE - i)) in
+      bvec_splitcast2_rev shiftres hidx.
+
+    (* Testing *)
+    Fixpoint onevec SIZE := match SIZE with
+                            | 0 => Vector.nil bit
+                            | S p => Vector.cons bit one p (onevec p)
+                            end.
+
+    Lemma le_2_8 : 2 <= 8. lia. Qed.
+    Definition b252 := (bvec_lshift (onevec 8) le_2_8).
+    Compute b252. (* TODO looks really awful, but seems correct, assuming head has the LSB *)
+
+    Lemma lt_0_8 : 0 < 8. lia. Qed.
+    Compute (bvec_ith b252 lt_0_8). (* zero *)
+
+    Lemma lt_1_8 : 1 < 8. lia. Qed.
+    Compute (bvec_ith b252 lt_1_8). (* zero *)
+
+    Lemma lt_2_8 : 2 < 8. lia. Qed.
+    Compute (bvec_ith b252 lt_2_8). (* unevaluated long term *)
+    (* End Testing *)
+
+    (* Based on Observation 18 from Harishankar et al. *)
+    (* TODO test *)
+    Fixpoint bvec_mul_helper {SIZE} (x y : bvec SIZE) (acc : bvec SIZE) {i} (hidx : i < SIZE) :=
+      match i return i < SIZE -> bvec SIZE with
+      | 0 => fun _ => bvec_mul_single (bvec_ith y hidx) x
+      | S p => fun hidx =>
+                 let newacc := bvec_add acc (bvec_mul_single (bvec_ith y hidx) (bvec_lshift x hidx)) in
+                 bvec_mul_helper x y newacc (ltprv hidx)
+      end hidx.
+
+    Definition bvec_mul {n} (x y : bvec (S n)) :=
+      bvec_mul_helper x y (zerovec (S n)) (PeanoNat.Nat.lt_0_succ n).
+    
+    Definition bvec_lsb {n} (x : bvec (S n)) := bvec_ith x (PeanoNat.Nat.lt_0_succ n).
+  End bvec_multiplication.
 End bvec.
 
 Module tnum.
@@ -990,3 +1088,37 @@ Section linux_tnum_subtraction.
     auto.
   Qed.
 End linux_tnum_subtraction.
+
+Section linux_tnum_multiplication.
+  (* TODO move *)
+  Definition tnum_lshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
+    tnum.cons SIZE (bvec_lshift (tnum.v P) hidx) (bvec_lshift (tnum.m P) hidx).
+
+  Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
+    tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
+
+  Inductive tnum_mul_iter_result :=
+    | tmircons {n} (a b accm : tnum.t (S n)).
+
+  Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
+
+  (* Using a and b instead of P and Q to make comparison with the in-kernel code easier. *)
+  Definition tnum_mul_iter {n} (a b accm : tnum.t (S n)) :=
+    let nxt_accm := match bvec_lsb (tnum.v a) with
+                    | one => tnum_add accm (tnum.cons (S n) (zerovec (S n)) (tnum.m b))
+                    | zero => match bvec_lsb (tnum.m a) with
+                              | one => tnum_add accm (tnum.cons (S n) (zerovec (S n)) (bvec_or (tnum.v b) (tnum.m b)))
+                              | zero => accm
+                              end
+                    end in
+    let nxt_a := tnum_rshift a le_1_Sn in
+    let nxt_b := tnum_rshift b le_1_Sn in
+    tmircons nxt_a nxt_b nxt_accm.
+
+  Definition tnum_mul {n} (a b : tnum.t (S n)) :=
+    let accv := bvec_mul (tnum.v a) (tnum.v b) in
+    let accm := tnum.cons (S n) (zerovec (S n)) (zerovec (S n)) in
+    (* TODO call tnum_mul_iter *)
+    tnum_add (tnum.cons (S n) accv (zerovec (S n))) accm.
+
+End linux_tnum_multiplication.
