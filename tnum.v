@@ -1097,8 +1097,8 @@ Section linux_tnum_multiplication.
   Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
     tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
 
-  Inductive tnum_mul_iter_result :=
-    | tmircons {n} (a b accm : tnum.t (S n)).
+  Inductive tnum_mul_iter_result {n} :=
+    | tmircons (a b accm : tnum.t (S n)).
 
   Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
 
@@ -1112,13 +1112,32 @@ Section linux_tnum_multiplication.
                               end
                     end in
     let nxt_a := tnum_rshift a le_1_Sn in
-    let nxt_b := tnum_rshift b le_1_Sn in
+    let nxt_b := tnum_lshift b le_1_Sn in
     tmircons nxt_a nxt_b nxt_accm.
+
+  (* TODO read https://6826.csail.mit.edu/2020/coqdoc/Spec.Loop.v.html
+   * and see if there is a standard way to iter n times *)
+
+  Fixpoint tnum_mul_iter_Sn {n} (a b accm : tnum.t (S n)) (i : nat) : tnum.t (S n) :=
+    match i with
+    | 0 => accm
+    | S p => let tmir := tnum_mul_iter a b accm in
+             match tmir with
+             | tmircons nxt_a nxt_b nxt_acc => tnum_mul_iter_Sn nxt_a nxt_b nxt_acc p
+             end
+    end.
+  
+  (* The in-kernel tnum_mul() uses a while loop, which is challenging to encode
+   * here because we have to show the loop is terminating. It should be, because
+   * the loop checks whether a or b has become 0, which should happen after
+   * at most n iterations (where n is the word size), because both a and b are
+   * being shifted in each iteration, and they are not reassigned with anything
+   * else. However, it isn't easy to encode. *)
 
   Definition tnum_mul {n} (a b : tnum.t (S n)) :=
     let accv := bvec_mul (tnum.v a) (tnum.v b) in
     let accm := tnum.cons (S n) (zerovec (S n)) (zerovec (S n)) in
-    (* TODO call tnum_mul_iter *)
+    let nxt_accm := tnum_mul_iter_Sn a b accm (S n) in
     tnum_add (tnum.cons (S n) accv (zerovec (S n))) accm.
 
 End linux_tnum_multiplication.
