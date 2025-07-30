@@ -313,6 +313,15 @@ Module tnum.
   Lemma ith_v_simplify {SIZE} n1 n2 i (hidx : i < SIZE) : ith_v (cons SIZE n1 n2) hidx = bvec_ith n1 hidx.
     unfold ith_v. simpl. reflexivity.
   Qed.
+
+  (* Using `unfold m` directly could cause unwanted expansions in some places. *)
+  Lemma m_cons_simplify {SIZE} n1 n2 : m (cons SIZE n1 n2) = n2.
+    unfold m. reflexivity.
+  Qed.
+  
+  Lemma v_cons_simplify {SIZE} n1 n2 : v (cons SIZE n1 n2) = n1.
+    unfold v. reflexivity.
+  Qed.
 End tnum.
 
 Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
@@ -1138,6 +1147,93 @@ Section linux_tnum_multiplication.
     let accv := bvec_mul (tnum.v a) (tnum.v b) in
     let accm := tnum.cons (S n) (zerovec (S n)) (zerovec (S n)) in
     let nxt_accm := tnum_mul_iter_Sn a b accm (S n) in
-    tnum_add (tnum.cons (S n) accv (zerovec (S n))) accm.
+    tnum_add (tnum.cons (S n) accv (zerovec (S n))) nxt_accm.
 
+
+  Lemma tnum_mul_wellformed {n} (P Q : tnum.t (S n)) :
+    tnum.wellformed P /\ tnum.wellformed Q -> tnum.wellformed (tnum_mul P Q).
+  Proof.
+    unfold tnum.wellformed.
+    intro H.
+    unfold tnum_mul.
+    apply wellformed_general.
+  Qed.
+
+  (* TODO move *)
+  Lemma bvec_eq_ith {SIZE} x y : (forall {i} (hidx : i < SIZE), bvec_ith x hidx = bvec_ith y hidx) <-> x = y.
+  Proof.
+    (* TODO *)
+  Admitted.
+  
+  Lemma zerovec_ith {n} {i} (hidx : i < S n) : bvec_ith (zerovec (S n)) hidx = zero.
+  Proof.
+    (* TODO *)
+  Admitted.
+
+  Lemma bvec_add_left_zero {n} (x : bvec (S n)) : bvec_add (zerovec (S n)) x = x.
+    (* TODO *)
+  Admitted.
+  
+  Lemma bvec_add_right_zero_ith n x {i} (hidx : i < S n) :
+    bvec_ith (bvec_add x (zerovec (S n))) hidx = bvec_ith x hidx.
+  Proof.
+    rewrite bvec_fulladd_result.
+    destruct i; unfold bvec_incarry; unfold zerovec; simpl.
+    (* TODO *)
+  Admitted.
+    
+  Lemma bvec_add_right_zero {n} (x : bvec (S n)) : bvec_add x (zerovec (S n)) = x.
+    pose (H := bvec_add_right_zero_ith).
+    apply bvec_eq_ith. auto.
+  Qed.
+
+  Lemma bvec_or_right_zero {n} (x : bvec (S n)) : bvec_or x (zerovec (S n)) = x.
+    (* TODO *)
+  Admitted.
+  
+  Lemma tnum_mul_sound {n} x y (P Q : tnum.t (S n)) :
+    tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
+    tnum.wellformed (tnum_mul P Q) /\
+      ingamma (bvec_mul x y) (tnum_mul P Q).
+  Proof.
+    unfold tnum.wellformed. unfold ingamma.
+    intro H.
+
+    (* TODO *)
+    (* pose (H'1 := sublemma33 x y P Q H). *)
+
+    unfold tnum.ith_m in H.
+    destruct H as (wf1 & wf2 & igp & igq).
+
+    split. apply tnum_mul_wellformed; auto.
+
+    induction i.
+    - intro hidx.
+      (* TODO rem unwanted *)
+      unfold tnum_mul. unfold tnum_add.
+      rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+      repeat rewrite tnum.v_cons_simplify. repeat rewrite tnum.m_cons_simplify.
+
+      rewrite bvec_add_left_zero.
+
+      unfold tnum_mul_iter_Sn. simpl.
+      
+      (* TODO Nothing regarding the mask in the LHS of the implication?
+       * Something wrong with the definition of tnum_mul()? *)
+
+      unwrap_bvec_ops.
+      
+      
+      unwrap_bvec_ops. rewrite bvec_fulladd_result.
+      repeat simplify_bit_ops; try easy.
+
+      
+      unfold bvec_mul. unfold bvec_mul_helper. unfold bvec_mul_single.
+      repeat simplify_bit_ops; try easy.
+
+      
+      
+      simpl. auto.
+
+  
 End linux_tnum_multiplication.
