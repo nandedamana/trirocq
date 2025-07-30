@@ -621,7 +621,44 @@ Section linux_tnum_addition.
     Qed.
     
     (* TODO maximum carries *)
+    Lemma maximum_carries {SIZE} x y P Q :
+      tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
+      forall [i] (hidx : i < SIZE),
+        bvec_incarry (bvec_or (tnum.v P) (tnum.m P)) (bvec_or (tnum.v Q) (tnum.m Q)) hidx = zero ->
+        bvec_incarry x y hidx = zero.
+    Proof.
+      unfold tnum.wellformed. unfold ingamma.
+      unfold tnum.ith_m. unfold tnum.ith_v.
+      intros wfp wfq igp igq.
+      induction i.
+      - unfold bvec_incarry. auto.
+      -
+        intro hidx.
+        rewrite bvec_incarry_Si. simpl.
 
+        specialize (IHi (ltprv hidx)).
+        specialize (wfp i (ltprv hidx)).
+        specialize (wfq i (ltprv hidx)).
+        specialize (igp i (ltprv hidx)).
+        specialize (igq i (ltprv hidx)).
+
+        unwrap_bvec_ops.
+        
+        destruct (bvec_ith (tnum.v P) (ltprv hidx));
+          destruct (bvec_ith (tnum.v Q) (ltprv hidx));
+          destruct (bvec_ith (tnum.m P) (ltprv hidx));
+          destruct (bvec_ith (tnum.m Q) (ltprv hidx)); try easy;
+          try rewrite_if_holds wfp;
+          try rewrite_if_holds wfq;
+          try rewrite_if_holds igp;
+          try rewrite_if_holds igq;
+          destruct (bvec_incarry (bvec_or (tnum.v P) (tnum.m P))
+                      (bvec_or (tnum.v Q) (tnum.m Q)) (ltprv hidx));
+          try rewrite_if_holds IHi; auto;
+          repeat simplify_bit_ops_ex_not; try easy;
+          crush10.
+    Qed.
+    
     (* TODO my soundness lemma is more direct? *)
     
     (* TODO better, directly work on the result of tnum_add(). *)
