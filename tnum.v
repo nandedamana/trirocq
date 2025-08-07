@@ -579,12 +579,10 @@ Section linux_tnum_addition.
     Definition minmask {SIZE} (P : tnum.t SIZE) Q := bvec_xor (minsum P Q) (maxsum P Q).
 
     (* minmask considers minsum and maxsum only. We need to show that that's enough to find the
-     * optimal uncertainty.
+     * minimum uncertainty by carry.
      *)
-    (* TODO similarities with helper45; see if they are actually realted *)
 
-    (* Mirrors Harishankar et al.? TODO *)
-    (* TODO No concrete carry not contained by minsum? *)
+    (* Mirrors Harishankar et al. *)
     Lemma minimum_carries {SIZE} x y P Q :
       tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
@@ -619,8 +617,7 @@ Section linux_tnum_addition.
           repeat simplify_bit_ops_ex_not; try easy;
           crush10.
     Qed.
-    
-    (* TODO maximum carries *)
+
     Lemma maximum_carries {SIZE} x y P Q :
       tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
@@ -659,13 +656,11 @@ Section linux_tnum_addition.
           crush10.
     Qed.
     
-    (* TODO my soundness lemma is more direct? *)
-    
     (* TODO better, directly work on the result of tnum_add(). *)
-    (* TODO FIXME wait, why just chi? ith `mu = chi | a.mask | b.mask`, right?
-     * does this mean `a.mask | b.mask` is irrelevant? Not according to my brute-force experi.
-     * Also, this looks unprovable:
-     * bit_or (tnum_ith_chi P Q hidx) (bit_or (bvec_ith (tnum.m P) hidx) (bvec_ith (tnum.m Q) hidx)) = bvec_ith (minmask P Q) hidx.
+    (* This lemma essentially shows the optimization of chi is correct.
+     * chi is meant to be the minimum mask via carry, which is the xor of minsum and maxsum.
+     * The fact that minsum and maxsum are enough to find the uncertainty propagated by carry
+     * is established by the lemmas minimum_carries and maximum_carries.
      *)
     Lemma tnum_add_optimal {SIZE} P Q :
       tnum.wellformed P -> tnum.wellformed Q ->
