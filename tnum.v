@@ -206,13 +206,13 @@ Section bvec.
                              | S p => Vector.cons bit zero p (zerovec p)
                              end.
 
+    Check (zerovec 4 : Vector.t bit 4).
+    (* Compute zerovec 4. *)
+    
     Definition bvec_mul_single {SIZE} y (x : bvec SIZE) := match y with
                                                            | zero => zerovec SIZE
                                                            | one => x
                                                            end.
-
-    Check (zerovec 4 : Vector.t bit 4).
-    (* Compute zerovec 4. *)
 
     Lemma ltprv2 {i} {n} : S i < S n -> i < n.
       lia.
@@ -1106,35 +1106,128 @@ Section linux_tnum_multiplication.
   Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
     tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
 
-  Inductive tnum_mul_iter_result {n} :=
-    | tmircons (a b accm : tnum.t (S n)).
+  (* TODO move, prove *)
+  Definition tnum_union {SIZE} (P Q : tnum.t SIZE) :=
+    let v := bvec_and (tnum.v P) (tnum.v Q) in
+    let m := bvec_or (bvec_or (bvec_xor (tnum.v P) (tnum.v Q)) (tnum.m P)) (tnum.m Q) in
+    tnum.cons SIZE (bvec_and v (bvec_neg m)) m.
 
   Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
 
+  Inductive bvec_mul_iter_result {n} :=
+    | bmircons (a b acc : bvec (S n)).
+
+  Definition bmiracc {n} (r : @bvec_mul_iter_result n) :=
+    match r with
+    | bmircons _ _ acc => acc
+    end.
+  
+  (* TODO move; rewrite bvec_mul based on this if successful (or prove the equivalence). *)
+  (* Written in the style of tnum_mul_iter for the ease of proving. *)
+  Definition bvec_mul_iter {n} (a b acc : bvec (S n)) :=
+    let nxt_acc := match bvec_lsb a with
+                   | one => bvec_add acc b
+                   | zero => acc
+                    end in
+    let nxt_a := bvec_rshift a le_1_Sn in
+    let nxt_b := bvec_lshift b le_1_Sn in
+    bmircons nxt_a nxt_b nxt_acc.
+  
+  Inductive tnum_mul_iter_result {n} :=
+    | tmircons (a b acc : tnum.t (S n)).
+
+  Definition tmiracc {n} (r : @tnum_mul_iter_result n) :=
+    match r with
+    | tmircons _ _ acc => acc
+    end.
+  
   (* Using a and b instead of P and Q to make comparison with the in-kernel code easier. *)
-  Definition tnum_mul_iter {n} (a b accm : tnum.t (S n)) :=
-    let nxt_accm := match bvec_lsb (tnum.v a) with
-                    | one => tnum_add accm (tnum.cons (S n) (zerovec (S n)) (tnum.m b))
-                    | zero => match bvec_lsb (tnum.m a) with
-                              | one => tnum_add accm (tnum.cons (S n) (zerovec (S n)) (bvec_or (tnum.v b) (tnum.m b)))
-                              | zero => accm
-                              end
+  Definition tnum_mul_iter {n} (a b acc : tnum.t (S n)) :=
+    let nxt_acc := match bvec_lsb (tnum.v a) with
+                   | one => tnum_add acc b
+                   | zero => match bvec_lsb (tnum.m a) with
+                             | one => tnum_union acc (tnum_add acc b)
+                             | zero => acc
+                             end
                     end in
     let nxt_a := tnum_rshift a le_1_Sn in
     let nxt_b := tnum_lshift b le_1_Sn in
-    tmircons nxt_a nxt_b nxt_accm.
+    tmircons nxt_a nxt_b nxt_acc.
 
+  (* TODO prove that tnum_mul_iter abstracts bvec_mul_iter *)
+  Lemma tnum_mul_iter_sound {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bmiracc (bvec_mul_iter x y a) in
+    let tout := tmiracc (tnum_mul_iter P Q A) in
+    tnum.wellformed tout -> ingamma bout tout.
+  Proof.
+    unfold tnum.wellformed. unfold ingamma.
+    intro H.
+
+    (* TODO *)
+    (* pose (H'1 := sublemma33 x y P Q H). *)
+
+    unfold tnum.ith_m in H.
+    destruct H as (wf1 & wf2 & igp & igq).
+
+    split. apply tnum_mul_wellformed; auto.
+
+    induction i.
+    - intro hidx.
+      (* TODO rem unwanted *)
+      unfold tnum_mul. unfold tnum_add.
+      rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+
+  
   (* TODO read https://6826.csail.mit.edu/2020/coqdoc/Spec.Loop.v.html
    * and see if there is a standard way to iter n times *)
 
-  Fixpoint tnum_mul_iter_Sn {n} (a b accm : tnum.t (S n)) (i : nat) : tnum.t (S n) :=
+  (* TODO return the total number of iterations and write a proof that asserts it; see an attempt below *)
+  Fixpoint tnum_mul_iter_Si {n} (a b acc : tnum.t (S n)) (i : nat) : tnum.t (S n) :=
     match i with
-    | 0 => accm
-    | S p => let tmir := tnum_mul_iter a b accm in
-             match tmir with
-             | tmircons nxt_a nxt_b nxt_acc => tnum_mul_iter_Sn nxt_a nxt_b nxt_acc p
+    | 0 => acc
+    | S p => match tnum_mul_iter a b acc with
+             | tmircons nxt_a nxt_b nxt_acc => tnum_mul_iter_Si nxt_a nxt_b nxt_acc p
              end
     end.
+
+  (*
+  Fixpoint tnum_mul_iter_Si {n} (a b acc : tnum.t (S n)) (i : nat) (count : nat) : tnum.t (S n) * nat :=
+    match i with
+    | 0 => pair acc count
+    | S p => match tnum_mul_iter a b acc with
+             | tmircons nxt_a nxt_b nxt_acc => pair (fst (tnum_mul_iter_Si nxt_a nxt_b nxt_acc p count)) (S count)
+             end
+    end.
+
+  Goal forall {n} (a b acc : tnum.t (S n)), snd (tnum_mul_iter_Si a b acc (S n) 0) = S n.
+  Proof.
+    intros.
+    unfold snd.
+    induction n.
+    -
+      unfold tnum_mul_iter_Si. simpl. auto.
+    -
+   *)
+
+  Lemma tnum_mul_iter_Si_wellformed {n} (a b acc : tnum.t (S n)) :
+    tnum.wellformed a -> tnum.wellformed b -> tnum.wellformed acc -> tnum.wellformed (tnum_mul_iter_Si a b acc (S n)).
+  Proof.
+    unfold tnum.wellformed.
+    intros wfa wfb wfacc.
+    (* TODO *)
+  Admitted.
+
+  
+  (* Run the loop with iteration count = bit width of the tnum *)
+  Definition tnum_mul_loop_width_times {n} (a b acc : tnum.t (S n)) :=
+    tnum_mul_iter_Si a b acc (S n).
+
+  Lemma tnum_mul_loop_width_times_wellformed {n} (a b acc : tnum.t (S n)) :
+    tnum.wellformed a -> tnum.wellformed b -> tnum.wellformed acc -> tnum.wellformed (tnum_mul_loop_width_times a b acc).
+    (* TODO *)
+  Admitted.
   
   (* The in-kernel tnum_mul() uses a while loop, which is challenging to encode
    * here because we have to show the loop is terminating. It should be, because
@@ -1144,19 +1237,47 @@ Section linux_tnum_multiplication.
    * else. However, it isn't easy to encode. *)
 
   Definition tnum_mul {n} (a b : tnum.t (S n)) :=
-    let accv := bvec_mul (tnum.v a) (tnum.v b) in
-    let accm := tnum.cons (S n) (zerovec (S n)) (zerovec (S n)) in
-    let nxt_accm := tnum_mul_iter_Sn a b accm (S n) in
-    tnum_add (tnum.cons (S n) accv (zerovec (S n))) nxt_accm.
+    let acc := tnum.cons (S n) (zerovec (S n)) (zerovec (S n)) in
+    tnum_mul_loop_width_times a b acc.
 
+  (* TODO
+  Lemma bvec_Sith {SIZE} (bv : Vector.t bit SIZE) {i} (hidx : S i < SIZE) :
+    bvec_ith bv hidx = match bv with
+                       | Vector.nil _ => zero (* absured case *)
+                       | Vector.cons _ _ _ bvtail => bvec_ith bvtail (ltprv hidx)
+                       end.
+  Admitted.
+  *)
 
+  Lemma zerovec_ith {SIZE} {i} (hidx : i < SIZE) : bvec_ith (zerovec SIZE) hidx = zero.
+  Proof.
+    (* TODO
+    destruct SIZE.
+    - 
+      destruct i; easy.
+    - induction i.
+      + unfold zerovec. compute. reflexivity.
+      + unfold zerovec.
+    (* TODO *)
+     *)
+  Admitted.
+  
+  Lemma zerovec_wellformed {SIZE} : tnum.wellformed (tnum.cons SIZE (zerovec SIZE) (zerovec SIZE)).
+  Proof.
+    unfold tnum.wellformed. unfold tnum.m. unfold tnum.v.
+    intros i hidx.
+    pose (allz := @zerovec_ith SIZE i hidx).
+    easy.
+  Qed.
+  
   Lemma tnum_mul_wellformed {n} (P Q : tnum.t (S n)) :
     tnum.wellformed P /\ tnum.wellformed Q -> tnum.wellformed (tnum_mul P Q).
   Proof.
     unfold tnum.wellformed.
-    intro H.
+    intro H. destruct H as (wfp & wfq).
     unfold tnum_mul.
-    apply wellformed_general.
+    apply tnum_mul_loop_width_times_wellformed. exact wfp. exact wfq.
+    apply zerovec_wellformed.
   Qed.
 
   (* TODO move *)
@@ -1165,11 +1286,6 @@ Section linux_tnum_multiplication.
     (* TODO *)
   Admitted.
   
-  Lemma zerovec_ith {n} {i} (hidx : i < S n) : bvec_ith (zerovec (S n)) hidx = zero.
-  Proof.
-    (* TODO *)
-  Admitted.
-
   Lemma bvec_add_left_zero {n} (x : bvec (S n)) : bvec_add (zerovec (S n)) x = x.
     (* TODO *)
   Admitted.
