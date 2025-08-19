@@ -1112,6 +1112,25 @@ Section linux_tnum_multiplication.
     let m := bvec_or (bvec_or (bvec_xor (tnum.v P) (tnum.v Q)) (tnum.m P)) (tnum.m Q) in
     tnum.cons SIZE (bvec_and v (bvec_neg m)) m.
 
+  Lemma tnum_union_wellformed {SIZE} (P Q : tnum.t SIZE) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    tnum.wellformed (tnum_union P Q).
+  Proof.
+    (* TODO *)
+  Admitted.
+
+  Definition subset {SIZE} (P Q : tnum.t SIZE) :=
+    forall x, ingamma x P -> ingamma x Q.
+
+  (* TODO include well-formedness *)
+  Lemma tnum_union_sound {SIZE} (P Q : tnum.t SIZE) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    let U := tnum_union P Q in
+    tnum.wellformed U /\ subset P U /\ subset Q U.
+  Proof.
+    (* TODO *)
+  Admitted.
+  
   Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
 
   Inductive bvec_mul_iter_result {n} :=
@@ -1154,30 +1173,79 @@ Section linux_tnum_multiplication.
     let nxt_b := tnum_lshift b le_1_Sn in
     tmircons nxt_a nxt_b nxt_acc.
 
-  (* TODO prove that tnum_mul_iter abstracts bvec_mul_iter *)
+  Lemma tnum_mul_iter_wellformed {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bmiracc (bvec_mul_iter x y a) in
+    let tout := tmiracc (tnum_mul_iter P Q A) in
+    tnum.wellformed tout.
+  Proof.
+    unfold tnum.wellformed. unfold ingamma.
+    intros wfP wfQ wfA igx igy iga.
+
+    unfold tmiracc.
+    unfold tnum_mul_iter.
+
+    destruct (bvec_lsb (tnum.v P)).
+    - destruct (bvec_lsb (tnum.m P)). auto.
+      apply tnum_union_wellformed; auto. apply tnum_add_wellformed. auto.
+    - apply tnum_add_wellformed. auto.
+  Qed.
+  
+  (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
   Lemma tnum_mul_iter_sound {n} x y a (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
     ingamma x P -> ingamma y Q -> ingamma a A ->
     let bout := bmiracc (bvec_mul_iter x y a) in
     let tout := tmiracc (tnum_mul_iter P Q A) in
-    tnum.wellformed tout -> ingamma bout tout.
+    tnum.wellformed tout /\ ingamma bout tout.
   Proof.
-    unfold tnum.wellformed. unfold ingamma.
-    intro H.
+    assert (hwf := tnum_mul_iter_wellformed x y a P Q A).
+    revert hwf.
 
-    (* TODO *)
-    (* pose (H'1 := sublemma33 x y P Q H). *)
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros hwf wfP wfQ wfA igx igy iga.
+    
+    split. auto. (* Well-formedness *)
 
-    unfold tnum.ith_m in H.
-    destruct H as (wf1 & wf2 & igp & igq).
+    (* Now soundness *)
 
-    split. apply tnum_mul_wellformed; auto.
-
+    assert (hidxify : forall n (x : bvec (S n)) (hidx : 0 < S n), bvec_ith x (PeanoNat.Nat.lt_0_succ n) = bvec_ith x hidx). auto.
+    
     induction i.
     - intro hidx.
-      (* TODO rem unwanted *)
-      unfold tnum_mul. unfold tnum_add.
-      rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+      unfold tnum_mul_iter. unfold tmiracc.
+      unfold bvec_mul_iter. unfold bmiracc.
+      unfold bvec_lsb.
+      repeat rewrite hidxify with (hidx := hidx).
+
+      specialize (igx _ hidx).
+      specialize (wfP _ hidx).
+      destruct (bvec_ith (tnum.m P) hidx).
+      + rewrite igx; auto.
+        destruct (bvec_ith (tnum.v P) hidx). auto.
+        apply tnum_add_sound; auto.
+      + rewrite wfP; auto.
+        (* TODO the goal at this point looks like it could be a new lemma. *)
+        apply tnum_union_sound; auto.
+        apply tnum_add_wellformed. auto.
+        
+        destruct (bvec_ith x hidx); auto.
+
+        (*
+        TODO rem
+        pose (H := @tnum_union_sound (S n)). (* TODO rem? *)
+        destruct (bvec_ith x hidx).
+        * enough (H' : subset A (tnum_union A (tnum_add A Q))).
+          unfold subset in H'. specialize (H' a iga). unfold ingamma in H'. apply (H' _ hidx).
+          apply tnum_union_sound; auto.
+          apply tnum_add_wellformed. auto.
+        * 
+          
+          specialize (H a A (tnum_add A Q) wfA).
+          apply H.  repeat auto. exact iga.
+         *)
+        
 
   
   (* TODO read https://6826.csail.mit.edu/2020/coqdoc/Spec.Loop.v.html
