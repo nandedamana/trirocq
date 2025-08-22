@@ -1236,53 +1236,27 @@ Section linux_tnum_multiplication.
 
     (* Now soundness *)
 
-    assert (hidxify : forall n (x : bvec (S n)) (hidx : 0 < S n), bvec_ith x (PeanoNat.Nat.lt_0_succ n) = bvec_ith x hidx). auto.
-    
-    induction i.
-    - intro hidx.
-      unfold tnum_mul_iter. unfold tmiracc.
-      unfold bvec_mul_iter. unfold bmiracc.
-      unfold bvec_lsb.
-      repeat rewrite hidxify with (hidx := hidx).
+    unfold tnum_mul_iter. unfold tmiracc.
+    unfold bvec_mul_iter. unfold bmiracc.
+    unfold bvec_lsb.
 
-      specialize (igx _ hidx).
-      specialize (wfP _ hidx).
-      destruct (bvec_ith (tnum.m P) hidx).
-      + rewrite igx; auto.
-        destruct (bvec_ith (tnum.v P) hidx). auto.
-        apply tnum_add_sound; auto.
-      + rewrite wfP; auto.
-        destruct (bvec_ith x hidx); auto. (* TODO later? *)
-        (* Direct application of tnum_union_sound results in absurd goals,
-         * solving which would result in unnecessary assert, pose, etc.
-         *)
-        apply tnum_union_sound_l; auto. apply tnum_add_wellformed; auto.
-        apply tnum_union_sound_r; auto. apply tnum_add_wellformed; auto.
-        apply tnum_add_sound; auto.
-    - intro hidx.
-      unfold tnum_mul_iter. unfold tmiracc.
-      unfold bvec_mul_iter. unfold bmiracc.
-      unfold bvec_lsb.
+    specialize (igx _ (PeanoNat.Nat.lt_0_succ n)).
+    specialize (wfP _ (PeanoNat.Nat.lt_0_succ n)).
 
-      pose (hidx0 := ltSi_imp_lt0 hidx).
-      repeat rewrite hidxify with (hidx := hidx0).
-
-      specialize (igx _ hidx).
-      specialize (wfP _ hidx).
-      destruct (bvec_ith (tnum.m P) hidx).
-      + rewrite igx; auto.
-        destruct (bvec_ith (tnum.v P) hidx). auto.
-        apply tnum_add_sound; auto.
-      + rewrite wfP; auto.
-        destruct (bvec_ith x hidx); auto. (* TODO later? *)
-        (* Direct application of tnum_union_sound results in absurd goals,
-         * solving which would result in unnecessary assert, pose, etc.
-         *)
-        apply tnum_union_sound_l; auto. apply tnum_add_wellformed; auto.
-        apply tnum_union_sound_r; auto. apply tnum_add_wellformed; auto.
-        apply tnum_add_sound; auto.
-
-      
+    destruct (bvec_ith (tnum.m P) (PeanoNat.Nat.lt_0_succ n)).
+    + rewrite igx; auto.
+      destruct (bvec_ith (tnum.v P) (PeanoNat.Nat.lt_0_succ n)). auto.
+      apply tnum_add_sound; auto.
+    + rewrite wfP; auto.
+      destruct (bvec_ith x (PeanoNat.Nat.lt_0_succ n)); auto. (* TODO later? *)
+      (* Direct application of tnum_union_sound results in absurd goals,
+       * solving which would result in unnecessary assert, pose, etc.
+       *)
+      apply tnum_union_sound_l; auto. apply tnum_add_wellformed; auto.
+      apply tnum_union_sound_r; auto. apply tnum_add_wellformed; auto.
+      apply tnum_add_sound; auto.
+  Qed.
+        
   (* TODO read https://6826.csail.mit.edu/2020/coqdoc/Spec.Loop.v.html
    * and see if there is a standard way to iter n times *)
 
