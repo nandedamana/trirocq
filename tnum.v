@@ -1122,14 +1122,35 @@ Section linux_tnum_multiplication.
   Definition subset {SIZE} (P Q : tnum.t SIZE) :=
     forall x, ingamma x P -> ingamma x Q.
 
-  (* TODO include well-formedness *)
   Lemma tnum_union_sound {SIZE} (P Q : tnum.t SIZE) :
     tnum.wellformed P -> tnum.wellformed Q ->
     let U := tnum_union P Q in
     tnum.wellformed U /\ subset P U /\ subset Q U.
   Proof.
+    unfold subset.
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros wfP wfQ.
+    unfold tnum_union.
     (* TODO *)
   Admitted.
+
+  (* To make some other proof cleaner; TODO rem if unused. *)
+  Lemma tnum_union_sound_l {SIZE} (P Q : tnum.t SIZE) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    let U := tnum_union P Q in
+    tnum.wellformed U /\ subset P U.
+  Proof.
+    (* TODO *)
+  Admitted.
+
+  Lemma tnum_union_sound_r {SIZE} (P Q : tnum.t SIZE) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    let U := tnum_union P Q in
+    tnum.wellformed U /\ subset Q U.
+  Proof.
+    (* TODO *)
+  Admitted.
+
   
   Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
 
@@ -1191,8 +1212,13 @@ Section linux_tnum_multiplication.
       apply tnum_union_wellformed; auto. apply tnum_add_wellformed. auto.
     - apply tnum_add_wellformed. auto.
   Qed.
+
+  Lemma ltSi_imp_lt0 {i} {n} (hidx : S i < S n) : 0 < S n.
+    lia.
+  Qed.
   
   (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
+  (* TODO FIXME missing in the input: A is partial prod of P and Q; but that's not an issue, right? *)
   Lemma tnum_mul_iter_sound {n} x y a (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
     ingamma x P -> ingamma y Q -> ingamma a A ->
@@ -1226,28 +1252,37 @@ Section linux_tnum_multiplication.
         destruct (bvec_ith (tnum.v P) hidx). auto.
         apply tnum_add_sound; auto.
       + rewrite wfP; auto.
-        (* TODO the goal at this point looks like it could be a new lemma. *)
-        apply tnum_union_sound; auto.
-        apply tnum_add_wellformed. auto.
-        
-        destruct (bvec_ith x hidx); auto.
-
-        (*
-        TODO rem
-        pose (H := @tnum_union_sound (S n)). (* TODO rem? *)
-        destruct (bvec_ith x hidx).
-        * enough (H' : subset A (tnum_union A (tnum_add A Q))).
-          unfold subset in H'. specialize (H' a iga). unfold ingamma in H'. apply (H' _ hidx).
-          apply tnum_union_sound; auto.
-          apply tnum_add_wellformed. auto.
-        * 
-          
-          specialize (H a A (tnum_add A Q) wfA).
-          apply H.  repeat auto. exact iga.
+        destruct (bvec_ith x hidx); auto. (* TODO later? *)
+        (* Direct application of tnum_union_sound results in absurd goals,
+         * solving which would result in unnecessary assert, pose, etc.
          *)
-        
+        apply tnum_union_sound_l; auto. apply tnum_add_wellformed; auto.
+        apply tnum_union_sound_r; auto. apply tnum_add_wellformed; auto.
+        apply tnum_add_sound; auto.
+    - intro hidx.
+      unfold tnum_mul_iter. unfold tmiracc.
+      unfold bvec_mul_iter. unfold bmiracc.
+      unfold bvec_lsb.
 
-  
+      pose (hidx0 := ltSi_imp_lt0 hidx).
+      repeat rewrite hidxify with (hidx := hidx0).
+
+      specialize (igx _ hidx).
+      specialize (wfP _ hidx).
+      destruct (bvec_ith (tnum.m P) hidx).
+      + rewrite igx; auto.
+        destruct (bvec_ith (tnum.v P) hidx). auto.
+        apply tnum_add_sound; auto.
+      + rewrite wfP; auto.
+        destruct (bvec_ith x hidx); auto. (* TODO later? *)
+        (* Direct application of tnum_union_sound results in absurd goals,
+         * solving which would result in unnecessary assert, pose, etc.
+         *)
+        apply tnum_union_sound_l; auto. apply tnum_add_wellformed; auto.
+        apply tnum_union_sound_r; auto. apply tnum_add_wellformed; auto.
+        apply tnum_add_sound; auto.
+
+      
   (* TODO read https://6826.csail.mit.edu/2020/coqdoc/Spec.Loop.v.html
    * and see if there is a standard way to iter n times *)
 
