@@ -269,16 +269,18 @@ Section bvec.
 
     (* Based on Observation 18 from Harishankar et al. *)
     (* TODO test *)
-    Fixpoint bvec_mul_helper {SIZE} (x y : bvec SIZE) (acc : bvec SIZE) {i} (hidx : i < SIZE) :=
-      match i return i < SIZE -> bvec SIZE with
-      | 0 => fun _ => bvec_mul_single (bvec_ith y hidx) x
-      | S p => fun hidx =>
-                 let newacc := bvec_add acc (bvec_mul_single (bvec_ith y hidx) (bvec_lshift x hidx)) in
-                 bvec_mul_helper x y newacc (ltprv hidx)
-      end hidx.
+    Section bvec_mul_without_rshift.
+      Fixpoint bvec_mul_helper {SIZE} (x y : bvec SIZE) (acc : bvec SIZE) {i} (hidx : i < SIZE) :=
+        match i return i < SIZE -> bvec SIZE with
+        | 0 => fun _ => bvec_mul_single (bvec_ith y hidx) x
+        | S p => fun hidx =>
+                   let newacc := bvec_add acc (bvec_mul_single (bvec_ith y hidx) (bvec_lshift x hidx)) in
+                   bvec_mul_helper x y newacc (ltprv hidx)
+        end hidx.
 
-    Definition bvec_mul {n} (x y : bvec (S n)) :=
-      bvec_mul_helper x y (zerovec (S n)) (PeanoNat.Nat.lt_0_succ n).
+      Definition bvec_mul {n} (x y : bvec (S n)) :=
+        bvec_mul_helper x y (zerovec (S n)) (PeanoNat.Nat.lt_0_succ n).
+    End bvec_mul_without_rshift.
     
     Definition bvec_lsb {n} (x : bvec (S n)) := bvec_ith x (PeanoNat.Nat.lt_0_succ n).
   End bvec_multiplication.
@@ -1154,24 +1156,39 @@ Section linux_tnum_multiplication.
   
   Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
 
-  Inductive bvec_mul_iter_result {n} :=
+  (* Compared to bvec_mul_without_rshift, written with rshift in
+   * order to make the proof of tnum_mul easier.
+   *)
+  (* TODO test *)
+  (* TODO move; rewrite bvec_mul based on this if successful (or prove the equivalence). *)  
+  Section bvec_mul_with_rshift.
+    Inductive bvec_mul_iter_result {n} :=
     | bmircons (a b acc : bvec (S n)).
 
-  Definition bmiracc {n} (r : @bvec_mul_iter_result n) :=
-    match r with
-    | bmircons _ _ acc => acc
+    Definition bmiracc {n} (r : @bvec_mul_iter_result n) :=
+      match r with
+      | bmircons _ _ acc => acc
+      end.
+    
+    (* Written in the style of tnum_mul_iter for the ease of proving. *)
+    Definition bvec_mul_iter {n} (a b acc : bvec (S n)) :=
+      let nxt_acc := match bvec_lsb a with
+                     | one => bvec_add acc b
+                     | zero => acc
+                     end in
+      let nxt_a := bvec_rshift a le_1_Sn in
+      let nxt_b := bvec_lshift b le_1_Sn in
+      bmircons nxt_a nxt_b nxt_acc.
+
+  (* TODO return the total number of iterations and write a proof that asserts it; see the comments near tnum_mul_iter_Si *)
+  Fixpoint bvec_mul_iter_Si {n} (a b acc : bvec (S n)) (i : nat) : bvec (S n) :=
+    match i with
+    | 0 => acc
+    | S p => match bvec_mul_iter a b acc with
+             | bmircons nxt_a nxt_b nxt_acc => bvec_mul_iter_Si nxt_a nxt_b nxt_acc p
+             end
     end.
-  
-  (* TODO move; rewrite bvec_mul based on this if successful (or prove the equivalence). *)
-  (* Written in the style of tnum_mul_iter for the ease of proving. *)
-  Definition bvec_mul_iter {n} (a b acc : bvec (S n)) :=
-    let nxt_acc := match bvec_lsb a with
-                   | one => bvec_add acc b
-                   | zero => acc
-                    end in
-    let nxt_a := bvec_rshift a le_1_Sn in
-    let nxt_b := bvec_lshift b le_1_Sn in
-    bmircons nxt_a nxt_b nxt_acc.
+  End bvec_mul_with_rshift.
   
   Inductive tnum_mul_iter_result {n} :=
     | tmircons (a b acc : tnum.t (S n)).
@@ -1269,6 +1286,54 @@ Section linux_tnum_multiplication.
              end
     end.
 
+  Lemma tnum_mul_iter_Si_wellformed {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bvec_mul_iter_Si x y a (S n) in
+    let tout := tnum_mul_iter_Si P Q A (S n) in
+    tnum.wellformed tout.
+  Proof.
+    unfold tnum.wellformed. unfold ingamma.
+    intros wfP wfQ wfA igx igy iga.
+
+    unfold tnum_mul_iter_Si.
+    (* TODO *)
+  Admitted.
+
+  Lemma tnum_mul_iter_Si_sound {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bvec_mul_iter_Si x y a (S n) in
+    let tout := tnum_mul_iter_Si P Q A (S n) in
+    tnum.wellformed tout /\ ingamma bout tout.
+  Proof.
+    assert (hwf := tnum_mul_iter_Si_wellformed x y a P Q A).
+    revert hwf.
+
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros hwf wfP wfQ wfA igx igy iga.
+    
+    split. auto. (* Well-formedness *)
+
+    (* Now soundness *)
+
+    unfold tnum_mul_iter_Si.
+    destruct i. simpl.
+
+
+    
+
+
+
+    unfold tmiracc.
+    unfold bvec_mul_iter. unfold bmiracc.
+    unfold bvec_lsb.
+
+    specialize (igx _ (PeanoNat.Nat.lt_0_succ n)).
+    specialize (wfP _ (PeanoNat.Nat.lt_0_succ n)).
+    
+
+  
   (*
   Fixpoint tnum_mul_iter_Si {n} (a b acc : tnum.t (S n)) (i : nat) (count : nat) : tnum.t (S n) * nat :=
     match i with
