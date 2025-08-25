@@ -316,6 +316,10 @@ Module tnum.
     unfold ith_v. simpl. reflexivity.
   Qed.
 
+  Lemma ith_v_simplify2 {SIZE} n1 n2 i (hidx : i < SIZE) : bvec_ith (v (cons SIZE n1 n2)) hidx = bvec_ith n1 hidx.
+    simpl. reflexivity.
+  Qed.
+  
   (* Using `unfold m` directly could cause unwanted expansions in some places. *)
   Lemma m_cons_simplify {SIZE} n1 n2 : m (cons SIZE n1 n2) = n2.
     unfold m. reflexivity.
@@ -1149,7 +1153,7 @@ Section linux_tnum_multiplication.
     (* TODO *)
   Admitted.
   
-  (* TODO move, prove *)
+  (* TODO move *)
   Definition tnum_union {SIZE} (P Q : tnum.t SIZE) :=
     let v := bvec_and (tnum.v P) (tnum.v Q) in
     let m := bvec_or (bvec_or (bvec_xor (tnum.v P) (tnum.v Q)) (tnum.m P)) (tnum.m Q) in
@@ -1159,8 +1163,19 @@ Section linux_tnum_multiplication.
     tnum.wellformed P -> tnum.wellformed Q ->
     tnum.wellformed (tnum_union P Q).
   Proof.
-    (* TODO *)
-  Admitted.
+    unfold tnum_union. unfold tnum.wellformed.
+    intros wfP wfQ i hidx.
+    rewrite tnum.ith_m_simplify2.
+    rewrite tnum.ith_v_simplify2.
+    unwrap_bvec_ops.
+    specialize (wfP i hidx).
+    specialize (wfQ i hidx).
+    destruct (bvec_ith (tnum.m P) hidx); try rewrite_if_holds wfP;
+      destruct (bvec_ith (tnum.m Q) hidx); try rewrite_if_holds wfQ; try easy;
+      destruct (bvec_ith (tnum.v P) hidx);
+      destruct (bvec_ith (tnum.v Q) hidx);
+      repeat simplify_bit_ops; auto.
+  Qed.
 
   Definition subset {SIZE} (P Q : tnum.t SIZE) :=
     forall x, ingamma x P -> ingamma x Q.
