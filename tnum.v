@@ -1155,7 +1155,7 @@ Section linux_tnum_multiplication.
   Proof.
     (* TODO *)
   Admitted.
-  
+
   Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
     tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
 
@@ -1320,7 +1320,7 @@ Section linux_tnum_multiplication.
   Proof.
     (* TODO *)
   Admitted.
-  
+
   Lemma ltSi_imp_lt0 {i} {n} (hidx : S i < S n) : 0 < S n.
     lia.
   Qed.
@@ -1441,7 +1441,7 @@ Section linux_tnum_multiplication.
     split. apply h2; auto.
     apply h3; auto.
   Qed.
-  
+
   (* TODO move to tnum and name tnum.zero *)
   Definition zerotnum n := tnum.cons n (zerovec n) (zerovec n).
 
@@ -1478,7 +1478,9 @@ Section linux_tnum_multiplication.
     (* TODO *)
   Admitted.
 
-  Lemma tnum_mul_loop_sound_nxt_a {n} x y (P Q : tnum.t (S n)) :
+    (* TODO doc: this is needed because in tnum_mul_sound, both the width and the oter count are (S n). I want to induct on the iter count, but that would cause an induction on the width as well. But the width isn't meant to change between iterations. *)
+  (* TODO avoid this intermediate lemma if no induction is happening inside. *)
+  Lemma tnum_mul_loop_sound_all {n} x y (P Q : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q ->
     ingamma x P -> ingamma y Q ->
     forall c,
@@ -1494,11 +1496,6 @@ Section linux_tnum_multiplication.
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfP wfQ igx igy.
 
-    (* TODO REM
-    unfold Nat.iter. unfold nat_rect.
-    apply tnum_mul_iter_sound.
-     *)
-
     induction c.
     - simpl. auto.
     -
@@ -1506,71 +1503,13 @@ Section linux_tnum_multiplication.
       unfold Nat.iter. unfold nat_rect.
       unfold Nat.iter in wfall. unfold nat_rect in wfall.
 
-      apply tnum_mul_iter_sound_nxt_a.
+      apply tnum_mul_iter_sound_all.
       apply wfall; auto. apply wfall; auto. apply wfall; auto.
-
+      
       revert IHc. unfold Nat.iter. unfold nat_rect. intro IHc.
-      unfold ingamma.
-      apply IHc.
-
-      FIXME this is iter soundness of b, not loop soundness of b.
-      maybe I should combine the loop soundness of a, b, and acc together because the IH is getting weaker otherwise.
-      pose (H := tnum_mul_iter_sound_nxt_b x y (zerovec (S n)) P Q (zerotnum (S n))).
-      destruct H as (h1 & h2); auto. apply zero_wellformed. apply zero_ingamma.
-      unfold bmir.b in h2.
-      apply H0.
-      TODO use?:
-
-(*
-      pose(hsound_nxt_a := tnum_mul_iter_sound_nxt_a x y (zerovec (S n)) P Q (zerotnum (S n))).
-      unfold Nat.iter in hsound_nxt_a. unfold nat_rect in hsound_nxt_a.
-      apply hsound_nxt_a.
- *)
-      (* TODO *)
-  Admitted.
-
-  Lemma tnum_mul_loop_sound_nxt_b {n} x y (P Q : tnum.t (S n)) :
-    tnum.wellformed P -> tnum.wellformed Q ->
-    ingamma x P -> ingamma y Q ->
-    forall c,
-      let r := bmir.b (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
-      let R := tmir.b (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
-      (* tnum.wellformed R /\ (* TODO *) *)
-      ingamma r R.
-  Proof.
-    (* TODO *)
-  Admitted.
-
-  (* TODO doc: this is needed because in tnum_mul_sound, both the width and the oter count are (S n). I want to induct on the iter count, but that would cause an induction on the width as well. But the width isn't meant to change between iterations. *)
-  (* TODO avoid this intermediate lemma if no induction is happening inside. *)
-  Lemma tnum_mul_loop_sound {n} x y (P Q : tnum.t (S n)) :
-    tnum.wellformed P -> tnum.wellformed Q ->
-    ingamma x P -> ingamma y Q ->
-    forall c,
-      let r := bmir.acc (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
-      let R := tmir.acc (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
-      (* tnum.wellformed R /\ (* TODO *) *)
-      ingamma r R.
-  Proof.
-    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
-    intros wfP wfQ igx igy.
-
-    induction c.
-    - simpl. auto.
-    -
-      pose(wfall := tnum_mul_loop_wellformed_all P Q).
-      unfold Nat.iter. unfold nat_rect.
-      unfold Nat.iter in wfall. unfold nat_rect in wfall.
-
-      apply tnum_mul_iter_sound.
-      apply wfall; auto. apply wfall; auto. apply wfall; auto.
-
-      apply tnum_mul_loop_sound_nxt_a; auto.
-      apply tnum_mul_loop_sound_nxt_b; auto.
-
-      revert IHc. unfold Nat.iter. unfold nat_rect. intro IHc.
-      unfold ingamma.
-      apply IHc.
+      + unfold ingamma. apply IHc.
+      + unfold ingamma. apply IHc.
+      + unfold ingamma. apply IHc.
   Qed.
 
   Lemma tnum_mul_sound {n} x y (P Q : tnum.t (S n)) :
@@ -1586,6 +1525,6 @@ Section linux_tnum_multiplication.
     intros hwf wfP wfQ igx igy.
 
     split. auto. (* Well-formedness *)
-    apply tnum_mul_loop_sound; auto. (* Soundness *)
+    apply tnum_mul_loop_sound_all; auto. (* Soundness *)
   Qed.
 End linux_tnum_multiplication.
