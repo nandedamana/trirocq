@@ -1142,6 +1142,20 @@ Section linux_tnum_multiplication.
   Definition tnum_lshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
     tnum.cons SIZE (bvec_lshift (tnum.v P) hidx) (bvec_lshift (tnum.m P) hidx).
 
+  Lemma tnum_lshift_wellformed {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
+    tnum.wellformed P -> tnum.wellformed (tnum_lshift P hidx).
+  Proof.
+    (* TODO *)
+  Admitted.
+
+  (* TODO includes wellformedness; update the users *)
+  Lemma tnum_lshift_sound {SIZE} (x : bvec SIZE) (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_lshift P hidx) /\ ingamma (bvec_lshift x hidx) (tnum_lshift P hidx).
+  Proof.
+    (* TODO *)
+  Admitted.
+  
   Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
     tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
 
@@ -1290,17 +1304,23 @@ Section linux_tnum_multiplication.
 
   (* TODO rem if unused *)
   (* TODO maybe merge with tnum_mul_iter_wellformed to avoid duplication *)
-  (* TODO already included in tnum_mul_iter_wellformed_nxt_a? *)
-  Lemma tnum_mul_iter_wellformed_nxt_a {n} x y a (P Q A : tnum.t (S n)) :
+  (* TODO already included in tnum_mul_iter_sound_nxt_a? *)
+  Lemma tnum_mul_iter_wellformed_nxt_a {n} (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
-    ingamma x P -> ingamma y Q -> ingamma a A ->
-    let bout := bmir.acc (bvec_mul_iter (bmir.cons x y a)) in
     let tout := tmir.a (tnum_mul_iter (tmir.cons P Q A)) in
     tnum.wellformed tout.
   Proof.
     (* TODO *)
   Admitted.
 
+  Lemma tnum_mul_iter_wellformed_nxt_b {n} (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    let tout := tmir.b (tnum_mul_iter (tmir.cons P Q A)) in
+    tnum.wellformed tout.
+  Proof.
+    (* TODO *)
+  Admitted.
+  
   Lemma ltSi_imp_lt0 {i} {n} (hidx : S i < S n) : 0 < S n.
     lia.
   Qed.
@@ -1310,17 +1330,15 @@ Section linux_tnum_multiplication.
     ingamma x P -> ingamma y Q -> ingamma a A ->
     let bout := bmir.a (bvec_mul_iter (bmir.cons x y a)) in
     let tout := tmir.a (tnum_mul_iter (tmir.cons P Q A)) in
-    (* tnum.wellformed tout /\ *) (* TODO *)
-    ingamma bout tout.
+    tnum.wellformed tout /\ ingamma bout tout.
   Proof.
-    assert (hwf := tnum_mul_iter_wellformed_nxt_a x y a P Q A).
+    assert (hwf := tnum_mul_iter_wellformed_nxt_a P Q A).
     revert hwf.
 
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros hwf wfP wfQ wfA igx igy iga.
-    (*
     split. auto. (* Well-formedness *)
-     *)
+
     (* Now soundness *)
 
     unfold tnum_mul_iter.
@@ -1332,7 +1350,7 @@ Section linux_tnum_multiplication.
     apply tnum_rshift_sound; auto.
   Qed.
 
-  (* TODO try to combine? *)
+  (* TODO try to combine? Same except for the final shift. *)
   Lemma tnum_mul_iter_sound_nxt_b {n} x y a (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
     ingamma x P -> ingamma y Q -> ingamma a A ->
@@ -1340,8 +1358,23 @@ Section linux_tnum_multiplication.
     let tout := tmir.b (tnum_mul_iter (tmir.cons P Q A)) in
     tnum.wellformed tout /\ ingamma bout tout.
   Proof.
-    (* TODO *)
-  Admitted.
+    assert (hwf := tnum_mul_iter_wellformed_nxt_b P Q A).
+    revert hwf.
+
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros hwf wfP wfQ wfA igx igy iga.
+    split. auto. (* Well-formedness *)
+
+    (* Now soundness *)
+
+    unfold tnum_mul_iter.
+    unfold tmir.acc. unfold tmir.a. unfold tmir.b.
+    unfold bvec_mul_iter.
+    unfold bmir.acc. unfold bmir.a. unfold bmir.b.
+    unfold bvec_lsb.
+
+    apply tnum_lshift_sound; auto.
+  Qed.
 
   (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
   (* TODO DOC missing in the input: A is partial prod of P and Q; but that's not an issue; interesting. *)
