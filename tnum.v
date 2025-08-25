@@ -1378,7 +1378,7 @@ Section linux_tnum_multiplication.
 
   (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
   (* TODO DOC missing in the input: A is partial prod of P and Q; but that's not an issue; interesting. *)
-  Lemma tnum_mul_iter_sound {n} x y a (P Q A : tnum.t (S n)) :
+  Lemma tnum_mul_iter_sound_acc {n} x y a (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
     ingamma x P -> ingamma y Q -> ingamma a A ->
     let bout := bmir.acc (bvec_mul_iter (bmir.cons x y a)) in
@@ -1418,6 +1418,30 @@ Section linux_tnum_multiplication.
       apply tnum_add_sound; auto.
   Qed.
 
+  Lemma tnum_mul_iter_sound_all {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let ra := bmir.a (bvec_mul_iter (bmir.cons x y a)) in
+    let Ra := tmir.a (tnum_mul_iter (tmir.cons P Q A)) in
+    let rb := bmir.b (bvec_mul_iter (bmir.cons x y a)) in
+    let Rb := tmir.b (tnum_mul_iter (tmir.cons P Q A)) in
+    let rc := bmir.acc (bvec_mul_iter (bmir.cons x y a)) in
+    let Rc := tmir.acc (tnum_mul_iter (tmir.cons P Q A)) in
+    tnum.wellformed Ra /\ tnum.wellformed Rb /\ tnum.wellformed Rc /\
+    ingamma ra Ra /\ ingamma rb Rb /\ ingamma rc Rc.
+  Proof.
+    intros wfP wfQ wfA igx igy iga.
+    pose (h1 := tnum_mul_iter_sound_nxt_a x y a P Q A).
+    pose (h2 := tnum_mul_iter_sound_nxt_b x y a P Q A).
+    pose (h3 := tnum_mul_iter_sound_acc x y a P Q A).
+    split. apply h1; auto.
+    split. apply h2; auto.
+    split. apply h3; auto.
+    split. apply h1; auto.
+    split. apply h2; auto.
+    apply h3; auto.
+  Qed.
+  
   (* TODO move to tnum and name tnum.zero *)
   Definition zerotnum n := tnum.cons n (zerovec n) (zerovec n).
 
@@ -1458,15 +1482,19 @@ Section linux_tnum_multiplication.
     tnum.wellformed P -> tnum.wellformed Q ->
     ingamma x P -> ingamma y Q ->
     forall c,
-      let r := bmir.a (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
-      let R := tmir.a (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
+      let ra := bmir.a (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
+      let Ra := tmir.a (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
+      let rb := bmir.b (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
+      let Rb := tmir.b (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
+      let rc := bmir.acc (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
+      let Rc := tmir.acc (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
       (* tnum.wellformed R /\ (* TODO *) *)
-      ingamma r R.
+      ingamma ra Ra /\ ingamma rb Rb /\ ingamma rc Rc.
   Proof.
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfP wfQ igx igy.
 
-    (*
+    (* TODO REM
     unfold Nat.iter. unfold nat_rect.
     apply tnum_mul_iter_sound.
      *)
@@ -1477,6 +1505,22 @@ Section linux_tnum_multiplication.
       pose(wfall := tnum_mul_loop_wellformed_all P Q).
       unfold Nat.iter. unfold nat_rect.
       unfold Nat.iter in wfall. unfold nat_rect in wfall.
+
+      apply tnum_mul_iter_sound_nxt_a.
+      apply wfall; auto. apply wfall; auto. apply wfall; auto.
+
+      revert IHc. unfold Nat.iter. unfold nat_rect. intro IHc.
+      unfold ingamma.
+      apply IHc.
+
+      FIXME this is iter soundness of b, not loop soundness of b.
+      maybe I should combine the loop soundness of a, b, and acc together because the IH is getting weaker otherwise.
+      pose (H := tnum_mul_iter_sound_nxt_b x y (zerovec (S n)) P Q (zerotnum (S n))).
+      destruct H as (h1 & h2); auto. apply zero_wellformed. apply zero_ingamma.
+      unfold bmir.b in h2.
+      apply H0.
+      TODO use?:
+
 (*
       pose(hsound_nxt_a := tnum_mul_iter_sound_nxt_a x y (zerovec (S n)) P Q (zerotnum (S n))).
       unfold Nat.iter in hsound_nxt_a. unfold nat_rect in hsound_nxt_a.
