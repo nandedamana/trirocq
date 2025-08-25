@@ -116,6 +116,10 @@ Section bvec.
   Definition bvec_ith {SIZE} (v : bvec SIZE) {i} (hidx : i < SIZE) :=
     Vector.nth v (Fin.of_nat_lt hidx).
 
+  (* TODO rem? *)
+  Definition bvec_eq {SIZE} (x y : bvec SIZE) :=
+    forall i (hidx : i < SIZE), bvec_ith x hidx = bvec_ith y hidx.
+
   Axiom bvec_and : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
   Axiom bvec_and_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
       bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
@@ -208,7 +212,7 @@ Section bvec.
 
     Check (zerovec 4 : Vector.t bit 4).
     (* Compute zerovec 4. *)
-    
+
     Definition bvec_mul_single {SIZE} y (x : bvec SIZE) := match y with
                                                            | zero => zerovec SIZE
                                                            | one => x
@@ -281,7 +285,7 @@ Section bvec.
       Definition bvec_mul_without_shift {n} (x y : bvec (S n)) :=
         bvec_mul_helper x y (zerovec (S n)) (PeanoNat.Nat.lt_0_succ n).
     End bvec_mul_without_rshift.
-    
+
     Definition bvec_lsb {n} (x : bvec (S n)) := bvec_ith x (PeanoNat.Nat.lt_0_succ n).
   End bvec_multiplication.
 End bvec.
@@ -297,6 +301,9 @@ Module tnum.
 
   Definition ith_v {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (v tn) hidx.
   Definition ith_m {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (m tn) hidx.
+
+  (* TODO rem? *)
+  Definition eq {SIZE} (P Q : t SIZE) := bvec_eq (v P) (v Q) /\ bvec_eq (m P) (m Q).
 
   Definition wellformed {SIZE} (tn : t SIZE) :=
     forall {i} (hidx : i < SIZE), bvec_ith (m tn) hidx = one -> bvec_ith (v tn) hidx = zero.
@@ -319,12 +326,12 @@ Module tnum.
   Lemma ith_v_simplify2 {SIZE} n1 n2 i (hidx : i < SIZE) : bvec_ith (v (cons SIZE n1 n2)) hidx = bvec_ith n1 hidx.
     simpl. reflexivity.
   Qed.
-  
+
   (* Using `unfold m` directly could cause unwanted expansions in some places. *)
   Lemma m_cons_simplify {SIZE} n1 n2 : m (cons SIZE n1 n2) = n2.
     unfold m. reflexivity.
   Qed.
-  
+
   Lemma v_cons_simplify {SIZE} n1 n2 : v (cons SIZE n1 n2) = n1.
     unfold v. reflexivity.
   Qed.
@@ -1152,7 +1159,7 @@ Section linux_tnum_multiplication.
   Proof.
     (* TODO *)
   Admitted.
-  
+
   (* TODO move *)
   Definition tnum_union {SIZE} (P Q : tnum.t SIZE) :=
     let v := bvec_and (tnum.v P) (tnum.v Q) in
@@ -1185,38 +1192,53 @@ Section linux_tnum_multiplication.
     let U := tnum_union P Q in
     tnum.wellformed U /\ subset P U /\ subset Q U.
   Proof.
-    unfold subset.
-    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
-    intros wfP wfQ.
-    unfold tnum_union.
-    (* TODO *)
-  Admitted.
+    unfold subset. intros wfP wfQ.
+    split. apply tnum_union_wellformed; auto.
+    split;
+      unfold tnum.wellformed; unfold ingamma; unfold tnum.ith_m; unfold tnum.ith_v;
+      intros x igx;
+    unfold tnum_union; intros i hidx;
+      specialize (wfP i hidx); specialize (wfQ i hidx); specialize (igx i hidx);
+      rewrite tnum.ith_m_simplify2;
+      rewrite tnum.ith_v_simplify2;
+        unwrap_bvec_ops;
+        destruct (bvec_ith (tnum.m P) hidx);
+        destruct (bvec_ith (tnum.m Q) hidx);
+        try rewrite_if_holds wfP;
+        try rewrite_if_holds wfQ;
+        destruct (bvec_ith (tnum.v P) hidx);
+        destruct (bvec_ith (tnum.v Q) hidx);
+        repeat simplify_bit_ops; try easy.
+  Qed.
 
-  (* To make some other proof cleaner; TODO rem if unused. *)
+  (* To make another proof cleaner *)
   Lemma tnum_union_sound_l {SIZE} (P Q : tnum.t SIZE) :
     tnum.wellformed P -> tnum.wellformed Q ->
     let U := tnum_union P Q in
     tnum.wellformed U /\ subset P U.
   Proof.
-    (* TODO *)
-  Admitted.
+    intros wfP wfQ.
+    pose (H := tnum_union_sound P Q wfP wfQ).
+    simpl in H. simpl. destruct H as (h1 & h2 & h3). auto.
+  Qed.
 
   Lemma tnum_union_sound_r {SIZE} (P Q : tnum.t SIZE) :
     tnum.wellformed P -> tnum.wellformed Q ->
     let U := tnum_union P Q in
     tnum.wellformed U /\ subset Q U.
   Proof.
-    (* TODO *)
-  Admitted.
+    intros wfP wfQ.
+    pose (H := tnum_union_sound P Q wfP wfQ).
+    simpl in H. simpl. destruct H as (h1 & h2 & h3). auto.
+  Qed.
 
-  
   Definition le_1_Sn {n} : 1 <= S n. lia. Qed.
-  
+
   (* Compared to bvec_mul_without_rshift, written with rshift in
    * order to make the proof of tnum_mul easier.
    *)
   (* TODO test *)
-  (* TODO move; rewrite bvec_mul based on this if successful (or prove the equivalence). *)  
+  (* TODO move; rewrite bvec_mul based on this if successful (or prove the equivalence). *)
   Section bvec_mul_with_rshift.
     (* Written in the style of tnum_mul_iter for the ease of proving. *)
     Definition bvec_mul_iter {n} (input : @bmir.t n) :=
@@ -1232,7 +1254,7 @@ Section linux_tnum_multiplication.
     Definition bvec_mul {n} (a b : bvec (S n)) :=
       bmir.acc (Nat.iter (S n) bvec_mul_iter (bmir.cons a b (zerovec (S n)))).
   End bvec_mul_with_rshift.
-  
+
   (* Using a and b instead of P and Q to make comparison with the in-kernel code easier. *)
   Definition tnum_mul_iter {n} (input : @tmir.t n) :=
     let a := tmir.a input in let b := tmir.b input in let acc := tmir.acc input in
@@ -1246,7 +1268,7 @@ Section linux_tnum_multiplication.
     let nxt_a := tnum_rshift a le_1_Sn in
     let nxt_b := tnum_lshift b le_1_Sn in
     tmir.cons nxt_a nxt_b nxt_acc.
-  
+
   Lemma tnum_mul_iter_wellformed {n} x y a (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
     ingamma x P -> ingamma y Q -> ingamma a A ->
@@ -1259,7 +1281,7 @@ Section linux_tnum_multiplication.
 
     unfold tnum_mul_iter.
     unfold tmir.acc. unfold tmir.a. unfold tmir.b.
-    
+
     destruct (bvec_lsb (tnum.v P)).
     - destruct (bvec_lsb (tnum.m P)). auto.
       apply tnum_union_wellformed; auto. apply tnum_add_wellformed. auto.
@@ -1320,7 +1342,7 @@ Section linux_tnum_multiplication.
   Proof.
     (* TODO *)
   Admitted.
-  
+
   (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
   (* TODO DOC missing in the input: A is partial prod of P and Q; but that's not an issue; interesting. *)
   Lemma tnum_mul_iter_sound {n} x y a (P Q A : tnum.t (S n)) :
@@ -1335,7 +1357,7 @@ Section linux_tnum_multiplication.
 
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros hwf wfP wfQ wfA igx igy iga.
-    
+
     split. auto. (* Well-formedness *)
 
     (* Now soundness *)
@@ -1365,7 +1387,7 @@ Section linux_tnum_multiplication.
 
   (* TODO move to tnum and name tnum.zero *)
   Definition zerotnum n := tnum.cons n (zerovec n) (zerovec n).
-  
+
   Definition tnum_mul {n} (a b : tnum.t (S n)) :=
       tmir.acc (Nat.iter (S n) tnum_mul_iter (tmir.cons a b (zerotnum (S n)))).
 
@@ -1415,7 +1437,7 @@ Section linux_tnum_multiplication.
     unfold Nat.iter. unfold nat_rect.
     apply tnum_mul_iter_sound.
      *)
-    
+
     induction c.
     - simpl. auto.
     -
@@ -1441,7 +1463,7 @@ Section linux_tnum_multiplication.
   Proof.
     (* TODO *)
   Admitted.
-  
+
   (* TODO doc: this is needed because in tnum_mul_sound, both the width and the oter count are (S n). I want to induct on the iter count, but that would cause an induction on the width as well. But the width isn't meant to change between iterations. *)
   (* TODO avoid this intermediate lemma if no induction is happening inside. *)
   Lemma tnum_mul_loop_sound {n} x y (P Q : tnum.t (S n)) :
@@ -1455,7 +1477,7 @@ Section linux_tnum_multiplication.
   Proof.
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfP wfQ igx igy.
-    
+
     induction c.
     - simpl. auto.
     -
@@ -1485,7 +1507,7 @@ Section linux_tnum_multiplication.
 
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros hwf wfP wfQ igx igy.
-    
+
     split. auto. (* Well-formedness *)
     apply tnum_mul_loop_sound; auto. (* Soundness *)
   Qed.
