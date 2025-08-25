@@ -1134,6 +1134,21 @@ Section linux_tnum_multiplication.
   Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
     tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
 
+
+  Lemma tnum_rshift_wellformed {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
+    tnum.wellformed P -> tnum.wellformed (tnum_rshift P hidx).
+  Proof.
+    (* TODO *)
+  Admitted.
+
+  (* TODO includes wellformedness; update the users *)
+  Lemma tnum_rshift_sound {SIZE} (x : bvec SIZE) (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_rshift P hidx) /\ ingamma (bvec_rshift x hidx) (tnum_rshift P hidx).
+  Proof.
+    (* TODO *)
+  Admitted.
+  
   (* TODO move, prove *)
   Definition tnum_union {SIZE} (P Q : tnum.t SIZE) :=
     let v := bvec_and (tnum.v P) (tnum.v Q) in
@@ -1236,12 +1251,63 @@ Section linux_tnum_multiplication.
     - apply tnum_add_wellformed. auto.
   Qed.
 
+  (* TODO rem if unused *)
+  (* TODO maybe merge with tnum_mul_iter_wellformed to avoid duplication *)
+  (* TODO already included in tnum_mul_iter_wellformed_nxt_a? *)
+  Lemma tnum_mul_iter_wellformed_nxt_a {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bmir.acc (bvec_mul_iter (bmir.cons x y a)) in
+    let tout := tmir.a (tnum_mul_iter (tmir.cons P Q A)) in
+    tnum.wellformed tout.
+  Proof.
+    (* TODO *)
+  Admitted.
+
   Lemma ltSi_imp_lt0 {i} {n} (hidx : S i < S n) : 0 < S n.
     lia.
   Qed.
+
+  Lemma tnum_mul_iter_sound_nxt_a {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bmir.a (bvec_mul_iter (bmir.cons x y a)) in
+    let tout := tmir.a (tnum_mul_iter (tmir.cons P Q A)) in
+    (* tnum.wellformed tout /\ *) (* TODO *)
+    ingamma bout tout.
+  Proof.
+    assert (hwf := tnum_mul_iter_wellformed_nxt_a x y a P Q A).
+    revert hwf.
+
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros hwf wfP wfQ wfA igx igy iga.
+    (*
+    split. auto. (* Well-formedness *)
+     *)
+    (* Now soundness *)
+
+    unfold tnum_mul_iter.
+    unfold tmir.acc. unfold tmir.a. unfold tmir.b.
+    unfold bvec_mul_iter.
+    unfold bmir.acc. unfold bmir.a. unfold bmir.b.
+    unfold bvec_lsb.
+
+    apply tnum_rshift_sound; auto.
+  Qed.
+
+  (* TODO try to combine? *)
+  Lemma tnum_mul_iter_sound_nxt_b {n} x y a (P Q A : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
+    ingamma x P -> ingamma y Q -> ingamma a A ->
+    let bout := bmir.b (bvec_mul_iter (bmir.cons x y a)) in
+    let tout := tmir.b (tnum_mul_iter (tmir.cons P Q A)) in
+    tnum.wellformed tout /\ ingamma bout tout.
+  Proof.
+    (* TODO *)
+  Admitted.
   
   (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
-  (* TODO FIXME missing in the input: A is partial prod of P and Q; but that's not an issue, right? *)
+  (* TODO DOC missing in the input: A is partial prod of P and Q; but that's not an issue; interesting. *)
   Lemma tnum_mul_iter_sound {n} x y a (P Q A : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed A ->
     ingamma x P -> ingamma y Q -> ingamma a A ->
@@ -1297,6 +1363,102 @@ Section linux_tnum_multiplication.
     (* TODO *)
   Admitted.
 
+  (* TODO move *)
+  Lemma zero_wellformed {SIZE} : tnum.wellformed (zerotnum SIZE).
+    (* TODO *)
+  Admitted.
+
+  (* TODO move *)
+  Lemma zero_ingamma {SIZE} : ingamma (zerovec SIZE) (zerotnum SIZE).
+    (* TODO *)
+  Admitted.
+
+  (* TODO rem if unused *)
+  Lemma tnum_mul_loop_wellformed_all {n} (P Q : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    forall c,
+      let R := Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n))) in
+      tnum.wellformed (tmir.a R) /\ tnum.wellformed (tmir.b R) /\
+        tnum.wellformed (tmir.acc R).
+  Proof.
+    (* TODO *)
+  Admitted.
+
+  Lemma tnum_mul_loop_sound_nxt_a {n} x y (P Q : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    ingamma x P -> ingamma y Q ->
+    forall c,
+      let r := bmir.a (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
+      let R := tmir.a (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
+      (* tnum.wellformed R /\ (* TODO *) *)
+      ingamma r R.
+  Proof.
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros wfP wfQ igx igy.
+
+    (*
+    unfold Nat.iter. unfold nat_rect.
+    apply tnum_mul_iter_sound.
+     *)
+    
+    induction c.
+    - simpl. auto.
+    -
+      pose(wfall := tnum_mul_loop_wellformed_all P Q).
+      unfold Nat.iter. unfold nat_rect.
+      unfold Nat.iter in wfall. unfold nat_rect in wfall.
+(*
+      pose(hsound_nxt_a := tnum_mul_iter_sound_nxt_a x y (zerovec (S n)) P Q (zerotnum (S n))).
+      unfold Nat.iter in hsound_nxt_a. unfold nat_rect in hsound_nxt_a.
+      apply hsound_nxt_a.
+ *)
+      (* TODO *)
+  Admitted.
+
+  Lemma tnum_mul_loop_sound_nxt_b {n} x y (P Q : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    ingamma x P -> ingamma y Q ->
+    forall c,
+      let r := bmir.b (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
+      let R := tmir.b (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
+      (* tnum.wellformed R /\ (* TODO *) *)
+      ingamma r R.
+  Proof.
+    (* TODO *)
+  Admitted.
+  
+  (* TODO doc: this is needed because in tnum_mul_sound, both the width and the oter count are (S n). I want to induct on the iter count, but that would cause an induction on the width as well. But the width isn't meant to change between iterations. *)
+  (* TODO avoid this intermediate lemma if no induction is happening inside. *)
+  Lemma tnum_mul_loop_sound {n} x y (P Q : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    ingamma x P -> ingamma y Q ->
+    forall c,
+      let r := bmir.acc (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
+      let R := tmir.acc (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
+      (* tnum.wellformed R /\ (* TODO *) *)
+      ingamma r R.
+  Proof.
+    unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
+    intros wfP wfQ igx igy.
+    
+    induction c.
+    - simpl. auto.
+    -
+      pose(wfall := tnum_mul_loop_wellformed_all P Q).
+      unfold Nat.iter. unfold nat_rect.
+      unfold Nat.iter in wfall. unfold nat_rect in wfall.
+
+      apply tnum_mul_iter_sound.
+      apply wfall; auto. apply wfall; auto. apply wfall; auto.
+
+      apply tnum_mul_loop_sound_nxt_a; auto.
+      apply tnum_mul_loop_sound_nxt_b; auto.
+
+      revert IHc. unfold Nat.iter. unfold nat_rect. intro IHc.
+      unfold ingamma.
+      apply IHc.
+  Qed.
+
   Lemma tnum_mul_sound {n} x y (P Q : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q ->
     ingamma x P -> ingamma y Q ->
@@ -1310,12 +1472,6 @@ Section linux_tnum_multiplication.
     intros hwf wfP wfQ igx igy.
     
     split. auto. (* Well-formedness *)
-
-    (* Now soundness *)
-
-    unfold tnum_mul. unfold bvec_mul.
-    unfold Nat.iter.
-    (* TODO *)
-  Admitted.
-  
+    apply tnum_mul_loop_sound; auto. (* Soundness *)
+  Qed.
 End linux_tnum_multiplication.
