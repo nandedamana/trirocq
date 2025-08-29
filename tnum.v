@@ -222,34 +222,19 @@ Section bvec.
       lia.
     Qed.
 
-    (* TODO confirm the semantics of << and >> (zero-ext vs sign-ext) *)
+    (* Remember: head (i = 0) has the LSB *)
+    Definition bvec_lshift_once {n} (x : Vector.t _ (S n)) : bvec (S n) :=
+      Vector.cons bit zero n (Vector.shiftout x).
 
-    (* Because splitat takes Vector.t ?A (?l + ?r) *)
-    Lemma bvec_splitcast1 {SIZE} {i} (x : Vector.t bit SIZE) (hidx : i <= SIZE) : Vector.t bit (SIZE - i + i).
-      assert (H : SIZE - i + i = SIZE). lia.
-      rewrite H. assumption.
-    Qed.
+    Definition bvec_lshift {n} (x : Vector.t _ (S n)) p : bvec (S n) :=
+      Nat.iter p bvec_lshift_once x.
 
-    Lemma bvec_splitcast2 {SIZE} {i} (x : Vector.t bit SIZE) (hidx : i <= SIZE) : Vector.t bit (i + (SIZE - i)).
-      assert (H : i + (SIZE - i) = SIZE). lia.
-      rewrite H. assumption.
-    Qed.
+    (* Using logical shift since the type used in Linux is u64 *)
+    Definition bvec_rshift_once {n} (x : Vector.t _ (S n)) : bvec (S n) :=
+      Vector.tl (Vector.shiftin zero x).
 
-    Lemma bvec_splitcast2_rev {SIZE} {i} (x : Vector.t bit (i + (SIZE - i))) (hidx : i <= SIZE) : Vector.t bit SIZE.
-      assert (H : i + (SIZE - i) = SIZE). lia.
-      rewrite <- H. assumption.
-    Qed.
-
-    Definition bvec_lshift {SIZE} (x : Vector.t _ SIZE) {i} (hidx : i <= SIZE) : bvec SIZE :=
-      let splt := Vector.splitat (SIZE - i) (bvec_splitcast1 x hidx) in
-      let shiftres := Vector.append (zerovec i) (fst splt) in
-      bvec_splitcast2_rev shiftres hidx.
-
-    (* TODO test *)
-    Definition bvec_rshift {SIZE} (x : Vector.t _ SIZE) {i} (hidx : i <= SIZE) : bvec SIZE :=
-      let splt := Vector.splitat i (bvec_splitcast2 x hidx) in
-      let shiftres := Vector.append (fst splt) (zerovec (SIZE - i)) in
-      bvec_splitcast2_rev shiftres hidx.
+    Definition bvec_rshift {n} (x : Vector.t _ (S n)) p : bvec (S n) :=
+      Nat.iter p bvec_rshift_once x.
 
     (* Testing *)
     Fixpoint onevec SIZE := match SIZE with
@@ -257,34 +242,18 @@ Section bvec.
                             | S p => Vector.cons bit one p (onevec p)
                             end.
 
-    Lemma le_2_8 : 2 <= 8. lia. Qed.
-    Definition b252 := (bvec_lshift (onevec 8) le_2_8).
-    Compute b252. (* TODO looks really awful, but seems correct, assuming head has the LSB *)
+    Lemma lt_7_8 : 7 < 8. lia. Qed.
 
-    Lemma lt_0_8 : 0 < 8. lia. Qed.
-    Compute (bvec_ith b252 lt_0_8). (* zero *)
+    Definition b252 := (bvec_lshift (onevec 8) 2).
+    Lemma b252_is_correct1 : Vector.hd b252 = zero. auto. Qed.
+    Lemma b252_is_correct2 : Vector.hd (Vector.tl b252) = zero. auto. Qed.
+    Lemma b252_is_correct3 : (bvec_ith b252 lt_7_8) = one. auto. Qed.
 
-    Lemma lt_1_8 : 1 < 8. lia. Qed.
-    Compute (bvec_ith b252 lt_1_8). (* zero *)
-
-    Lemma lt_2_8 : 2 < 8. lia. Qed.
-    Compute (bvec_ith b252 lt_2_8). (* unevaluated long term *)
+    Definition b63 := (bvec_rshift (onevec 8) 2).
+    Lemma b63_is_correct1 : Vector.hd b63 = one. auto. Qed.
+    Lemma b63_is_correct2 : Vector.hd (Vector.tl b63) = one. auto. Qed.
+    Lemma b63_is_correct3 : (bvec_ith b63 lt_7_8) = zero. auto. Qed.
     (* End Testing *)
-
-    (* Based on Observation 18 from Harishankar et al. *)
-    (* TODO test *)
-    Section bvec_mul_without_rshift.
-      Fixpoint bvec_mul_helper {SIZE} (x y : bvec SIZE) (acc : bvec SIZE) {i} (hidx : i < SIZE) :=
-        match i return i < SIZE -> bvec SIZE with
-        | 0 => fun _ => bvec_mul_single (bvec_ith y hidx) x
-        | S p => fun hidx =>
-                   let newacc := bvec_add acc (bvec_mul_single (bvec_ith y hidx) (bvec_lshift x hidx)) in
-                   bvec_mul_helper x y newacc (ltprv hidx)
-        end hidx.
-
-      Definition bvec_mul_without_shift {n} (x y : bvec (S n)) :=
-        bvec_mul_helper x y (zerovec (S n)) (PeanoNat.Nat.lt_0_succ n).
-    End bvec_mul_without_rshift.
 
     Definition bvec_lsb {n} (x : bvec (S n)) := bvec_ith x (PeanoNat.Nat.lt_0_succ n).
   End bvec_multiplication.
@@ -1139,38 +1108,96 @@ End tmir.
 
 Section linux_tnum_multiplication.
   (* TODO move *)
-  Definition tnum_lshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
-    tnum.cons SIZE (bvec_lshift (tnum.v P) hidx) (bvec_lshift (tnum.m P) hidx).
+  Definition tnum_lshift_once {n} (P : tnum.t (S n)) :=
+    tnum.cons _ (bvec_lshift_once (tnum.v P)) (bvec_lshift_once (tnum.m P)).
 
-  Lemma tnum_lshift_wellformed {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
-    tnum.wellformed P -> tnum.wellformed (tnum_lshift P hidx).
+  Lemma lshift_once_reindex {n} (v : bvec (S n)) {i} (hidx : S i < (S n)) :
+    bvec_ith (Vector.cons _ zero _ (Vector.shiftout v)) hidx =
+      bvec_ith (Vector.cons _ zero _ (Vector.shiftout v)) (ltprv hidx).
   Proof.
     (* TODO *)
   Admitted.
 
-  (* TODO includes wellformedness; update the users *)
-  Lemma tnum_lshift_sound {SIZE} (x : bvec SIZE) (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
+  Lemma tnum_lshift_once_wellformed {n} (P : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed (tnum_lshift_once P).
+  Proof.
+    intro wfp.
+    unfold tnum_lshift_once.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
+    unfold bvec_lshift_once.
+    induction i.
+    - easy.
+    - repeat rewrite lshift_once_reindex. auto.
+  Qed.
+
+  Lemma tnum_lshift_once_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
     tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_lshift P hidx) /\ ingamma (bvec_lshift x hidx) (tnum_lshift P hidx).
+    tnum.wellformed (tnum_lshift_once P) /\ ingamma (bvec_lshift_once x) (tnum_lshift_once P).
+  Proof.
+    intros wfp igx.
+    split. apply tnum_lshift_once_wellformed; auto.
+
+    unfold ingamma.
+    unfold tnum_lshift_once.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+    unfold bvec_lshift_once.
+    induction i.
+    - easy.
+    - repeat rewrite lshift_once_reindex. auto.
+  Qed.
+
+  (* TODO move *)
+  Definition tnum_rshift_once {n} (P : tnum.t (S n)) :=
+    tnum.cons _ (bvec_rshift_once (tnum.v P)) (bvec_rshift_once (tnum.m P)).
+
+  Lemma ltsuc {n} {i} (hidx : i < n) : S i < S n.
+    lia.
+  Qed.
+
+  (* TODO generalize? *)
+  Lemma bvec_tl_reindex {n} (v : bvec (S n)) {i} (hidx : i < n) :
+    bvec_ith (Vector.tl v) hidx = bvec_ith v (ltsuc hidx).
   Proof.
     (* TODO *)
   Admitted.
 
-  Definition tnum_rshift {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :=
-    tnum.cons SIZE (bvec_rshift (tnum.v P) hidx) (bvec_rshift (tnum.m P) hidx).
-
-
-  Lemma tnum_rshift_wellformed {SIZE} (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
-    tnum.wellformed P -> tnum.wellformed (tnum_rshift P hidx).
+  Search Vector.nth.
+  Lemma tnum_rshift_once_wellformed {n} (P : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed (tnum_rshift_once P).
   Proof.
+    unfold tnum.wellformed.
+    intro wfp.
+    unfold tnum_rshift_once.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
+    unfold bvec_rshift_once.
+    induction i.
+    - repeat rewrite bvec_tl_reindex.
+
+      Check Vector.shiftin_nth.
+      Check Vector.eta.
     (* TODO *)
   Admitted.
 
-  (* TODO includes wellformedness; update the users *)
-  Lemma tnum_rshift_sound {SIZE} (x : bvec SIZE) (P : tnum.t SIZE) {i} (hidx : i <= SIZE) :
+  Lemma tnum_rshift_once_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
     tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_rshift P hidx) /\ ingamma (bvec_rshift x hidx) (tnum_rshift P hidx).
+    tnum.wellformed (tnum_rshift_once P) /\ ingamma (bvec_rshift_once x) (tnum_rshift_once P).
   Proof.
+    intros wfp igx.
+    split. apply tnum_rshift_once_wellformed; auto.
+
+    unfold ingamma.
+    unfold tnum_rshift_once.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+    unfold bvec_rshift_once.
+    (*
+    induction i.
+    - easy.
+    - repeat rewrite rshift_once_reindex. auto.
+     *)
     (* TODO *)
   Admitted.
 
@@ -1261,8 +1288,8 @@ Section linux_tnum_multiplication.
                      | one => bvec_add acc b
                      | zero => acc
                      end in
-      let nxt_a := bvec_rshift a le_1_Sn in
-      let nxt_b := bvec_lshift b le_1_Sn in
+      let nxt_a := bvec_rshift_once a in
+      let nxt_b := bvec_lshift_once b in
       bmir.cons nxt_a nxt_b nxt_acc.
 
     Definition bvec_mul {n} (a b : bvec (S n)) :=
@@ -1279,8 +1306,8 @@ Section linux_tnum_multiplication.
                              | zero => acc
                              end
                     end in
-    let nxt_a := tnum_rshift a le_1_Sn in
-    let nxt_b := tnum_lshift b le_1_Sn in
+    let nxt_a := tnum_rshift_once a in
+    let nxt_b := tnum_lshift_once b in
     tmir.cons nxt_a nxt_b nxt_acc.
 
   Lemma tnum_mul_iter_wellformed {n} x y a (P Q A : tnum.t (S n)) :
@@ -1347,7 +1374,7 @@ Section linux_tnum_multiplication.
     unfold bmir.acc. unfold bmir.a. unfold bmir.b.
     unfold bvec_lsb.
 
-    apply tnum_rshift_sound; auto.
+    apply tnum_rshift_once_sound; auto.
   Qed.
 
   (* TODO try to combine? Same except for the final shift. *)
@@ -1373,7 +1400,7 @@ Section linux_tnum_multiplication.
     unfold bmir.acc. unfold bmir.a. unfold bmir.b.
     unfold bvec_lsb.
 
-    apply tnum_lshift_sound; auto.
+    apply tnum_lshift_once_sound; auto.
   Qed.
 
   (* TODO comment: prove that tnum_mul_iter abstracts bvec_mul_iter *)
@@ -1505,7 +1532,7 @@ Section linux_tnum_multiplication.
 
       apply tnum_mul_iter_sound_all.
       apply wfall; auto. apply wfall; auto. apply wfall; auto.
-      
+
       revert IHc. unfold Nat.iter. unfold nat_rect. intro IHc.
       + unfold ingamma. apply IHc.
       + unfold ingamma. apply IHc.
