@@ -1,0 +1,12 @@
+.CoqMakefile.d
+.Makefile.d
+.lia.cache
+experi/
+private/
+scrap/
+TODO-private.txt
+*.aux
+*~
+#*#
+*.glob
+*.vo*

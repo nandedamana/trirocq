@@ -1,0 +1,4 @@
+-Q trirocq/ trirocq
+trirocq/Bit.v
+trirocq/BitVector.v
+trirocq/Main.v
