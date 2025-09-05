@@ -1,0 +1,178 @@
+Require Import trirocq.Bit.
+Require Import trirocq.BitVector.
+
+From Stdlib Require Import Lia.
+
+Ltac rewrite_if_holds H :=
+  match type of H with
+  | ?b = ?b -> _ => rewrite H
+  end.
+
+Module tnum.
+  (* Type tnum reflects the Kernel tnum, which is a record consisting of
+   * v, the value bits, and m, the mask bits (Greek mu).
+   *)
+  Variant t SIZE := cons (v : bvec SIZE) (m : bvec SIZE).
+
+  Definition v {SIZE} (P : t SIZE) := match P with cons _ v _ => v end.
+  Definition m {SIZE} (P : t SIZE) := match P with cons _ _ m => m end.
+
+  Definition ith_v {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (v tn) hidx.
+  Definition ith_m {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (m tn) hidx.
+
+  Definition wellformed {SIZE} (tn : t SIZE) :=
+    forall i (hidx : i < SIZE), bvec_ith (m tn) hidx = one -> bvec_ith (v tn) hidx = zero.
+
+  Lemma ith_m_simplify {SIZE} n1 n2 i (hidx : i < SIZE) : ith_m (cons SIZE n1 n2) hidx = bvec_ith n2 hidx.
+    unfold ith_m. simpl. reflexivity.
+  Qed.
+
+  Lemma ith_m_simplify2 {SIZE} n1 n2 i (hidx : i < SIZE) : bvec_ith (m (cons SIZE n1 n2)) hidx = bvec_ith n2 hidx.
+    simpl. reflexivity.
+  Qed.
+
+  Lemma ith_v_simplify {SIZE} n1 n2 i (hidx : i < SIZE) : ith_v (cons SIZE n1 n2) hidx = bvec_ith n1 hidx.
+    unfold ith_v. simpl. reflexivity.
+  Qed.
+
+  Lemma ith_v_simplify2 {SIZE} n1 n2 i (hidx : i < SIZE) : bvec_ith (v (cons SIZE n1 n2)) hidx = bvec_ith n1 hidx.
+    simpl. reflexivity.
+  Qed.
+
+  (* Using `unfold m` directly could cause unwanted expansions in some places. *)
+  Lemma m_cons_simplify {SIZE} n1 n2 : m (cons SIZE n1 n2) = n2.
+    unfold m. reflexivity.
+  Qed.
+
+  Lemma v_cons_simplify {SIZE} n1 n2 : v (cons SIZE n1 n2) = n1.
+    unfold v. reflexivity.
+  Qed.
+End tnum.
+
+Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
+  forall i (hidx : i < SIZE),
+    tnum.ith_m T hidx = zero -> bvec_ith x hidx = tnum.ith_v T hidx.
+
+Section tnum_shift.
+  Definition tnum_lshift1 {n} (P : tnum.t (S n)) :=
+    tnum.cons _ (bvec_lshift1 (tnum.v P)) (bvec_lshift1 (tnum.m P)).
+
+  Lemma tnum_lshift1_wellformed {n} (P : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed (tnum_lshift1 P).
+  Proof.
+    intro wfp.
+    unfold tnum_lshift1.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
+    destruct i.
+    - rewrite bvec_lshift1_ith_0. easy.
+    - repeat rewrite bvec_lshift1_ith_S. auto.
+  Qed.
+
+  Lemma tnum_lshift1_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_lshift1 P) /\ ingamma (bvec_lshift1 x) (tnum_lshift1 P).
+  Proof.
+    intros wfp igx.
+    split. apply tnum_lshift1_wellformed; auto.
+
+    unfold ingamma.
+    unfold tnum_lshift1.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+    destruct i.
+    - repeat rewrite bvec_lshift1_ith_0. auto.
+    - repeat rewrite bvec_lshift1_ith_S. apply igx.
+  Qed.
+
+  Definition tnum_rshift1 {n} (P : tnum.t (S n)) :=
+    tnum.cons _ (bvec_rshift1 (tnum.v P)) (bvec_rshift1 (tnum.m P)).
+
+  Lemma tnum_rshift1_wellformed {n} (P : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed (tnum_rshift1 P).
+  Proof.
+    unfold tnum.wellformed.
+    intro wfp.
+    unfold tnum_rshift1.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
+    assert (H : i = n \/ i <> n). lia.
+    destruct H as [hien|hinn].
+    - subst i. rewrite bvec_rshift1_ith_n. easy.
+    - repeat rewrite bvec_rshift1_ith_ltn with (hi2 := hinn). auto.
+  Qed.
+
+  Lemma tnum_rshift1_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_rshift1 P) /\ ingamma (bvec_rshift1 x) (tnum_rshift1 P).
+  Proof.
+    intros wfp igx.
+    split. apply tnum_rshift1_wellformed; auto.
+
+    unfold tnum_rshift1.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+    assert (H : i = n \/ i <> n). lia.
+    destruct H as [hien|hinn].
+    - subst i. repeat rewrite bvec_rshift1_ith_n. auto.
+    - repeat rewrite bvec_rshift1_ith_ltn with (hi2 := hinn). apply igx.
+  Qed.
+End tnum_shift.
+
+Section tnum_union.
+  Definition tnum_union {SIZE} (P Q : tnum.t SIZE) :=
+    let v := bvec_and (tnum.v P) (tnum.v Q) in
+    let m := bvec_or (bvec_or (bvec_xor (tnum.v P) (tnum.v Q)) (tnum.m P)) (tnum.m Q) in
+    tnum.cons SIZE (bvec_and v (bvec_neg m)) m.
+
+  Lemma tnum_union_wellformed {SIZE} (P Q : tnum.t SIZE) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    tnum.wellformed (tnum_union P Q).
+  Proof.
+    unfold tnum_union. unfold tnum.wellformed.
+    intros wfP wfQ i hidx.
+    rewrite tnum.ith_m_simplify2.
+    rewrite tnum.ith_v_simplify2.
+    unwrap_bvec_ops.
+    specialize (wfP i hidx).
+    specialize (wfQ i hidx).
+    destruct (bvec_ith (tnum.m P) hidx); try rewrite_if_holds wfP;
+      destruct (bvec_ith (tnum.m Q) hidx); try rewrite_if_holds wfQ; try easy;
+      destruct (bvec_ith (tnum.v P) hidx);
+      destruct (bvec_ith (tnum.v Q) hidx);
+      repeat simplify_bit_ops; auto.
+  Qed.
+
+  Definition subset {SIZE} (P Q : tnum.t SIZE) :=
+    forall x, ingamma x P -> ingamma x Q.
+
+  Lemma tnum_union_sound {SIZE} (P Q : tnum.t SIZE) :
+    tnum.wellformed P -> tnum.wellformed Q ->
+    let U := tnum_union P Q in
+    tnum.wellformed U /\ subset P U /\ subset Q U.
+  Proof.
+    unfold subset. intros wfP wfQ.
+    split. apply tnum_union_wellformed; auto.
+    split;
+      unfold tnum.wellformed; unfold ingamma; unfold tnum.ith_m; unfold tnum.ith_v;
+      intros x igx;
+      unfold tnum_union; intros i hidx;
+      specialize (wfP i hidx); specialize (wfQ i hidx); specialize (igx i hidx);
+      rewrite tnum.ith_m_simplify2;
+      rewrite tnum.ith_v_simplify2;
+      unwrap_bvec_ops;
+      destruct (bvec_ith (tnum.m P) hidx);
+      destruct (bvec_ith (tnum.m Q) hidx);
+      try rewrite_if_holds wfP;
+      try rewrite_if_holds wfQ;
+      destruct (bvec_ith (tnum.v P) hidx);
+      destruct (bvec_ith (tnum.v Q) hidx);
+      repeat simplify_bit_ops; try easy.
+  Qed.
+End tnum_union.
+
+Definition zerotnum n := tnum.cons n (zerovec n) (zerovec n).
+Lemma zerotnum_wellformed {n} : tnum.wellformed (zerotnum n).
+  unfold tnum.wellformed.
+  destruct i; intro hidx; pose (H := zerovec_ith hidx); easy.
+Qed.

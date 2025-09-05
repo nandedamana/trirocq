@@ -1,4 +1,6 @@
 -Q trirocq/ trirocq
+trirocq/AddSub.v
 trirocq/Bit.v
 trirocq/BitVector.v
 trirocq/Main.v
+trirocq/Tnum.v
