@@ -228,16 +228,17 @@ Section linux_tnum_multiplication.
       let Rb := tmir.b (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
       let rc := bmir.acc (Nat.iter c bvec_mul_iter (bmir.cons x y (zerovec (S n)))) in
       let Rc := tmir.acc (Nat.iter c tnum_mul_iter (tmir.cons P Q (zerotnum (S n)))) in
-      (* tnum.wellformed R /\ (* TODO *) *)
-      ingamma ra Ra /\ ingamma rb Rb /\ ingamma rc Rc.
+      tnum.wellformed Rc /\ ingamma ra Ra /\ ingamma rb Rb /\ ingamma rc Rc.
   Proof.
     unfold tnum.wellformed. unfold ingamma. unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfP wfQ igx igy.
 
+    pose(wfall := tnum_mul_loop_wellformed_all P Q).
+    split. apply wfall; auto.
+
     induction c.
     - simpl. auto.
     -
-      pose(wfall := tnum_mul_loop_wellformed_all P Q).
       unfold Nat.iter. unfold nat_rect.
       unfold Nat.iter in wfall. unfold nat_rect in wfall.
 
