@@ -60,7 +60,9 @@ Section bvec_addition.
     auto.
   Qed.
 
-  Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_add x y) hidx = bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+  Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE),
+      bvec_ith (bvec_add x y) hidx =
+        bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
 End bvec_addition.
 
 (* ------------------------------------------------------------------------ *)
@@ -89,7 +91,9 @@ Section bvec_subtraction.
     auto.
   Qed.
 
-  Axiom bvec_fullsub_result : forall {SIZE} x y [i] (hidx : i < SIZE), bvec_ith (bvec_sub x y) hidx = bit_xor (bvec_inborrow x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+  Axiom bvec_fullsub_result : forall {SIZE} x y [i] (hidx : i < SIZE),
+      bvec_ith (bvec_sub x y) hidx =
+        bit_xor (bvec_inborrow x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
 End bvec_subtraction.
 
 (* ------------------------------------------------------------------------ *)
