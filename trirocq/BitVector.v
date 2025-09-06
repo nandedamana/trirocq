@@ -10,21 +10,26 @@ Definition bvec SIZE := Vector.t bit SIZE.
 Definition bvec_ith {SIZE} (v : bvec SIZE) {i} (hidx : i < SIZE) :=
   Vector.nth_order v hidx.
 
-Axiom bvec_and : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-Axiom bvec_and_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+Definition bvec_and {SIZE} (x y : bvec SIZE) := Vector.map2 bit_and x y.
+Definition bvec_or  {SIZE} (x y : bvec SIZE) := Vector.map2 bit_or x y.
+Definition bvec_xor {SIZE} (x y : bvec SIZE) := Vector.map2 bit_xor x y.
+Definition bvec_neg {SIZE} (x   : bvec SIZE) := Vector.map bit_not x.
+
+Lemma bvec_and_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
     bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+Proof. intros. apply Vector.nth_map2; auto. Qed.
 
-Axiom bvec_neg : forall {SIZE}, bvec SIZE -> bvec SIZE.
-Axiom bvec_neg_rel : forall {SIZE} (v1 : bvec SIZE) {i} (hidx : i < SIZE),
+Lemma bvec_neg_rel : forall {SIZE} v1 {i} (hidx : i < SIZE),
     bvec_ith (bvec_neg v1) hidx = bit_not (bvec_ith v1 hidx).
+Proof. intros. apply Vector.nth_map; auto. Qed.
 
-Axiom bvec_or : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-Axiom bvec_or_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+Lemma bvec_or_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
     bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+Proof. intros. apply Vector.nth_map2; auto. Qed.
 
-Axiom bvec_xor : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-Axiom bvec_xor_rel : forall {SIZE} (v1 v2 : bvec SIZE) {i} (hidx : i < SIZE),
+Lemma bvec_xor_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
     bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+Proof. intros. apply Vector.nth_map2; auto. Qed.
 
 (* ------------------------------------------------------------------------ *)
 
