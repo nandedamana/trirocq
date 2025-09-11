@@ -1,32 +1,21 @@
 From Stdlib Require Vector.
 
+(* I don't want to use true/false to represent one/zero. *)
 Variant bit := zero | one.
+Definition bit2bool b := match b with
+                         | zero => false
+                         | one => true
+                         end.
+Definition bool2bit l := match l with
+                         | false => zero
+                         | true => one
+                         end.
 
-Definition bit_and (x y : bit) :=
-  match x, y with
-  | one, one => one
-  | _, _ => zero
-  end.
+Definition bit_not (x   : bit) := bool2bit (negb (bit2bool x)).
 
-Definition bit_not (x : bit) :=
-  match x with
-  | zero => one
-  | one => zero
-  end.
-
-Definition bit_or (x y : bit) :=
-  match x, y with
-  | zero, zero => zero
-  | _, _ => one
-  end.
-
-Definition bit_xor (x y : bit) :=
-  match x, y with
-  | zero, zero => zero
-  | zero, one => one
-  | one, zero => one
-  | one, one => zero
-  end.
+Definition bit_and (x y : bit) := bool2bit (andb (bit2bool x) (bit2bool y)).
+Definition bit_or  (x y : bit) := bool2bit (orb  (bit2bool x) (bit2bool y)).
+Definition bit_xor (x y : bit) := bool2bit (xorb (bit2bool x) (bit2bool y)).
 
 Section bitops_simplification.
   Lemma bit_and_left_zero x : bit_and zero x = zero.
