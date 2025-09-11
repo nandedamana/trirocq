@@ -60,13 +60,34 @@ Section linux_tnum_addition.
       repeat simplify_bit_ops; split; try easy.
   Qed.
 
+  Definition value_sum {SIZE} (P Q : tnum.t SIZE) :=
+    bvec_add (tnum.v P) (tnum.v Q).
+
+  Definition mask_sum {SIZE} (P Q : tnum.t SIZE) :=
+    bvec_add (tnum.m P) (tnum.m Q).
+
+  Definition ith_mask_incarry {SIZE} P Q {i} (hidx : i < SIZE) :=
+    bvec_incarry (tnum.m P) (tnum.m Q) hidx.
+
+  Definition ith_value_incarry {SIZE} P Q {i} (hidx : i < SIZE) :=
+    bvec_incarry (tnum.v P) (tnum.v Q) hidx.
+
+  Definition ith_value_mask_incarry {SIZE} P Q {i} (hidx : i < SIZE) :=
+    bvec_incarry (value_sum P Q) (mask_sum P Q) hidx.
+
+  Ltac unfold_tnum_goodies :=
+    unfold tnum.wellformed; unfold ingamma;
+    unfold tnum.ith_v; unfold tnum.ith_m;
+    unfold ith_value_mask_incarry;
+    unfold ith_mask_incarry; unfold ith_value_incarry;
+    unfold value_sum; unfold mask_sum.
+
   Lemma helper66 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
-      bit_and (bvec_incarry (tnum.m P) (tnum.m Q) hidx)
-        (bvec_incarry (tnum.v P) (tnum.v Q) hidx) = zero.
+      bit_and (ith_mask_incarry P Q hidx) (ith_value_incarry P Q hidx) = zero.
   Proof.
-    unfold tnum.wellformed. unfold ingamma.
+    unfold_tnum_goodies.
     intros wfp wfq.
     induction i.
     - unfold bvec_incarry. auto.
@@ -96,14 +117,11 @@ Section linux_tnum_addition.
   Lemma helper63 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
-      bit_and (bvec_incarry (tnum.m P) (tnum.m Q) hidx)
-        (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
-           (bvec_add (tnum.m P) (tnum.m Q)) hidx) = zero /\
-        bit_and (bvec_incarry (tnum.v P) (tnum.v Q) hidx)
-          (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
-             (bvec_add (tnum.m P) (tnum.m Q)) hidx) = zero.
+      let vm_incarry := ith_value_mask_incarry P Q hidx in
+      bit_and (ith_mask_incarry P Q hidx) vm_incarry = zero /\
+        bit_and (ith_value_incarry P Q hidx) vm_incarry = zero.
   Proof.
-    unfold tnum.wellformed. unfold ingamma.
+    unfold_tnum_goodies.
     intros wfp wfq.
     induction i.
     - unfold bvec_incarry. auto.
@@ -133,18 +151,27 @@ Section linux_tnum_addition.
         repeat simplify_bit_ops; try easy.
   Qed.
 
+  Lemma specialize_wf_ig {SIZE} {x y} {P Q : tnum.t SIZE} :
+    tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
+    forall  {i} (hidx : i < SIZE),
+      (bvec_ith (tnum.m P) hidx = one -> bvec_ith (tnum.v P) hidx = zero) /\
+        (bvec_ith (tnum.m Q) hidx = one -> bvec_ith (tnum.v Q) hidx = zero) /\
+        (bvec_ith (tnum.m P) hidx = zero -> bvec_ith x hidx = bvec_ith (tnum.v P) hidx) /\
+        (bvec_ith (tnum.m Q) hidx = zero -> bvec_ith y hidx = bvec_ith (tnum.v Q) hidx).
+  Proof.
+    auto.
+  Qed.
+
+  (* TODO rename *)
+  (* Ltac crush11 := specialize_wf_ig*)
   Lemma helper45 {SIZE} x y P Q :
     tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
     forall [i] (hidx : S i < SIZE),
-      bvec_incarry (tnum.m P) (tnum.m Q) hidx = zero ->
-      let sv := bvec_add (tnum.v P) (tnum.v Q) in
-      let sm := bvec_add (tnum.m P) (tnum.m Q) in
-      bvec_incarry sv sm hidx = zero ->
-      bvec_incarry x y hidx = bvec_incarry (tnum.v P) (tnum.v Q) hidx.
+      ith_mask_incarry P Q hidx = zero ->
+      ith_value_mask_incarry P Q hidx = zero ->
+      bvec_incarry x y hidx = ith_value_incarry P Q hidx.
   Proof.
-    unfold tnum.wellformed.
-    unfold ingamma.
-    unfold tnum.ith_m. unfold tnum.ith_v.
+    unfold_tnum_goodies.
     intros wfp wfq igp igq.
 
     induction i.
@@ -154,18 +181,16 @@ Section linux_tnum_addition.
       unfold bvec_incarry.
       repeat simplify_bit_ops.
 
-      specialize (wfp 0 (ltprv hidx)).
-      specialize (wfq 0 (ltprv hidx)).
-      specialize (igp 0 (ltprv hidx)).
-      specialize (igq 0 (ltprv hidx)).
+      pose (H := specialize_wf_ig wfp wfq igp igq (ltprv hidx)).
+      destruct H as (wfps & wfqs & igps & igqs).
 
       destruct (bvec_ith (tnum.m P) (ltprv hidx));
         destruct (bvec_ith (tnum.m Q) (ltprv hidx));
         repeat simplify_bit_ops; try easy;
-        try rewrite_if_holds wfp;
-        try rewrite_if_holds wfq;
-        try rewrite_if_holds igp;
-        try rewrite_if_holds igq;
+        try rewrite_if_holds wfps;
+        try rewrite_if_holds wfqs;
+        try rewrite_if_holds igps;
+        try rewrite_if_holds igqs;
         repeat simplify_bit_ops; try easy;
         destruct (bvec_ith (tnum.v P) (ltprv hidx));
         destruct (bvec_ith (tnum.v Q) (ltprv hidx));
@@ -178,23 +203,11 @@ Section linux_tnum_addition.
 
       specialize (IHi (ltprv hidx)).
 
-      assert (h66 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
-                      (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx)) = zero).
-      apply helper66; auto.
+      pose (H := specialize_wf_ig wfp wfq igp igq (ltprv hidx)).
+      destruct H as (wfps & wfqs & igps & igqs).
 
-      assert (h64 : bit_and (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx))
-                      (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
-                         (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero /\
-                      bit_and (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx))
-                        (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
-                           (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx)) = zero).
-      apply helper63; auto.
-
-
-      specialize (wfp (S i) (ltprv hidx)).
-      specialize (wfq (S i) (ltprv hidx)).
-      specialize (igp (S i) (ltprv hidx)).
-      specialize (igq (S i) (ltprv hidx)).
+      pose (h66 := helper66 P Q wfp wfq (ltprv hidx)).
+      pose (h64 := helper63 P Q wfp wfq (ltprv hidx)).
 
       destruct(bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
         destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
@@ -204,10 +217,10 @@ Section linux_tnum_addition.
         destruct (bvec_ith (tnum.m P) (ltprv hidx));
         destruct (bvec_ith (tnum.m Q) (ltprv hidx));
 
-        try rewrite_if_holds wfp;
-        try rewrite_if_holds wfq;
-        try rewrite_if_holds igp;
-        try rewrite_if_holds igq;
+        try rewrite_if_holds wfps;
+        try rewrite_if_holds wfqs;
+        try rewrite_if_holds igps;
+        try rewrite_if_holds igqs;
         repeat simplify_bit_ops; try easy;
 
         destruct (bvec_ith (tnum.v P) (ltprv hidx));
@@ -228,7 +241,7 @@ Section linux_tnum_addition.
     tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_add P Q) hidx = zero ->
-      bvec_incarry x y hidx = bvec_incarry (tnum.v P) (tnum.v Q) hidx.
+      bvec_incarry x y hidx = ith_value_carry P Q hidx.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     intro H.
