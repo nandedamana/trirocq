@@ -253,14 +253,13 @@ Section linux_tnum_addition.
   Qed.
 
   Lemma helper33 {SIZE} x y P Q :
-    tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
+    tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_add P Q) hidx = zero ->
       bvec_incarry x y hidx = ith_value_incarry P Q hidx.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
-    intro H.
-    destruct H as (wfp & wfq & igP & igQ).
+    intros wfp wfq igP igQ.
     destruct i.
     - unfold bvec_incarry. auto.
     -
@@ -316,35 +315,26 @@ Section linux_tnum_addition.
     tnum.wellformed (tnum_add P Q) /\
       ingamma (bvec_add x y) (tnum_add P Q).
   Proof.
-    unfold tnum.wellformed. unfold ingamma.
-    intro H.
-
-    pose (H'1 := helper33 x y P Q H).
-
-    unfold tnum.ith_m in H.
-    destruct H as (wf1 & wf2 & igP & igQ).
+    unfold_tnum_goodies.
+    intros H. destruct H as (wfp & wfq & igP & igQ).
 
     split. apply tnum_add_wellformed; auto.
 
-    pose (H'2 := helper32 P Q wf1 wf2). unfold tnum.ith_m in H'2. (* TODO rename *)
-    unfold ingamma.
-
     intros i hidx rmskz.
 
-    specialize (H'2 i hidx rmskz) as (xmskz & ymskz & cinmskz).
-    specialize (H'1 i hidx rmskz).
-    revert rmskz.
+    assert (H33 := helper33 x y P Q wfp wfq igP igQ hidx rmskz).
+    assert (H32 := helper32 P Q wfp wfq hidx rmskz).
+    revert H32 H33. unfold_tnum_goodies. intros H32 H33.
 
-    revert cinmskz.
+    destruct H32 as (xmskz & ymskz & cinmskz).
+    revert cinmskz rmskz.
 
     unfold tnum_add.
-    rewrite tnum.ith_m_simplify.
-    rewrite tnum.ith_v_simplify.
+    rewrite tnum.ith_m_simplify2.
+    rewrite tnum.ith_v_simplify2.
 
     unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
     rewrite xmskz. rewrite ymskz. rewrite igP; auto. rewrite igQ; auto. simpl.
-
-    unfold tnum.ith_v.
 
     intros H1 H2.
 
@@ -353,7 +343,7 @@ Section linux_tnum_addition.
      * the assumption.
      *)
     rewrite H2. simpl.
-    rewrite H'1.
+    rewrite H33.
     rewrite bit_and_right_one.
     auto.
   Qed.
@@ -618,15 +608,14 @@ Section linux_tnum_subtraction.
   Qed.
 
   Lemma sublemma33 {SIZE} x y P Q :
-    tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
+    tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_sub P Q) hidx = zero ->
       bvec_inborrow x y hidx = bvec_inborrow (tnum.v P) (tnum.v Q) hidx.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     unfold tnum.ith_m. unfold tnum.ith_v.
-    intro H.
-    destruct H as (wfp & wfq & igP & igQ).
+    intros wfp wfq igP igQ.
     induction i.
     - unfold bvec_inborrow. auto.
     -
@@ -669,49 +658,41 @@ Section linux_tnum_subtraction.
     apply wellformed_general.
   Qed.
 
+  Ltac unfold_tnum_goodies :=
+    unfold tnum.wellformed; unfold ingamma;
+    unfold tnum_sub_ith_chi;
+    unfold tnum.ith_m; unfold tnum.ith_v.
+
   Lemma tnum_sub_sound {SIZE} x y (P Q : tnum.t SIZE) :
     tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
     tnum.wellformed (tnum_sub P Q) /\
       ingamma (bvec_sub x y) (tnum_sub P Q).
   Proof.
-    unfold tnum.wellformed. unfold ingamma.
-    intro H.
-
-    pose (H'1 := sublemma33 x y P Q H).
-
-    unfold tnum.ith_m in H.
-    destruct H as (wf1 & wf2 & igP & igQ).
+    unfold_tnum_goodies.
+    intros H. destruct H as (wfp & wfq & igP & igQ).
 
     split. apply tnum_sub_wellformed; auto.
 
-    pose (H'2 := sublemma32 P Q wf1 wf2). unfold tnum.ith_m in H'2. (* TODO rename *)
-    unfold ingamma.
-
     intros i hidx rmskz.
 
-    specialize (H'2 i hidx rmskz) as (xmskz & ymskz & binmskz).
-    specialize (H'1 i hidx rmskz).
-    revert rmskz.
+    assert (H33 := sublemma33 x y P Q wfp wfq igP igQ hidx rmskz).
+    assert (H32 := sublemma32 P Q wfp wfq hidx rmskz).
+    revert H32 H33. unfold_tnum_goodies. intros H32 H33.
 
-    revert binmskz.
+    destruct H32 as (xmskz & ymskz & cinmskz).
+    revert cinmskz rmskz.
 
     unfold tnum_sub.
-    rewrite tnum.ith_m_simplify.
-    rewrite tnum.ith_v_simplify.
+    rewrite tnum.ith_m_simplify2.
+    rewrite tnum.ith_v_simplify2.
 
     unwrap_bvec_ops. repeat rewrite bvec_fullsub_result.
     rewrite xmskz. rewrite ymskz. rewrite igP; auto. rewrite igQ; auto. simpl.
 
-    unfold tnum.ith_v.
-
     intros H1 H2.
 
-    (* Replaces the subexpression H2 from the goal with zero because it is
-     * the ith bit of `mu` (the `mu` from `sv & ~mu`), which is zero as per
-     * the assumption.
-     *)
     rewrite H2. simpl.
-    rewrite H'1.
+    rewrite H33.
     rewrite bit_and_right_one.
     auto.
   Qed.
