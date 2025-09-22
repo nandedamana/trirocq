@@ -573,10 +573,17 @@ Section linux_tnum_addition.
      * difference of the maximum concrete sum and the minimum concrete sum of P and Q.
      * The idea comes from https://dougallj.wordpress.com/2020/01/13/bit-twiddling-addition-with-unknown-bits/
      *)
-    Definition minsum {SIZE} (P : tnum.t SIZE) Q := bvec_add (tnum.v P) (tnum.v Q).
+    Definition minsum {SIZE} (P : tnum.t SIZE) Q :=
+      bvec_add (tnum.v P) (tnum.v Q).
+
+    Definition maxval {SIZE} (P : tnum.t SIZE) :=
+      bvec_or (tnum.v P) (tnum.m P).
+
     Definition maxsum {SIZE} (P : tnum.t SIZE) Q :=
-      bvec_add (bvec_or (tnum.v P) (tnum.m P)) (bvec_or (tnum.v Q) (tnum.m Q)).
-    Definition minmask {SIZE} (P : tnum.t SIZE) Q := bvec_xor (minsum P Q) (maxsum P Q).
+      bvec_add (maxval P) (maxval Q).
+
+    Definition minmask {SIZE} (P : tnum.t SIZE) Q :=
+      bvec_xor (minsum P Q) (maxsum P Q).
 
     (* minmask considers minsum and maxsum only. We need to show that that's enough to find the
      * minimum uncertainty by carry.
@@ -621,10 +628,10 @@ Section linux_tnum_addition.
     Lemma maximum_carries {SIZE} x y P Q :
       tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
-        bvec_incarry (bvec_or (tnum.v P) (tnum.m P)) (bvec_or (tnum.v Q) (tnum.m Q)) hidx = zero ->
+        bvec_incarry (maxval P) (maxval Q) hidx = zero ->
         bvec_incarry x y hidx = zero.
     Proof.
-      unfold tnum.wellformed. unfold ingamma.
+      unfold maxval. unfold tnum.wellformed. unfold ingamma.
       unfold tnum.ith_m. unfold tnum.ith_v.
       intros wfp wfq igp igq.
       induction i.
@@ -640,7 +647,7 @@ Section linux_tnum_addition.
         specialize (igq i (ltprv hidx)).
 
         unwrap_bvec_ops.
-        
+
         destruct (bvec_ith (tnum.v P) (ltprv hidx));
           destruct (bvec_ith (tnum.v Q) (ltprv hidx));
           destruct (bvec_ith (tnum.m P) (ltprv hidx));
@@ -655,7 +662,7 @@ Section linux_tnum_addition.
           repeat simplify_bit_ops_ex_not; try easy;
           crush10.
     Qed.
-    
+
     (* TODO better, directly work on the result of tnum_add(). *)
     (* This lemma essentially shows the optimization of chi is correct.
      * chi is meant to be the minimum mask via carry, which is the xor of minsum and maxsum.
@@ -669,7 +676,7 @@ Section linux_tnum_addition.
     Proof.
       unfold tnum.wellformed.
       intros wfp wfq i hidx.
-      unfold tnum_ith_chi. unfold minmask. unfold maxsum. unfold minsum.
+      unfold tnum_ith_chi. unfold minmask. unfold maxsum. unfold maxval. unfold minsum.
       induction i.
       -
         specialize (wfp 0 hidx).
