@@ -1,4 +1,4 @@
-(* 2025-09-24 *)
+(* Started 2025-09-24 *)
 
 From Stdlib Require Import List.
 From Stdlib Require Import Program.
@@ -20,6 +20,15 @@ Module Vector.
   Definition t A n := { x : list A | length x = n }.
   Definition projlist {A} {n} (x : t A n) := proj1_sig x.
   Definition projhlen {A} {n} (x : t A n) := proj2_sig x.
+
+  Program Definition nil {A} : t A 0.
+  refine (exist _ nil _). auto.
+  Defined.
+
+  Program Definition cons {A} {n} (v : t A n) (x : A) : t A (S n).
+  refine (exist _ (List.cons x (projlist v)) _).
+  destruct v. simpl. auto.
+  Defined.
 
   Program Definition nth_order {A} {n} (v : t A n) {i} (hi : i < n) :=
     match (List.nth_error (projlist v) i) with
