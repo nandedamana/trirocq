@@ -87,17 +87,17 @@ Module Vector.
   Definition projhlen {A} {n} (x : t A n) := proj2_sig x.
 
   Definition nil {A} : t A 0.
-  refine (exist _ nil _). auto.
+    refine (exist _ nil _). auto.
   Defined.
 
   Definition cons {A} (x : A) {n} (v : t A n) : t A (S n).
-  refine (exist _ (List.cons x (projlist v)) _).
-  destruct v. simpl. auto.
+    refine (exist _ (List.cons x (projlist v)) _).
+    destruct v. simpl. auto.
   Defined.
 
   Definition tl {A} {n} (v : t A (S n)) : t A n.
-  destruct v as [xs hlen]. destruct xs. destruct n; easy.
-  refine (exist _ xs _). auto.
+    destruct v as [xs hlen]. destruct xs. destruct n; easy.
+    refine (exist _ xs _). auto.
   Defined.
 
   Definition shiftin {A} (a : A) {n} (v : t A n) : t A (S n).
@@ -107,9 +107,9 @@ Module Vector.
   Defined.
 
   Definition shiftout {A} {n} (v : t A (S n)) : t A n.
-  destruct v as [xs hlen].
-  refine (exist _ (firstn n xs) _).
-  pose (H := length_firstn n xs). lia.
+    destruct v as [xs hlen].
+    refine (exist _ (firstn n xs) _).
+    pose (H := length_firstn n xs). lia.
   Defined.
 
   Definition nth_error {A} {n} (v : t A n) i : option A :=
@@ -195,7 +195,7 @@ Module bvec.
   Qed.
 
   Lemma bvec_lshift1_ith_S {n} (v : bvec (S n)) {i} (hi : S i < S n) :
-      bvec_ith (bvec_lshift1 v) hi = bvec_ith v (ltprv hi).
+    bvec_ith (bvec_lshift1 v) hi = bvec_ith v (ltprv hi).
   Proof.
     destruct v as [xs hlen].
     unfold bvec_lshift1. unfold bvec_ith.
@@ -211,7 +211,7 @@ Module bvec.
   Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
 
   Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
-      bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
   Proof.
     destruct v as [xs hlen].
     unfold bvec_rshift1. unfold bvec_ith.
