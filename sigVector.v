@@ -44,6 +44,19 @@ Ltac rewrite_safe_nth xs hi1 :=
   let h1' := fresh "h1'" in
   assert (h1 := safe_nth_unsafe xs hi1); destruct h1 as [x1 (hx1 & h1')]; rewrite h1'.
 
+Ltac rewrite_safe_nth_auto_left :=
+  match goal with
+  | [ |- safe_nth ?xs ?hi = _ ] =>
+      rewrite_safe_nth xs hi
+  end.
+
+Ltac rewrite_safe_nth_auto :=
+  match goal with
+  | [ |- safe_nth ?xs ?hi = safe_nth ?ys ?hj ] =>
+      rewrite_safe_nth xs hi;
+      rewrite_safe_nth ys hj
+  end.
+
 Lemma eqxy2Some {A} {x y : A} : Some x = Some y -> x = y.
   congruence.
 Qed.
@@ -67,6 +80,7 @@ Proof.
   reflexivity.
 Qed.
 
+(* TODO consider renaming lemmas (change nth to nth_order) if they use nth_order instead of nth *)
 Module Vector.
   Definition t A n := { x : list A | length x = n }.
   Definition projlist {A} {n} (x : t A n) := proj1_sig x.
@@ -84,6 +98,12 @@ Module Vector.
   Definition tl {A} {n} (v : t A (S n)) : t A n.
   destruct v as [xs hlen]. destruct xs. destruct n; easy.
   refine (exist _ xs _). auto.
+  Defined.
+
+  Definition shiftin {A} (a : A) {n} (v : t A n) : t A (S n).
+    destruct v as [xs hlen].
+    refine (exist _ (List.app xs (List.cons a List.nil)) _).
+    rewrite length_app. simpl. lia.
   Defined.
 
   Definition shiftout {A} {n} (v : t A (S n)) : t A n.
@@ -132,8 +152,7 @@ Module Vector.
   Proof.
     enough (H : projlist (shiftout v) = firstn n (projlist v)).
     unfold nth_order.
-    rewrite_safe_nth (projlist (shiftout v)) (convhi (shiftout v) hi).
-    rewrite_safe_nth (projlist v) (convhi v (ltsuc i n hi)).
+    rewrite_safe_nth_auto.
     rewrite_eqxy2Some.
     rewrite H.
     destruct v as [xs hlen]. simpl.
@@ -183,5 +202,58 @@ Module bvec.
     rewrite Vector.nth_cons.
     rewrite Vector.nth_shiftout.
     apply Vector.nth_order_eq.
+  Qed.
+
+  (* Using logical shift since the type used in Linux is u64 *)
+  Definition bvec_rshift1 {n} (v : bvec (S n)) : bvec (S n) :=
+    Vector.shiftin zero (Vector.tl v).
+
+  Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
+
+  Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
+      bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+  Proof.
+    destruct v as [xs hlen].
+    unfold bvec_rshift1. unfold bvec_ith.
+    unfold Vector.nth_order.
+    destruct xs.
+    - destruct i; easy.
+    - rewrite_safe_nth_auto.
+      rewrite_eqxy2Some.
+      simpl. rewrite nth_error_app1. reflexivity.
+      assert (hlen2 := length_cons xs b). rewrite hlen in hlen2.
+      assert (hlen3 : n = length xs). lia.
+      assert (hlen4 : i < n). lia. rewrite hlen3 in hlen4. assumption.
+  Qed.
+
+  (* TODO update the user and remove this *)
+  Lemma bvec_rshift1_ith_0 {n} (v : bvec (S n)) (hi : 0 < S n) (hi2 : 0 <> n) :
+    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+  Proof.
+    apply bvec_rshift1_ith_ltn.
+  Qed.
+
+  (* TODO rem the third arg after updating the users;
+   * synth with (PeanoNat.Nat.lt_succ_diag_r n)
+   *)
+  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n) :
+    Vector.nth_order (Vector.shiftin a v) hi = a.
+  Proof.
+    destruct v as [xs hlen].
+    unfold Vector.nth_order.
+    assert (n < length (Vector.projlist
+                          (Vector.shiftin a (exist (fun x : list A => length x = n) xs hlen)))). simpl. rewrite <- hlen. rewrite length_app. simpl. lia.
+
+    rewrite_safe_nth_auto_left. simpl in hx1.
+    rewrite nth_error_app2 in hx1. rewrite hlen in hx1.
+    replace (n - n) with 0 in hx1. rewrite nth_error_cons_0 in hx1.
+    congruence. lia. lia.
+  Qed.
+
+  (* TODO rem the third arg after updating the users *)
+  Lemma bvec_rshift1_ith_n {n} (v : bvec (S n)) (hi : n < S n) :
+    bvec_ith (bvec_rshift1 v) hi = zero.
+  Proof.
+    apply nth_shiftin_last.
   Qed.
 End bvec.
