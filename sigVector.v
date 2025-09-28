@@ -95,6 +95,11 @@ Module Vector.
     destruct v. simpl. auto.
   Defined.
 
+  Definition const {A} (c : A) n : t A n.
+    refine (exist _ (List.repeat c n) _).
+    apply repeat_length.
+  Defined.
+
   Definition tl {A} {n} (v : t A (S n)) : t A n.
     destruct v as [xs hlen]. destruct xs. destruct n; easy.
     refine (exist _ xs _). auto.
@@ -145,6 +150,10 @@ Module Vector.
     destruct v as [xs hlen]. intros.
     unfold nth_order. simpl. apply safe_nth_eq.
   Qed.
+
+  Lemma const_nth {A} (c : A) {n} {i} (hi : i < n) : nth_order (const c n) hi = c.
+    (* TODO *)
+  Admitted.
 
   (* TODO move out since not general *)
   Lemma nth_shiftout {A} {n} (v : t A (S n)) {i} (hi : i < n) :
