@@ -1,14 +1,14 @@
 Require Import trirocq.Bit.
+Require Import trirocq.SigVector.
 
 From Stdlib Require Import Lia.
 
-Lemma ltprv {i} {n} : S i < n -> i < n.
-  lia.
-Qed.
+Lemma ltprv {i} {n} : S i < n -> i < n. lia. Qed.
 
 Definition bvec SIZE := Vector.t bit SIZE.
-Definition bvec_ith {SIZE} (v : bvec SIZE) {i} (hidx : i < SIZE) :=
-  Vector.nth_order v hidx.
+
+Definition bvec_ith {n} (v : bvec n) {i} (hi : i < n) := Vector.nth_order v hi.
+Definition bvec_ith_error {n} (v : bvec n) {i} := Vector.nth_error v i.
 
 Definition bvec_and {SIZE} (x y : bvec SIZE) := Vector.map2 bit_and x y.
 Definition bvec_or  {SIZE} (x y : bvec SIZE) := Vector.map2 bit_or x y.
@@ -115,6 +115,91 @@ Module bmir. (* bvec_mul_iter_result *)
     match r with cons _ _ acc => acc end.
 End bmir.
 
+Section bvec_shift.
+  (* Remember: head (i = 0) has the LSB *)
+  Definition bvec_lshift1 {n} (v : bvec (S n)) : bvec (S n) :=
+    Vector.cons _ zero _ (Vector.shiftout v).
+
+  Lemma bvec_lshift1_ith_0 {n} (v : bvec (S n)) (hi : 0 < S n) :
+    bvec_ith (bvec_lshift1 v) hi = zero.
+  Proof.
+    destruct v as [xs hlen].
+    destruct n; try easy.
+  Qed.
+
+  (* TODO rem if not used (written in the hope that it'd simplify many other parts *)
+  Lemma nth_tl_error {n} (v : bvec (S n)) {i} :
+    Vector.nth_error (Vector.tl v) i = Vector.nth_error v (S i).
+  Proof.
+    destruct v as [xs hlen].
+    destruct xs. easy. simpl.
+    reflexivity.
+  Qed.
+
+  Lemma bvec_lshift1_ith_S {n} (v : bvec (S n)) {i} (hi : S i < S n) :
+    bvec_ith (bvec_lshift1 v) hi = bvec_ith v (ltprv hi).
+  Proof.
+    destruct v as [xs hlen].
+    unfold bvec_lshift1. unfold bvec_ith.
+    rewrite Vector.nth_cons.
+    rewrite Vector.nth_shiftout.
+    apply Vector.nth_order_eq.
+  Qed.
+
+  (* Using logical shift since the type used in Linux is u64 *)
+  Definition bvec_rshift1 {n} (v : bvec (S n)) : bvec (S n) :=
+    Vector.shiftin zero (Vector.tl v).
+
+  Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
+
+  Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
+    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+  Proof.
+    destruct v as [xs hlen].
+    unfold bvec_rshift1. unfold bvec_ith.
+    unfold Vector.nth_order.
+    destruct xs.
+    - destruct i; easy.
+    - rewrite_safe_nth_auto.
+      rewrite_eqxy2Some.
+      simpl. rewrite List.nth_error_app1. reflexivity.
+      assert (hlen2 := List.length_cons xs b). rewrite hlen in hlen2.
+      assert (hlen3 : n = length xs). lia.
+      assert (hlen4 : i < n). lia. rewrite hlen3 in hlen4. assumption.
+  Qed.
+
+  (* TODO update the user and remove this *)
+  Lemma bvec_rshift1_ith_0 {n} (v : bvec (S n)) (hi : 0 < S n) (hi2 : 0 <> n) :
+    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+  Proof.
+    apply bvec_rshift1_ith_ltn.
+  Qed.
+
+  (* TODO rem the third arg after updating the users;
+   * synth with (PeanoNat.Nat.lt_succ_diag_r n)
+   *)
+  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n) :
+    Vector.nth_order (Vector.shiftin a v) hi = a.
+  Proof.
+    destruct v as [xs hlen].
+    unfold Vector.nth_order.
+    assert (n < length (Vector.projlist
+                          (Vector.shiftin a (exist (fun x : list A => length x = n) xs hlen)))). simpl. rewrite <- hlen. rewrite List.length_app. simpl. lia.
+
+    rewrite_safe_nth_auto_left. simpl in hx1.
+    rewrite List.nth_error_app2 in hx1. rewrite hlen in hx1.
+    replace (n - n) with 0 in hx1. rewrite List.nth_error_cons_0 in hx1.
+    congruence. lia. lia.
+  Qed.
+
+  (* TODO rem the third arg after updating the users *)
+  Lemma bvec_rshift1_ith_n {n} (v : bvec (S n)) (hi : n < S n) :
+    bvec_ith (bvec_rshift1 v) hi = zero.
+  Proof.
+    apply nth_shiftin_last.
+  Qed.
+End bvec_shift.
+
 Section bvec_multiplication.
   Definition zerovec SIZE : bvec SIZE := Vector.const zero SIZE.
 
@@ -127,29 +212,6 @@ Section bvec_multiplication.
        | zero => zerovec SIZE
        | one => x
        end.
-
-  Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
-
-  (* Remember: head (i = 0) has the LSB *)
-  Axiom bvec_lshift1 : forall {n}, bvec (S n) -> bvec (S n).
-
-  Axiom bvec_lshift1_ith_0 : forall {n} (v : bvec (S n)) (hi : 0 < S n),
-      bvec_ith (bvec_lshift1 v) hi = zero.
-
-  Axiom bvec_lshift1_ith_S : forall {n} (v : bvec (S n)) {i} (hi : S i < S n),
-      bvec_ith (bvec_lshift1 v) hi = bvec_ith v (ltprv hi).
-
-  (* Using logical shift since the type used in Linux is u64 *)
-  Axiom bvec_rshift1 : forall {n}, bvec (S n) -> bvec (S n).
-
-  Axiom bvec_rshift1_ith_0 : forall {n} (v : bvec (S n)) (hi : 0 < S n) (hi2 : 0 <> n),
-      bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
-
-  Axiom bvec_rshift1_ith_ltn : forall {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n),
-      bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
-
-  Axiom bvec_rshift1_ith_n : forall {n} (v : bvec (S n)) (hi : n < S n),
-      bvec_ith (bvec_rshift1 v) hi = zero.
 
   Section Testing.
     Fixpoint onevec SIZE := match SIZE with

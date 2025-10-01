@@ -9,7 +9,6 @@ Definition ltS {m} {n} (hlt : m < n) := (proj1 (iff_and (PeanoNat.Nat.succ_lt_mo
 Definition ltSr {m} {n} (hlt : S m < S n) := (proj2 (iff_and (PeanoNat.Nat.succ_lt_mono m n))) hlt.
 Definition ltsuc := PeanoNat.Nat.lt_lt_succ_r.
 
-(* TODO convert all possible Defined to Qed after proving everything *)
 Lemma nth_no_error {A} (x : list A):
   forall {n}, length x = n -> forall {i}, i < n -> nth_error x i <> None.
 Proof.
@@ -80,17 +79,81 @@ Proof.
   reflexivity.
 Qed.
 
+Section map2_list.
+  (* Providing custom map2 since it is no longer found in the Stdlib. *)
+  Fixpoint map2_list {A} {B} {C} (f : A -> B -> C) (xs : list A) (ys : list B) : list C :=
+    match xs, ys with
+    | List.nil, List.nil => List.nil
+    | List.cons xh xt, List.cons yh yt =>
+        List.cons (f xh yh) (map2_list f xt yt)
+    | _, _ => List.nil
+    end.
+
+  Lemma map2_list_cons {A} {B} {C} (f : A -> B -> C) :
+    forall xh (xt : list A) yh (yt : list B),
+      map2_list f (List.cons xh xt) (List.cons yh yt) =
+        List.cons (f xh yh) (map2_list f xt yt).
+  Proof.
+    intros. simpl. auto.
+  Qed.
+
+  Lemma map2_list_length {A} {B} {C} (f : A -> B -> C) {n} :
+    forall (xs : list A) (ys : list B),
+      length xs = n -> length ys = n -> length (map2_list f xs ys) = n.
+  Proof.
+    induction n.
+    - intros xs ys hlenx hleny.
+      destruct xs; try easy. destruct ys; try easy.
+    - destruct xs; try easy. destruct ys; try easy.
+      rewrite map2_list_cons. repeat rewrite length_cons.
+      intros hlenx hleny.
+      apply eq_add_S in hlenx. apply eq_add_S in hleny.
+      apply eq_S. auto.
+  Qed.
+
+  Lemma map2_list_convhi {A} {B} {C} (f : A -> B -> C) {n} :
+    forall (xs : list A) (ys : list B),
+      length xs = n -> length ys = n ->
+      forall {i}, i < n -> i < length (map2_list f xs ys).
+  Proof.
+    intros. rewrite map2_list_length with (n := n); auto.
+  Qed.
+
+  Lemma length_convhi {A} {n} (xs : list A) :
+    length xs = n -> forall {i}, i < n -> i < length xs.
+  Proof. intros. lia. Qed.
+
+  Definition option_map2 {A} {B} {C}
+    (f : A -> B -> C) (oa : option A) (ob : option B) :=
+    match oa, ob with
+    | Some a, Some b => Some (f a b)
+    | _, _ => None
+    end.
+
+  Lemma nth_error_map2_list {A} {B} {C} (f : A -> B -> C) :
+    forall (xs : list A) (ys : list B) i,
+      nth_error (map2_list f xs ys) i = option_map2 f (nth_error xs i) (nth_error ys i).
+  Proof.
+    unfold map2_list.
+    induction xs.
+    - destruct ys; destruct i; auto.
+    - destruct ys; destruct i; auto.
+      unfold option_map2. simpl. destruct (nth_error xs i); auto.
+      simpl. auto.
+  Qed.
+End map2_list.
+
 (* TODO consider renaming lemmas (change nth to nth_order) if they use nth_order instead of nth *)
 Module Vector.
   Definition t A n := { x : list A | length x = n }.
   Definition projlist {A} {n} (x : t A n) := proj1_sig x.
   Definition projhlen {A} {n} (x : t A n) := proj2_sig x.
 
-  Definition nil {A} : t A 0.
+  Definition nil A : t A 0.
     refine (exist _ nil _). auto.
   Defined.
 
-  Definition cons {A} (x : A) {n} (v : t A n) : t A (S n).
+  Definition cons A (x : A) n (v : t A n) : t A (S n).
     refine (exist _ (List.cons x (projlist v)) _).
     destruct v. simpl. auto.
   Defined.
@@ -117,6 +180,20 @@ Module Vector.
     pose (H := length_firstn n xs). lia.
   Defined.
 
+  Definition map {A} {B} (f : A -> B) {n} (v : t A n) : t B n.
+    destruct v as [xs hlen].
+    refine (exist _ (List.map f xs) _).
+    rewrite <- hlen. apply length_map.
+  Defined.
+
+  Definition map2 {A} {B} {C} (f : A -> B -> C) {n} (v1 : t A n) (v2 : t B n) : t C n.
+    destruct v1 as [xs hlen1].
+    destruct v2 as [ys hlen2].
+
+    refine (exist _ (map2_list f xs ys) _).
+    apply map2_list_length; auto.
+  Defined.
+  
   Definition nth_error {A} {n} (v : t A n) i : option A :=
     List.nth_error (projlist v) i.
 
@@ -126,6 +203,35 @@ Module Vector.
 
   Definition nth_order {A} {n} (v : t A n) {i} (hi : i < n) : A := safe_nth (projlist v) (convhi v hi).
 
+  Lemma nth_map {A} {B} (f : A -> B) {n} (v : t A n) :
+    forall {i} (hi : i < n), nth_order (map f v) hi = f (nth_order v hi).
+  Proof.
+    intros i hi.
+    destruct v as [xs hlenx].
+    unfold nth_order. unfold map. simpl.
+    rewrite_safe_nth_auto_left.
+    rewrite List.nth_error_map in hx1.
+    rewrite_safe_nth xs (convhi (exist (fun x : list A => length x = n) xs hlenx) hi).
+    rewrite hx0 in hx1. simpl in hx1. congruence.
+  Qed.
+
+  Lemma nth_map2 {A} {B} {C} (f : A -> B -> C) {n} (v1 : t A n) (v2 : t B n) :
+    forall {i} (hi : i < n),
+      nth_order (map2 f v1 v2) hi = f (nth_order v1 hi) (nth_order v2 hi).
+  Proof.
+    intros i hi.
+    destruct v1 as [xs hlenx].
+    destruct v2 as [ys hleny].
+    unfold nth_order. unfold map2. simpl.
+    rewrite_safe_nth_auto_left.
+    rewrite nth_error_map2_list in hx1.
+    rewrite_safe_nth xs (convhi (exist (fun x : list A => length x = n) xs hlenx) hi).
+    rewrite_safe_nth ys (convhi (exist (fun y : list B => length y = n) ys hleny) hi).
+    assert (H := nth_error_map2_list f xs ys i).
+    rewrite hx0 in hx1. rewrite hx2 in hx1. simpl in hx1.
+    congruence.
+  Qed.
+  
   (* Because two objects of the type i < n could be different, but serve
    * the same purpose in this case.
    *)
@@ -137,7 +243,7 @@ Module Vector.
 
   (* TODO move out since not general *)
   Lemma nth_cons_error {A} {n} (v : t A n) x :
-    forall i, nth_error (cons x v) (S i) = nth_error v i.
+    forall i, nth_error (cons _ x _ v) (S i) = nth_error v i.
   Proof.
     destruct v as [xs hlen]. intros.
     unfold nth_error. simpl. reflexivity.
@@ -145,15 +251,18 @@ Module Vector.
 
   (* TODO move out since not general *)
   Lemma nth_cons {A} {n} (v : t A n) x :
-    forall {i} (hi : S i < S n), nth_order (cons x v) hi = nth_order v (ltSr hi).
+    forall {i} (hi : S i < S n), nth_order (cons _ x _ v) hi = nth_order v (ltSr hi).
   Proof.
     destruct v as [xs hlen]. intros.
     unfold nth_order. simpl. apply safe_nth_eq.
   Qed.
 
   Lemma const_nth {A} (c : A) {n} {i} (hi : i < n) : nth_order (const c n) hi = c.
-    (* TODO *)
-  Admitted.
+    unfold nth_order. unfold const. simpl.
+    rewrite_safe_nth_auto_left.
+    rewrite List.nth_error_repeat in hx1.
+    congruence. assumption.
+  Qed.
 
   (* TODO move out since not general *)
   Lemma nth_shiftout {A} {n} (v : t A (S n)) {i} (hi : i < n) :
@@ -174,95 +283,3 @@ Module Vector.
     destruct v as [xs hlen]. simpl. auto.
   Qed.
 End Vector.
-
-Module bvec.
-  Definition bit := bool.
-  Definition zero := false.
-  Definition bvec SIZE := Vector.t bit SIZE.
-
-  Definition bvec_ith {n} (v : bvec n) {i} (hi : i < n) := Vector.nth_order v hi.
-  Definition bvec_ith_error {n} (v : bvec n) {i} := Vector.nth_error v i.
-
-  (* Remember: head (i = 0) has the LSB *)
-  Definition bvec_lshift1 {n} (v : bvec (S n)) : bvec (S n) :=
-    Vector.cons zero (Vector.shiftout v).
-
-  Lemma bvec_lshift1_ith_0 {n} (v : bvec (S n)) (hi : 0 < S n) :
-    bvec_ith (bvec_lshift1 v) hi = zero.
-  Proof.
-    destruct v as [xs hlen].
-    destruct n; try easy.
-  Qed.
-
-  (* TODO rem if not used (written in the hope that it'd simplify many other parts *)
-  Lemma nth_tl_error {n} (v : bvec (S n)) {i} :
-    Vector.nth_error (Vector.tl v) i = Vector.nth_error v (S i).
-  Proof.
-    destruct v as [xs hlen].
-    destruct xs. easy. simpl.
-    reflexivity.
-  Qed.
-
-  Lemma bvec_lshift1_ith_S {n} (v : bvec (S n)) {i} (hi : S i < S n) :
-    bvec_ith (bvec_lshift1 v) hi = bvec_ith v (ltprv hi).
-  Proof.
-    destruct v as [xs hlen].
-    unfold bvec_lshift1. unfold bvec_ith.
-    rewrite Vector.nth_cons.
-    rewrite Vector.nth_shiftout.
-    apply Vector.nth_order_eq.
-  Qed.
-
-  (* Using logical shift since the type used in Linux is u64 *)
-  Definition bvec_rshift1 {n} (v : bvec (S n)) : bvec (S n) :=
-    Vector.shiftin zero (Vector.tl v).
-
-  Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
-
-  Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
-    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
-  Proof.
-    destruct v as [xs hlen].
-    unfold bvec_rshift1. unfold bvec_ith.
-    unfold Vector.nth_order.
-    destruct xs.
-    - destruct i; easy.
-    - rewrite_safe_nth_auto.
-      rewrite_eqxy2Some.
-      simpl. rewrite nth_error_app1. reflexivity.
-      assert (hlen2 := length_cons xs b). rewrite hlen in hlen2.
-      assert (hlen3 : n = length xs). lia.
-      assert (hlen4 : i < n). lia. rewrite hlen3 in hlen4. assumption.
-  Qed.
-
-  (* TODO update the user and remove this *)
-  Lemma bvec_rshift1_ith_0 {n} (v : bvec (S n)) (hi : 0 < S n) (hi2 : 0 <> n) :
-    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
-  Proof.
-    apply bvec_rshift1_ith_ltn.
-  Qed.
-
-  (* TODO rem the third arg after updating the users;
-   * synth with (PeanoNat.Nat.lt_succ_diag_r n)
-   *)
-  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n) :
-    Vector.nth_order (Vector.shiftin a v) hi = a.
-  Proof.
-    destruct v as [xs hlen].
-    unfold Vector.nth_order.
-    assert (n < length (Vector.projlist
-                          (Vector.shiftin a (exist (fun x : list A => length x = n) xs hlen)))). simpl. rewrite <- hlen. rewrite length_app. simpl. lia.
-
-    rewrite_safe_nth_auto_left. simpl in hx1.
-    rewrite nth_error_app2 in hx1. rewrite hlen in hx1.
-    replace (n - n) with 0 in hx1. rewrite nth_error_cons_0 in hx1.
-    congruence. lia. lia.
-  Qed.
-
-  (* TODO rem the third arg after updating the users *)
-  Lemma bvec_rshift1_ith_n {n} (v : bvec (S n)) (hi : n < S n) :
-    bvec_ith (bvec_rshift1 v) hi = zero.
-  Proof.
-    apply nth_shiftin_last.
-  Qed.
-End bvec.

@@ -1,5 +1,3 @@
-From Stdlib Require Vector.
-
 (* I don't want to use true/false to represent one/zero. *)
 Variant bit := zero | one.
 Definition bit2bool b := match b with
