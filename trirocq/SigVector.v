@@ -163,6 +163,13 @@ Module Vector.
     apply repeat_length.
   Defined.
 
+  Lemma eqlist_imp_eqvec {A} {n} (v1 : Vector.t A n) (v2 : Vector.t A n) :
+    Vector.projlist v1 = Vector.projlist v2 -> v1 = v2.
+  Proof.
+    destruct v1 as [xs hlenx]. destruct v2 as [ys hleny].
+    apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+  Qed.
+  
   Definition tl {A} {n} (v : t A (S n)) : t A n.
     destruct v as [xs hlen]. destruct xs. destruct n; easy.
     refine (exist _ xs _). auto.
@@ -193,7 +200,7 @@ Module Vector.
     refine (exist _ (map2_list f xs ys) _).
     apply map2_list_length; auto.
   Defined.
-  
+
   Definition nth_error {A} {n} (v : t A n) i : option A :=
     List.nth_error (projlist v) i.
 
@@ -231,7 +238,7 @@ Module Vector.
     rewrite hx0 in hx1. rewrite hx2 in hx1. simpl in hx1.
     congruence.
   Qed.
-  
+
   (* Because two objects of the type i < n could be different, but serve
    * the same purpose in this case.
    *)

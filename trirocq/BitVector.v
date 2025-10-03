@@ -225,7 +225,7 @@ Section bvec_multiplication.
     Lemma lt_7_8 : 7 < 8. lia. Qed.
 
     Example vlsh := (bvec_lshift1 (onevec 8)).
-    Lemma lshift_is_correct :
+    Lemma lshift_probably_correct :
       (bvec_ith vlsh lt_0_8) = zero /\
         (bvec_ith vlsh lt_1_8) = one /\
         (bvec_ith vlsh lt_6_8) = one /\
@@ -238,7 +238,7 @@ Section bvec_multiplication.
     Qed.
 
     Example vrsh := (bvec_rshift1 (onevec 8)).
-    Lemma rshift_is_correct :
+    Lemma rshift_probably_correct :
       (bvec_ith vrsh lt_0_8) = one /\
         (bvec_ith vrsh lt_1_8) = one /\
         (bvec_ith vrsh lt_6_8) = one /\
@@ -281,3 +281,157 @@ Ltac unwrap_bvec_ops := match goal with
                                repeat rewrite bvec_or_rel;
                                repeat rewrite bvec_xor_rel
                         end.
+
+Section bvec_denote.
+  Definition bit2nat b := match b with
+                          | zero => 0
+                          | one => 1
+                          end.
+
+  Fixpoint bitlist_denote_helper (xs : list bit) : nat :=
+    match xs with
+    | List.nil => 0
+    | List.cons h t => bit2nat h + Nat.double (bitlist_denote_helper t)
+    end.
+
+  Definition bvec_denote {n} (v : bvec n) :=
+    bitlist_denote_helper (Vector.projlist v).
+
+  Example v10 : bvec 4 := Vector.cons _ zero _
+                            (Vector.cons _ one _
+                               (Vector.cons _ zero _
+                                  (Vector.cons _ one _
+                                     (Vector.nil _)))).
+  Example bvec_test_10 : bvec_denote v10 = 10. auto. Qed.
+End bvec_denote.
+
+Section bvec_lshift1_correct.
+  Definition bvec_lshift1_notrunc {n} (v : bvec n) : bvec (S n) :=
+    Vector.cons _ zero _ v.
+
+  (* denoted(shifted v) = shifted(denoted v) mod 2^SIZE *)
+  Lemma bitlist_lshift1_notrunc_correct xs :
+    bitlist_denote_helper (List.cons zero xs) =
+      Nat.shiftl (bitlist_denote_helper xs) 1.
+  Proof.
+    auto.
+  Qed.
+
+  (* denoted(shifted v) = shifted(denoted v) mod 2^SIZE *)
+  Lemma bvec_lshift1_notrunc_correct {n} : forall (v : bvec (S n)),
+      bvec_denote (bvec_lshift1_notrunc v) = Nat.shiftl (bvec_denote v) 1.
+  Proof.
+    destruct v as [xs hlen].
+    apply bitlist_lshift1_notrunc_correct.
+  Qed.
+
+  (* TODO instead, consider redefining lshift1 (first cons and then tl),
+   * which would make this rewriting unnecessary.
+   *)
+  Lemma bvec_lshift1_reorder {n} (v : bvec (S n)) :
+    Vector.cons bit zero n (Vector.shiftout v) =
+      Vector.shiftout (Vector.cons bit zero (S n) v).
+  Proof.
+    destruct v as [xs hlen].
+    apply Vector.eqlist_imp_eqvec. simpl. reflexivity.
+  Qed.
+
+  Lemma bitlist_double_denote (xs : list bit) :
+    Nat.double (bitlist_denote_helper xs) =
+      bitlist_denote_helper (List.cons zero xs).
+  Proof. simpl. reflexivity. Qed.
+
+  Lemma Nat_ones_to_bitlist {n} :
+    PeanoNat.Nat.ones n = bitlist_denote_helper (List.repeat one n).
+  Proof.
+    induction n.
+    - auto.
+    - simpl. rewrite <- IHn.
+      rewrite PeanoNat.Nat.ones_succ. lia.
+  Qed.
+
+  Lemma x_plus_x_eq_twice_x x : x + x = 2 * x. lia. Qed.
+  Lemma x_plus_1_eq_Sx x : x + 1 = S x. lia. Qed.
+
+  Lemma Nat_land_cons_cons a xs b ys :
+    Nat.land (bitlist_denote_helper (a :: xs)) (bitlist_denote_helper (b :: ys)) =
+      bit2nat (bit_and a b) + Nat.double (Nat.land (bitlist_denote_helper xs) (bitlist_denote_helper ys)).
+  Proof.
+    simpl.
+    repeat rewrite PeanoNat.Nat.double_twice.
+    destruct a; simpl; destruct b; simpl; repeat rewrite PeanoNat.Nat.add_0_r; repeat rewrite x_plus_x_eq_twice_x.
+    - rewrite PeanoNat.Nat.land_even_even. reflexivity.
+    - replace (S (2 * bitlist_denote_helper ys)) with ((2 * bitlist_denote_helper ys) + 1).
+      rewrite PeanoNat.Nat.land_even_odd. reflexivity.
+      apply x_plus_1_eq_Sx.
+    - replace (S (2 * bitlist_denote_helper xs)) with ((2 * bitlist_denote_helper xs) + 1).
+      rewrite PeanoNat.Nat.land_odd_even. reflexivity.
+      apply x_plus_1_eq_Sx.
+    - replace (S (2 * bitlist_denote_helper xs)) with ((2 * bitlist_denote_helper xs) + 1).
+      replace (S (2 * bitlist_denote_helper ys)) with ((2 * bitlist_denote_helper ys) + 1).
+      rewrite PeanoNat.Nat.land_odd_odd. simpl. rewrite x_plus_1_eq_Sx. auto.
+      apply x_plus_1_eq_Sx. apply x_plus_1_eq_Sx.
+  Qed.
+
+  Lemma Nat_land_xs_ys xs : forall ys,
+    Nat.land (bitlist_denote_helper xs) (bitlist_denote_helper ys) =
+      bitlist_denote_helper (map2_list bit_and xs ys).
+  Proof.
+    induction xs.
+    - destruct ys; auto.
+    - destruct ys. apply PeanoNat.Nat.land_0_r.
+      rewrite Nat_land_cons_cons. rewrite IHxs. auto.
+  Qed.
+
+  Lemma and_ones_to_firstn xs :
+    forall n, map2_list bit_and xs (List.repeat one n) = List.firstn n xs.
+  Proof.
+    induction xs.
+    - destruct n; easy.
+    - destruct n.
+      + simpl. auto.
+      + simpl. rewrite IHxs.
+        destruct a; reflexivity.
+  Qed.
+
+  Lemma Nat_land_ones_to_firstn {n} (xs : list bit) :
+    Nat.land (bitlist_denote_helper xs) (PeanoNat.Nat.ones n) =
+      bitlist_denote_helper (List.firstn n xs).
+  Proof.
+    rewrite Nat_ones_to_bitlist. rewrite Nat_land_xs_ys.
+    rewrite and_ones_to_firstn. reflexivity.
+  Qed.
+
+  Lemma Nat_land_double_xs_ones {n} (xs : list bit) :
+    Nat.land (Nat.double (bitlist_denote_helper xs)) (PeanoNat.Nat.ones (S n)) =
+      Nat.double (bitlist_denote_helper (List.firstn n xs)).
+  Proof.
+    repeat rewrite bitlist_double_denote.
+    rewrite Nat_land_ones_to_firstn.
+    rewrite List.firstn_cons. reflexivity.
+  Qed.
+
+  Lemma bvec_lshift1_correct_trunc2notrunc {n} : forall (v : bvec (S n)),
+      bvec_denote (bvec_lshift1 v) =
+        Nat.modulo (bvec_denote (bvec_lshift1_notrunc v)) (Nat.pow 2 (S n)).
+  Proof.
+    intro v.
+    rewrite <- PeanoNat.Nat.land_ones.
+    unfold bvec_lshift1. unfold bvec_lshift1_notrunc.
+    rewrite bvec_lshift1_reorder.
+
+    destruct v as [xs hlen].
+    unfold bvec_denote. simpl.
+    rewrite Nat_land_double_xs_ones.
+    reflexivity.
+  Qed.
+
+  (* denoted(shifted v) = shifted(denoted v) mod 2^SIZE *)
+  Lemma bvec_lshift1_correct {n} (v : bvec (S n)) :
+    bvec_denote (bvec_lshift1 v) =
+      Nat.modulo (Nat.shiftl (bvec_denote v) 1) (Nat.pow 2 (S n)).
+  Proof.
+    rewrite bvec_lshift1_correct_trunc2notrunc.
+    simpl. rewrite bvec_lshift1_notrunc_correct. auto.
+  Qed.
+End bvec_lshift1_correct.
