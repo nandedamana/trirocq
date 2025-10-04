@@ -435,3 +435,42 @@ Section bvec_lshift1_correct.
     simpl. rewrite bvec_lshift1_notrunc_correct. auto.
   Qed.
 End bvec_lshift1_correct.
+
+Section bvec_rshift1_correct.
+  Lemma div2_double n : Nat.div2 (Nat.double n) = n.
+    rewrite PeanoNat.Nat.double_twice.
+    rewrite PeanoNat.Nat.div2_double.
+    reflexivity.
+  Qed.
+
+  Lemma bitlist_denote_msb_zero xs :
+    bitlist_denote_helper (xs ++ zero :: nil) = bitlist_denote_helper xs.
+  Proof.
+    induction xs.
+    - auto.
+    - simpl. rewrite IHxs. reflexivity.
+  Qed.
+
+  Lemma bvec_rshift1_correct_listify xs a :
+    bitlist_denote_helper (xs ++ zero :: nil) =
+      Nat.div2 (bit2nat a + Nat.double (bitlist_denote_helper xs)).
+  Proof.
+    destruct a; simpl; rewrite bitlist_denote_msb_zero.
+    - rewrite div2_double. reflexivity.
+    - destruct (bitlist_denote_helper xs). simpl. reflexivity.
+      simpl. apply eq_S.
+      replace (n + S n) with (2 * n + 1).
+      rewrite PeanoNat.Nat.div2_odd'. reflexivity.
+      lia.
+  Qed.
+
+  Lemma bvec_rshift1_correct {n} : forall (v : bvec (S n)),
+      bvec_denote (bvec_rshift1 v) = Nat.shiftr (bvec_denote v) 1.
+  Proof.
+    intro v. destruct v as [xs hlen].
+    unfold Nat.shiftr.
+    induction xs.
+    - easy.
+    - apply bvec_rshift1_correct_listify.
+  Qed.
+End bvec_rshift1_correct.
