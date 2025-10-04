@@ -10,28 +10,28 @@ Definition bvec SIZE := Vector.t bit SIZE.
 Definition bvec_ith {n} (v : bvec n) {i} (hi : i < n) := Vector.nth_order v hi.
 Definition bvec_ith_error {n} (v : bvec n) {i} := Vector.nth_error v i.
 
-Definition bvec_and {SIZE} (x y : bvec SIZE) := Vector.map2 bit_and x y.
-Definition bvec_or  {SIZE} (x y : bvec SIZE) := Vector.map2 bit_or x y.
-Definition bvec_xor {SIZE} (x y : bvec SIZE) := Vector.map2 bit_xor x y.
-Definition bvec_neg {SIZE} (x   : bvec SIZE) := Vector.map bit_not x.
+Section bvec_bitwise.
+  Definition bvec_and {SIZE} (x y : bvec SIZE) := Vector.map2 bit_and x y.
+  Definition bvec_or  {SIZE} (x y : bvec SIZE) := Vector.map2 bit_or x y.
+  Definition bvec_xor {SIZE} (x y : bvec SIZE) := Vector.map2 bit_xor x y.
+  Definition bvec_neg {SIZE} (x   : bvec SIZE) := Vector.map bit_not x.
 
-Lemma bvec_and_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
-    bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
-Proof. intros. apply Vector.nth_map2; auto. Qed.
+  Lemma bvec_and_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
+      bvec_ith (bvec_and v1 v2) hidx = bit_and (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+  Proof. intros. apply Vector.nth_map2; auto. Qed.
 
-Lemma bvec_neg_rel : forall {SIZE} v1 {i} (hidx : i < SIZE),
-    bvec_ith (bvec_neg v1) hidx = bit_not (bvec_ith v1 hidx).
-Proof. intros. apply Vector.nth_map; auto. Qed.
+  Lemma bvec_neg_rel : forall {SIZE} v1 {i} (hidx : i < SIZE),
+      bvec_ith (bvec_neg v1) hidx = bit_not (bvec_ith v1 hidx).
+  Proof. intros. apply Vector.nth_map; auto. Qed.
 
-Lemma bvec_or_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
-    bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
-Proof. intros. apply Vector.nth_map2; auto. Qed.
+  Lemma bvec_or_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
+      bvec_ith (bvec_or v1 v2) hidx = bit_or (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+  Proof. intros. apply Vector.nth_map2; auto. Qed.
 
-Lemma bvec_xor_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
-    bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
-Proof. intros. apply Vector.nth_map2; auto. Qed.
-
-(* ------------------------------------------------------------------------ *)
+  Lemma bvec_xor_rel : forall {SIZE} v1 v2 {i} (hidx : i < SIZE),
+      bvec_ith (bvec_xor v1 v2) hidx = bit_xor (bvec_ith v1 hidx) (bvec_ith v2 hidx).
+  Proof. intros. apply Vector.nth_map2; auto. Qed.
+End bvec_bitwise.
 
 Section bvec_addition.
   Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
@@ -64,8 +64,6 @@ Section bvec_addition.
       bvec_ith (bvec_add x y) hidx =
         bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
 End bvec_addition.
-
-(* ------------------------------------------------------------------------ *)
 
 Section bvec_subtraction.
   (* TODO verify these axioms related to subtraction *)
@@ -374,8 +372,8 @@ Section bvec_lshift1_correct.
   Qed.
 
   Lemma Nat_land_xs_ys xs : forall ys,
-    Nat.land (bitlist_denote_helper xs) (bitlist_denote_helper ys) =
-      bitlist_denote_helper (map2_list bit_and xs ys).
+      Nat.land (bitlist_denote_helper xs) (bitlist_denote_helper ys) =
+        bitlist_denote_helper (map2_list bit_and xs ys).
   Proof.
     induction xs.
     - destruct ys; auto.
