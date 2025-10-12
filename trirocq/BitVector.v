@@ -34,35 +34,201 @@ Section bvec_bitwise.
 End bvec_bitwise.
 
 Section bvec_addition.
-  Axiom bvec_add : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
+  Definition fulladd a b cin :=
+    let sum := bit_xor (bit_xor a b) cin in
+    let carry := bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin) in
+    pair sum carry.
 
-  (* Uses the "convoy pattern" to solve the issue noted above
-   * - http://adam.chlipala.net/cpdt/html/MoreDep.html
-   * - https://stackoverflow.com/questions/32060556/convoy-pattern-and-match-involving-inequality?rq=3
+  Fixpoint bitlist_fulladd_paired (xs ys : list bit) (cin : bit) :=
+    match xs, ys with
+    | List.cons hx tx, List.cons hy ty =>
+        let lsbsumcarry := fulladd hx hy cin in
+        let lsbcarry := snd lsbsumcarry in
+        List.cons lsbsumcarry (bitlist_fulladd_paired tx ty lsbcarry)
+    | _, _ => List.nil
+    end.
+
+  Definition bitlist_sum (xs ys : list bit) (cin : bit) : list bit :=
+    fst (List.split (bitlist_fulladd_paired xs ys cin)).
+
+  Definition bitlist_carry (xs ys : list bit) (cin : bit) : list bit :=
+    snd (List.split (bitlist_fulladd_paired xs ys cin)).
+
+  Definition bitlist_sum_with_carry (xs ys : list bit) (cin : bit) : list bit :=
+    List.app
+      (bitlist_sum xs ys cin)
+      (List.cons (List.last (bitlist_carry xs ys cin) zero) List.nil).
+
+  Lemma length_bitlist_fulladd_paired n : forall (xs ys : list bit) cin,
+      length xs = n -> length ys = n ->
+      length (bitlist_fulladd_paired xs ys cin) = n.
+  Proof.
+    induction n.
+    - destruct xs; destruct ys; try easy.
+    - simpl.
+      destruct xs; destruct ys; try easy.
+      simpl. intro cin.
+      intros hlen1 hlen2. rewrite IHn.
+      reflexivity. lia. lia.
+  Qed.
+
+  Lemma length_bitlist_sum n : forall (xs ys : list bit) cin,
+    length xs = n -> length ys = n -> length (bitlist_sum xs ys cin) = n.
+  Proof.
+    unfold bitlist_sum. intros.
+    rewrite List.length_fst_split.
+    apply length_bitlist_fulladd_paired; auto.
+  Qed.
+
+  Definition bvec_add {n} (x y : bvec n) : bvec n.
+    refine (exist _ (bitlist_sum (Vector.projlist x) (Vector.projlist y) zero) _).
+    destruct x as [xs hlenx].
+    destruct y as [ys hleny].
+    simpl. apply length_bitlist_sum; assumption.
+  Defined.
+
+  Lemma convhi {A} {xs : list A} {n} (hlen : length xs = n) {i} (hi : i < n) :
+    i < length xs.
+  Proof. lia. Qed.
+
+  Lemma length_bitlist_carry n : forall (xs ys : list bit) cin,
+    length xs = n -> length ys = n -> length (bitlist_carry xs ys cin) = n.
+  Proof.
+    unfold bitlist_carry. intros.
+    rewrite List.length_snd_split.
+    apply length_bitlist_fulladd_paired; auto.
+  Qed.
+
+  Definition bitlist_incarry (xs ys : list bit) cin :=
+      List.cons cin (bitlist_carry xs ys cin).
+
+  Lemma length_bitlist_incarry n : forall (xs ys : list bit) cin,
+    length xs = n -> length ys = n -> length (bitlist_incarry xs ys cin) = S n.
+  Proof.
+    unfold bitlist_incarry. intros. simpl.
+    apply eq_S. apply length_bitlist_carry; auto.
+  Qed.
+
+  Definition bitlist_ith_incarry {n} (xs ys : list bit)
+    (hlenx : length xs = n) (hleny : length ys = n) {i} (hidx : i < n) :=
+    safe_nth (bitlist_incarry xs ys zero)
+      (convhi (length_bitlist_incarry n xs ys zero hlenx hleny) (ltsuc _ _ hidx)).
+
+  Lemma fulladd_Si : forall i prvpair (xs ys : list bit) a b cin,
+    List.nth_error (bitlist_fulladd_paired xs ys cin) i = Some prvpair ->
+    List.nth_error xs (S i) = Some a ->
+    List.nth_error ys (S i) = Some b ->
+    List.nth_error (bitlist_fulladd_paired xs ys cin) (S i) = Some (fulladd a b (snd prvpair)).
+  Proof.
+    induction i.
+    - intros prvpair xs ys a b cin.
+      destruct xs; destruct ys; try easy. simpl.
+      unfold bitlist_fulladd_paired.
+      destruct xs; destruct ys; simpl; try lia; try easy.
+      intros hp ha hb.
+      apply eqxy2Some in ha. apply eqxy2Some in hb. apply eqxy2Some in hp.
+      subst. simpl. reflexivity.
+    - intros prvpair xs ys a b cin.
+      destruct xs; destruct ys; try easy.
+      apply IHi; auto.
+  Qed.
+
+  (* TODO rename as bvec_ith_incarry *)
+  Definition bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit.
+    destruct x as [xs hlenx]. destruct y as [ys hleny].
+    exact (bitlist_ith_incarry xs ys hlenx hleny hidx).
+  Defined.
+
+  Lemma bvec_incarry_0 {SIZE} (x y : bvec SIZE) (hidx : 0 < SIZE) :
+    bvec_incarry x y hidx = zero.
+  Proof.
+    destruct x as [xs hlenx]. destruct y as [ys hleny].
+    unfold bvec_incarry. unfold bitlist_ith_incarry.
+    rewrite_safe_nth_auto_left.
+    destruct xs; destruct ys; try easy.
+  Qed.
+
+  (* Originally specialized to take away the convoy pattern, back when
+   * I was using Vector.t from Stdlib.
    *)
-  (* Carry due to the addition of bits at position (i - 1); 0 for i = 0 *)
-  Fixpoint bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
-    match i return i < SIZE -> bit with
-    | 0 => fun _ => zero
-    | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
-                          let b := bvec_ith y (ltprv hidx) in
-                          let cin := bvec_incarry x y (ltprv hidx) in
-                          bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin)
-    end hidx.
-
-  (* Takes away the convoy pattern, making some upcoming proofs simpler *)
   Lemma bvec_incarry_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
     bvec_incarry x y hidx = let a := bvec_ith x (ltprv hidx) in
                             let b := bvec_ith y (ltprv hidx) in
                             let cin := bvec_incarry x y (ltprv hidx) in
                             bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin).
   Proof.
-    auto.
+    destruct x as [xs hlenx]. destruct y as [ys hleny].
+    unfold bvec_incarry. unfold bvec_ith. unfold Vector.nth_order.
+    unfold bitlist_ith_incarry.
+    repeat rewrite_safe_nth_anywhere.
+    apply eqxy2Some.
+    rewrite <- hx1.
+
+    unfold bitlist_incarry. simpl.
+    unfold bitlist_carry.
+    rewrite nth_error_snd_split.
+
+    destruct i.
+    - destruct xs; destruct ys; try easy; simpl.
+      simpl in hx3. apply eqxy2Some in hx3. rewrite <- hx3.
+      destruct b; destruct x0; destruct b0; destruct x2; auto.
+    - assert (heprv : exists prvpair,
+                 List.nth_error (bitlist_fulladd_paired xs ys zero) i =
+                   Some prvpair).
+      revert hx3.
+      unfold bitlist_incarry. simpl. unfold bitlist_carry.
+      rewrite nth_error_snd_split.
+      destruct (List.nth_error (bitlist_fulladd_paired xs ys zero) i).
+      eauto.
+      easy.
+      destruct heprv as [prv hprv].
+
+      rewrite (fulladd_Si i prv xs ys x0 x2); try lia; try assumption. simpl.
+
+      revert hx3.
+      unfold bitlist_incarry. unfold bitlist_carry. simpl.
+      rewrite nth_error_snd_split.
+      rewrite hprv. congruence.
   Qed.
 
-  Axiom bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE),
+  Lemma bvec_fulladd_result : forall {SIZE} x y [i] (hidx : i < SIZE),
       bvec_ith (bvec_add x y) hidx =
         bit_xor (bvec_incarry x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
+  Proof.
+    intros.
+    destruct x as [xs hlenx]. destruct y as [ys hleny].
+    unfold bvec_ith. unfold Vector.nth_order. simpl.
+    repeat rewrite_safe_nth_anywhere.
+    apply eqxy2Some.
+    rewrite <- hx1.
+
+    unfold bitlist_sum. unfold bitlist_ith_incarry.
+    rewrite nth_error_fst_split.
+    unfold bitlist_incarry. unfold bitlist_carry.
+
+    rewrite_safe_nth_anywhere.
+    destruct i.
+    - simpl.
+      destruct xs; destruct ys; simpl in hlenx; simpl in hleny;
+        try lia; try easy.
+      simpl in hx0. apply eqxy2Some in hx0.
+      simpl in hx2. apply eqxy2Some in hx2.
+      subst.
+      unfold bitlist_fulladd_paired. simpl.
+      destruct x0; destruct x2; auto.
+    - assert (hprv : exists prvpair,
+                 List.nth_error (bitlist_fulladd_paired xs ys zero) i = Some prvpair).
+      simpl in hx3. rewrite nth_error_snd_split in hx3.
+      destruct (List.nth_error (bitlist_fulladd_paired xs ys zero) i); try easy.
+      eauto.
+
+      destruct hprv as (prvpair & hprv).
+      rewrite fulladd_Si with (a := x0) (b := x2) (prvpair := prvpair);
+        try lia; try auto.
+      simpl. rewrite bit_xor_commutative.
+      simpl in hx3. rewrite nth_error_snd_split in hx3.
+      rewrite hprv in hx3. congruence.
+  Qed.
 End bvec_addition.
 
 Section bvec_subtraction.

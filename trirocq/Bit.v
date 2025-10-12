@@ -48,6 +48,10 @@ Section bitops_simplification.
     unfold bit_or; destruct x; simpl; reflexivity.
   Qed.
 
+  Lemma bit_xor_commutative x y : bit_xor x y = bit_xor y x.
+    unfold bit_xor; destruct x; destruct y; simpl; reflexivity.
+  Qed.
+  
   Lemma bit_xor_left_zero x : bit_xor zero x = x.
     unfold bit_xor; destruct x; simpl; reflexivity.
   Qed.

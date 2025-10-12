@@ -16,6 +16,34 @@ Proof.
   apply nth_error_Some. lia.
 Qed.
 
+Lemma nth_error_fst_split {A} {B} : forall (xs : list (prod A B)) i,
+    List.nth_error (fst (List.split xs)) i =
+      match List.nth_error xs i with
+      | None => None
+      | Some x => Some (fst x)
+      end.
+Proof.
+  induction xs as [|x xs IHxs].
+  - destruct i; auto.
+  - destruct i;
+      destruct x; simpl; destruct (List.split xs); simpl; auto.
+Qed.
+
+(* Proof written by referring the source of List.split_nth. *)
+Lemma nth_error_snd_split {A} {B} : forall (xs : list (prod A B)) i,
+    List.nth_error (snd (List.split xs)) i =
+      match List.nth_error xs i with
+      | None => None
+      | Some x => Some (snd x)
+      end.
+Proof.
+  intro xs; induction xs as [|x xs IHxs].
+  - intro i. destruct i; auto.
+  - intro i. destruct i.
+    + destruct x. simpl. destruct (List.split xs). simpl. auto.
+    + destruct x. simpl. destruct (List.split xs). simpl. auto.
+Qed.
+
 Lemma nltz : forall n, n < 0 -> False. easy. Qed.
 Lemma length_tail {A} {xs : list A} {p} {x} : S p < length (cons x xs) -> p < length xs.
   rewrite length_cons. lia.
@@ -56,6 +84,12 @@ Ltac rewrite_safe_nth_auto :=
       rewrite_safe_nth ys hj
   end.
 
+Ltac rewrite_safe_nth_anywhere :=
+  match goal with
+  | [ |- context[safe_nth ?xs ?hi] ] =>
+      rewrite_safe_nth xs hi
+  end.
+
 Lemma eqxy2Some {A} {x y : A} : Some x = Some y -> x = y.
   congruence.
 Qed.
@@ -77,6 +111,12 @@ Proof.
   rewrite_safe_nth xs hi2.
   rewrite_eqxy2Some.
   reflexivity.
+Qed.
+
+Lemma safe_nth_cons {A} (xs : list A) {i} (hi : S i < S (length xs)) x:
+  safe_nth (List.cons x xs) hi = safe_nth xs (PeanoNat.lt_S_n _ _ hi).
+Proof.
+  simpl. apply safe_nth_eq.
 Qed.
 
 Section map2_list.

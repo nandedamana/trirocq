@@ -141,7 +141,7 @@ Section linux_tnum_addition.
     unfold_tnum_goodies.
     intros wfp wfq.
     induction i.
-    - unfold bvec_incarry. auto.
+    - intro. rewrite bvec_incarry_0. unfold bvec_incarry. auto.
     - intros hidx.
       repeat rewrite bvec_incarry_Si. simpl.
       repeat rewrite bvec_fulladd_result.
@@ -169,9 +169,11 @@ Section linux_tnum_addition.
     unfold_tnum_goodies.
     intros wfp wfq.
     induction i.
-    - unfold bvec_incarry. auto.
+    - intro. rewrite bvec_incarry_0. unfold bvec_incarry.
+      unfold bitlist_ith_incarry. simpl.
+      split; apply bit_and_right_zero.
     - intros hidx.
-      repeat rewrite bvec_incarry_Si. simpl.
+      repeat rewrite bvec_incarry_Si.
       repeat rewrite bvec_fulladd_result.
 
       specialize (IHi (ltprv hidx)).
@@ -213,10 +215,9 @@ Section linux_tnum_addition.
 
     induction i.
     - intro hidx.
-      rewrite bvec_incarry_Si. simpl.
+      repeat rewrite bvec_incarry_Si. simpl.
       repeat rewrite bvec_fulladd_result.
-      unfold bvec_incarry.
-      repeat simplify_bit_ops.
+      repeat rewrite bvec_incarry_0. repeat simplify_bit_ops.
 
       pose (H := specialize_wf_ig wfp wfq igp igq (ltprv hidx)).
       destruct H as (wfps & wfqs & igps & igqs).
@@ -261,7 +262,8 @@ Section linux_tnum_addition.
     unfold tnum.wellformed. unfold ingamma.
     intros wfp wfq igP igQ.
     destruct i.
-    - unfold bvec_incarry. auto.
+    - intro. unfold ith_value_incarry. repeat rewrite bvec_incarry_0.
+      auto.
     -
       intros hidx.
       unfold tnum_add.
@@ -381,7 +383,7 @@ Section linux_tnum_addition.
       unfold tnum.ith_m. unfold tnum.ith_v.
       intros wfp wfq igp igq.
       induction i.
-      - unfold bvec_incarry. auto.
+      - intro. rewrite bvec_incarry_0. easy.
       -
         intro hidx.
         rewrite bvec_incarry_Si. simpl.
@@ -391,6 +393,8 @@ Section linux_tnum_addition.
         specialize (wfq i (ltprv hidx)).
         specialize (igp i (ltprv hidx)).
         specialize (igq i (ltprv hidx)).
+
+        rewrite bvec_incarry_Si. simpl.
 
         destruct (bvec_ith (tnum.v P) (ltprv hidx));
           destruct (bvec_ith (tnum.v Q) (ltprv hidx));
@@ -416,7 +420,8 @@ Section linux_tnum_addition.
       unfold tnum.ith_m. unfold tnum.ith_v.
       intros wfp wfq igp igq.
       induction i.
-      - unfold bvec_incarry. auto.
+      - intro. rewrite bvec_incarry_0. unfold bvec_incarry.
+        destruct x; destruct y; auto.
       -
         intro hidx.
         rewrite bvec_incarry_Si. simpl.
@@ -428,6 +433,7 @@ Section linux_tnum_addition.
         specialize (igq i (ltprv hidx)).
 
         unwrap_bvec_ops.
+        rewrite bvec_incarry_Si.
 
         destruct (bvec_ith (tnum.v P) (ltprv hidx));
           destruct (bvec_ith (tnum.v Q) (ltprv hidx));
@@ -444,7 +450,6 @@ Section linux_tnum_addition.
           crush10.
     Qed.
 
-    (* TODO better, directly work on the result of tnum_add(). *)
     (* TODO better, directly work on the result of tnum_add(). *)
     (* This lemma essentially shows the optimization of chi is correct.
      * chi is meant to be the minimum mask via carry, which is the xor of minsum and maxsum.
@@ -465,8 +470,8 @@ Section linux_tnum_addition.
         specialize (wfq 0 hidx).
 
         unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
-        unfold bvec_incarry. unwrap_bvec_ops. repeat simplify_bit_ops.
-
+        repeat rewrite bvec_incarry_0.
+        unwrap_bvec_ops.
         destruct_vm_bits_abstract P Q hidx.
       -
         assert (wfpi := wfp _ hidx).
@@ -585,8 +590,8 @@ Section linux_tnum_subtraction.
     unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfp wfq.
     induction i.
-    - auto.
-    -
+    - intro. repeat rewrite bvec_incarry_0. auto.
+    - simpl.
       intros hidx.
 
       specialize (IHi (ltprv hidx)).
@@ -626,7 +631,7 @@ Section linux_tnum_subtraction.
     unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfp wfq.
     induction i.
-    - unfold bvec_incarry. auto.
+    - intro. repeat rewrite bvec_incarry_0. auto.
     -
       intro hidx.
 
@@ -637,7 +642,7 @@ Section linux_tnum_subtraction.
       specialize (wfp i (ltprv hidx)).
       specialize (wfq i (ltprv hidx)).
 
-      rewrite bvec_incarry_Si.
+      repeat rewrite bvec_incarry_Si.
       simpl.
       repeat rewrite bvec_fullsub_result. simpl.
 
