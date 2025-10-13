@@ -2,61 +2,43 @@ Require Import trirocq.Bit.
 Require Import trirocq.BitVector.
 Require Import trirocq.Tnum.
 
+Ltac specialize_wf_ig hi :=
+  match goal with
+  |[ H : forall i (hi' : i < _), bvec_ith _ hi' = _ -> bvec_ith _ _ = _ |- _ ] =>
+     specialize (H _ hi); try specialize_wf_ig hi
+  |[ H : forall i (hi' : i < _), bvec_incarry _ _ hi' = _ -> bvec_incarry _ _ _ = _ |- _ ] =>
+      specialize (H _ hi); try specialize_wf_ig hi
+  |[ H : forall i (hi' : i < _), bvec_inborrow _ _ hi' = _ -> bvec_inborrow _ _ _ = _ |- _ ] =>
+     specialize (H _ hi); try specialize_wf_ig hi
+  end.
+
+Ltac try_wf_ig :=
+  match goal with
+  |[ H : bvec_ith ?x ?hi = _ -> bvec_ith _ _ = _ |- _ ] =>
+     destruct (bvec_ith x hi);
+     simplify_bit_ops; try easy; repeat rewrite_if_holds H; revert H; try_wf_ig
+  |[ H : bvec_incarry ?x ?y ?hi = _ -> bvec_incarry _ _ _ = _ |- _ ] =>
+     destruct (bvec_incarry x y hi);
+     simplify_bit_ops; try easy; repeat rewrite_if_holds H; revert H; try_wf_ig
+  |[ H : bvec_inborrow ?x ?y ?hi = _ -> bvec_inborrow _ _ _ = _ |- _ ] =>
+     destruct (bvec_inborrow x y hi);
+     simplify_bit_ops; try easy; repeat rewrite_if_holds H; revert H; try_wf_ig
+  |[ |- _ ] => idtac
+  end.
+
 (* TODO rename *)
-Ltac crush10 := match goal with
-                | [ H : ?x = ?x -> zero = one |- _ ] => specialize (H eq_refl); easy
-                | [ H : ?x = ?x -> one = zero |- _ ] => specialize (H eq_refl); easy
-                end.
-
-Ltac destruct_vm_bits_abstract P Q hidx :=
-  match goal with [
-      wfps :
-      bvec_ith (tnum.m P) hidx = one ->
-      bvec_ith (tnum.v P) hidx = zero,
-        wfqs :
-        bvec_ith (tnum.m Q) hidx = one ->
-        bvec_ith (tnum.v Q) hidx = zero
-      |- _ ] =>
-                    destruct (bvec_ith (tnum.m P) hidx);
-                    destruct (bvec_ith (tnum.m Q) hidx);
-                    repeat simplify_bit_ops; try easy;
-                    try rewrite_if_holds wfps;
-                    try rewrite_if_holds wfqs;
-                    repeat simplify_bit_ops; try easy;
-                    destruct (bvec_ith (tnum.v P) hidx);
-                    destruct (bvec_ith (tnum.v Q) hidx);
-                    repeat simplify_bit_ops; try easy
+Ltac crush11 :=
+  match goal with
+    [ |- _ ] =>
+      try_wf_ig; (* TODO FIXME only the first one is matched *)
+      repeat (destruct (bvec_ith _ _);
+              simplify_bit_ops; try easy);
+      repeat (destruct (bvec_incarry _ _ _);
+              simplify_bit_ops; try easy);
+      repeat (destruct (bvec_inborrow _ _ _);
+              simplify_bit_ops; try easy);
+      intuition
   end.
-
-(* TODO can I reuse destruct_vm_bits_abstract? *)
-Ltac destruct_vm_bits P Q x y hidx :=
-  match goal with [
-      wfps :
-      bvec_ith (tnum.m P) hidx = one ->
-      bvec_ith (tnum.v P) hidx = zero,
-        wfqs :
-        bvec_ith (tnum.m Q) hidx = one ->
-        bvec_ith (tnum.v Q) hidx = zero,
-          igps :
-          bvec_ith (tnum.m P) hidx = zero ->
-          bvec_ith x hidx = bvec_ith (tnum.v P) hidx,
-            igqs :
-            bvec_ith (tnum.m Q) hidx = zero ->
-            bvec_ith y hidx = bvec_ith (tnum.v Q) hidx
-      |- _ ] =>
-                    destruct (bvec_ith (tnum.m P) hidx);
-                    destruct (bvec_ith (tnum.m Q) hidx);
-                    repeat simplify_bit_ops; try easy;
-                    try rewrite_if_holds wfps;
-                    try rewrite_if_holds wfqs;
-                    try rewrite_if_holds igps;
-                    try rewrite_if_holds igqs;
-                    repeat simplify_bit_ops; try easy;
-                    destruct (bvec_ith (tnum.v P) hidx);
-                    destruct (bvec_ith (tnum.v Q) hidx);
-                    repeat simplify_bit_ops; try easy
-  end.
-
 
 Section linux_tnum_addition.
   (* Mirrors the Linux kernel definition *)
@@ -128,8 +110,7 @@ Section linux_tnum_addition.
       unwrap_bvec_ops; unfold tnum.ith_m;
       rewrite bvec_fulladd_result;
       unfold bvec_incarry;
-      destruct (bvec_ith (tnum.m P) hidx);
-      destruct (bvec_ith (tnum.m Q) hidx);
+      repeat destruct (bvec_ith (tnum.m _) hidx);
       repeat simplify_bit_ops; split; try easy.
   Qed.
 
@@ -144,15 +125,10 @@ Section linux_tnum_addition.
     - intro. rewrite bvec_incarry_0. unfold bvec_incarry. auto.
     - intros hidx.
       repeat rewrite bvec_incarry_Si. simpl.
-      repeat rewrite bvec_fulladd_result.
 
       specialize (IHi (ltprv hidx)).
-      specialize (wfp i (ltprv hidx)).
-      specialize (wfq i (ltprv hidx)).
-
-      destruct (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-        destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct_vm_bits_abstract P Q (ltprv hidx).
+      specialize_wf_ig (ltprv hidx).
+      crush11.
   Qed.
 
   (* Interesting: proving only one side would seem easier, but it is actually
@@ -181,15 +157,8 @@ Section linux_tnum_addition.
       assert (h66 := helper66 _ _ wfp wfq (ltprv hidx)).
       revert h66. unfold_tnum_goodies.
 
-      specialize (wfp i (ltprv hidx)).
-      specialize (wfq i (ltprv hidx)).
-
-      destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
-                    (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
-        destruct_vm_bits_abstract P Q (ltprv hidx);
-        destruct (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-        repeat simplify_bit_ops; try easy.
+      specialize_wf_ig (ltprv hidx).
+      crush11.
   Qed.
 
   Lemma specialize_wf_ig {SIZE} {x y} {P Q : tnum.t SIZE} :
@@ -219,9 +188,8 @@ Section linux_tnum_addition.
       repeat rewrite bvec_fulladd_result.
       repeat rewrite bvec_incarry_0. repeat simplify_bit_ops.
 
-      pose (H := specialize_wf_ig wfp wfq igp igq (ltprv hidx)).
-      destruct H as (wfps & wfqs & igps & igqs).
-      destruct_vm_bits P Q x y (ltprv hidx).
+      specialize_wf_ig (ltprv hidx).
+      crush11.
     - intro hidx.
       rewrite bvec_incarry_Si.
       rewrite bvec_incarry_Si with (x := x).
@@ -237,16 +205,7 @@ Section linux_tnum_addition.
       assert (h64 := helper63 P Q wfp wfq (ltprv hidx)).
       revert h66. revert h64. unfold_tnum_goodies.
 
-      destruct(bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-        destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q))
-                    (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
-        destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-        repeat simplify_bit_ops; try easy;
-        destruct_vm_bits P Q x y (ltprv hidx);
-        destruct (bvec_ith x (ltprv hidx));
-        destruct (bvec_ith y (ltprv hidx));
-        repeat simplify_bit_ops; try easy;
-        try crush10.
+      crush11.
   Qed.
 
   Lemma helper82 [x] [y] : bit_xor x y = zero -> bit_and y x = zero -> x = zero /\ y = zero.
@@ -389,25 +348,9 @@ Section linux_tnum_addition.
         rewrite bvec_incarry_Si. simpl.
 
         specialize (IHi (ltprv hidx)).
-        specialize (wfp i (ltprv hidx)).
-        specialize (wfq i (ltprv hidx)).
-        specialize (igp i (ltprv hidx)).
-        specialize (igq i (ltprv hidx)).
-
+        specialize_wf_ig (ltprv hidx).
         rewrite bvec_incarry_Si. simpl.
-
-        destruct (bvec_ith (tnum.v P) (ltprv hidx));
-          destruct (bvec_ith (tnum.v Q) (ltprv hidx));
-          destruct (bvec_ith (tnum.m P) (ltprv hidx));
-          destruct (bvec_ith (tnum.m Q) (ltprv hidx)); try easy;
-          try rewrite_if_holds wfp;
-          try rewrite_if_holds wfq;
-          try rewrite_if_holds igp;
-          try rewrite_if_holds igq;
-          destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-          try rewrite_if_holds IHi; auto;
-          repeat simplify_bit_ops_ex_not; try easy;
-          crush10.
+        crush11.
     Qed.
 
     Lemma maximum_carries {SIZE} x y P Q :
@@ -427,27 +370,10 @@ Section linux_tnum_addition.
         rewrite bvec_incarry_Si. simpl.
 
         specialize (IHi (ltprv hidx)).
-        specialize (wfp i (ltprv hidx)).
-        specialize (wfq i (ltprv hidx)).
-        specialize (igp i (ltprv hidx)).
-        specialize (igq i (ltprv hidx)).
-
+        specialize_wf_ig (ltprv hidx).
         unwrap_bvec_ops.
         rewrite bvec_incarry_Si.
-
-        destruct (bvec_ith (tnum.v P) (ltprv hidx));
-          destruct (bvec_ith (tnum.v Q) (ltprv hidx));
-          destruct (bvec_ith (tnum.m P) (ltprv hidx));
-          destruct (bvec_ith (tnum.m Q) (ltprv hidx)); try easy;
-          try rewrite_if_holds wfp;
-          try rewrite_if_holds wfq;
-          try rewrite_if_holds igp;
-          try rewrite_if_holds igq;
-          destruct (bvec_incarry (bvec_or (tnum.v P) (tnum.m P))
-                      (bvec_or (tnum.v Q) (tnum.m Q)) (ltprv hidx));
-          try rewrite_if_holds IHi; auto;
-          repeat simplify_bit_ops_ex_not; try easy;
-          crush10.
+        crush11.
     Qed.
 
     (* TODO better, directly work on the result of tnum_add(). *)
@@ -465,14 +391,11 @@ Section linux_tnum_addition.
       intros wfp wfq i hidx.
       unfold tnum_ith_chi. unfold minmask. unfold maxsum. unfold maxval. unfold minsum.
       induction i.
-      -
-        specialize (wfp 0 hidx).
-        specialize (wfq 0 hidx).
-
+      - specialize_wf_ig hidx.
         unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
         repeat rewrite bvec_incarry_0.
         unwrap_bvec_ops.
-        destruct_vm_bits_abstract P Q hidx.
+        crush11.
       -
         assert (wfpi := wfp _ hidx).
         assert (wfqi := wfq _ hidx).
@@ -483,18 +406,16 @@ Section linux_tnum_addition.
         assert (h66 := helper66 P Q wfp wfq (ltprv hidx)).
         assert (h63 := helper63 P Q wfp wfq (ltprv hidx)).
         revert h66. revert h63. unfold_tnum_goodies.
+        specialize_wf_ig (ltprv hidx).
 
         revert IHi.
         unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
         repeat rewrite bvec_incarry_Si. unwrap_bvec_ops. repeat simplify_bit_ops.
         repeat rewrite bvec_fulladd_result.
 
-        destruct (bvec_incarry (tnum.m P) (tnum.m Q) (ltprv hidx));
-          destruct (bvec_incarry (tnum.v P) (tnum.v Q) (ltprv hidx));
-          destruct (bvec_incarry (bvec_add (tnum.v P) (tnum.v Q)) (bvec_add (tnum.m P) (tnum.m Q)) (ltprv hidx));
-          destruct (bvec_incarry (bvec_or (tnum.v P) (tnum.m P)) (bvec_or (tnum.v Q) (tnum.m Q)) (ltprv hidx)); try easy;
-          destruct_vm_bits_abstract P Q (ltprv hidx);
-          destruct_vm_bits_abstract P Q hidx.
+        (* TODO FIXME crush11 to replace this whole part is painfully slow *)
+        repeat destruct (bvec_incarry _ _ (ltprv hidx));
+          simplify_bit_ops; crush11.
     Qed.
   End tnum_add_optimality.
 End linux_tnum_addition.
@@ -535,9 +456,7 @@ Section linux_tnum_subtraction.
       unwrap_bvec_ops; unfold tnum.ith_m;
       rewrite bvec_fullsub_result;
       unfold bvec_inborrow;
-      destruct (bvec_ith (tnum.m P) hidx);
-      destruct (bvec_ith (tnum.m Q) hidx);
-      repeat simplify_bit_ops; split; try easy.
+      crush11.
   Qed.
 
   Lemma xor_x_y_eq_z_y x y z : bit_xor x y = bit_xor z y -> x = z.
@@ -566,16 +485,11 @@ Section linux_tnum_subtraction.
       intros hidx.
 
       specialize (IHi (ltprv hidx)).
-      specialize (wfp i (ltprv hidx)).
-      specialize (wfq i (ltprv hidx)).
+      specialize_wf_ig (ltprv hidx).
 
       repeat rewrite bvec_inborrow_Si. simpl.
       repeat rewrite bvec_fullsub_result. simpl.
-
-      destruct (bvec_inborrow (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct (bvec_inborrow (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m Q) (ltprv hidx));
-        try rewrite_if_holds IHi; auto;
-        destruct_vm_bits_abstract P Q (ltprv hidx).
+      crush11.
   Qed.
 
   (* TODO fuse with sublemma64? *)
@@ -595,16 +509,12 @@ Section linux_tnum_subtraction.
       intros hidx.
 
       specialize (IHi (ltprv hidx)).
-      specialize (wfp i (ltprv hidx)).
-      specialize (wfq i (ltprv hidx)).
+      specialize_wf_ig (ltprv hidx).
 
       repeat rewrite bvec_incarry_Si. repeat rewrite bvec_inborrow_Si. simpl.
       repeat rewrite bvec_fullsub_result. simpl.
 
-      destruct (bvec_inborrow (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct (bvec_incarry (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m P) (ltprv hidx));
-        try rewrite_if_holds IHi; auto;
-        destruct_vm_bits_abstract P Q (ltprv hidx).
+      crush11.
   Qed.
 
   Lemma sublemma42 {SIZE} P Q :
@@ -615,9 +525,7 @@ Section linux_tnum_subtraction.
     unfold tnum.wellformed.
     intros i hidx.
     rewrite bvec_incarry_Si.
-    destruct (bvec_ith (tnum.m P) (ltprv hidx));
-      destruct (bvec_ith (tnum.m Q) (ltprv hidx));
-      repeat simplify_bit_ops; try easy.
+    crush11.
   Qed.
 
   Lemma sublemma43 {SIZE} P Q :
@@ -639,19 +547,13 @@ Section linux_tnum_subtraction.
       assert (h67 := sublemma67 P Q wfp wfq (ltprv hidx)).
 
       specialize (IHi (ltprv hidx)).
-      specialize (wfp i (ltprv hidx)).
-      specialize (wfq i (ltprv hidx)).
+      specialize_wf_ig (ltprv hidx).
 
       repeat rewrite bvec_incarry_Si.
       simpl.
       repeat rewrite bvec_fullsub_result. simpl.
 
-      destruct (bvec_incarry (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m P) (ltprv hidx));
-        destruct (bvec_inborrow (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m Q) (ltprv hidx));
-        try rewrite_if_holds IHi; auto;
-        destruct (bvec_inborrow (tnum.v P) (tnum.v Q) (ltprv hidx));
-        destruct_vm_bits_abstract P Q (ltprv hidx);
-        try crush10; try easy.
+      crush11.
   Qed.
 
   (* Turns out inborrow = incarry if the result has mask = 0. *)
@@ -687,16 +589,7 @@ Section linux_tnum_subtraction.
       pose (hspec := specialize_wf_ig wfp wfq igP igQ (ltprv hidx)).
       destruct hspec as (wfps & wfqs & igps & igqs).
 
-      destruct (bvec_inborrow (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m Q) (ltprv hidx));
-        destruct (bvec_incarry (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m P) (ltprv hidx));
-        try rewrite_if_holds IHi; auto;
-        destruct_vm_bits P Q x y (ltprv hidx);
-        try easy_neg;
-        destruct (bvec_ith x (ltprv hidx));
-        destruct (bvec_ith y (ltprv hidx));
-        destruct (bvec_inborrow (tnum.v P) (tnum.v Q) (ltprv hidx));
-        repeat simplify_bit_ops; try easy;
-        try auto; try crush10.
+      crush11.
   Qed.
 
   Lemma sublemma33 {SIZE} x y P Q :
@@ -728,6 +621,7 @@ Section linux_tnum_subtraction.
       destruct (bvec_ith (tnum.m Q) hidx);
         repeat simplify_bit_ops; try easy.
 
+      simplify_bit_ops.
       apply bit_or_zero_zero in H as (H1 & H2).
       apply bit_xor_x_y_zero in H1.
 
