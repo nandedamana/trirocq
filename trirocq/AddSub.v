@@ -122,7 +122,7 @@ Section linux_tnum_addition.
     unfold_tnum_goodies.
     intros wfp wfq.
     induction i.
-    - intro. rewrite bvec_incarry_0. unfold bvec_incarry. auto.
+    - intro. repeat rewrite bvec_incarry_0. auto.
     - intros hidx.
       repeat rewrite bvec_incarry_Si. simpl.
 
@@ -145,9 +145,7 @@ Section linux_tnum_addition.
     unfold_tnum_goodies.
     intros wfp wfq.
     induction i.
-    - intro. rewrite bvec_incarry_0. unfold bvec_incarry.
-      unfold bitlist_ith_incarry. simpl.
-      split; apply bit_and_right_zero.
+    - intro. repeat rewrite bvec_incarry_0. auto.
     - intros hidx.
       repeat rewrite bvec_incarry_Si.
       repeat rewrite bvec_fulladd_result.
@@ -363,8 +361,7 @@ Section linux_tnum_addition.
       unfold tnum.ith_m. unfold tnum.ith_v.
       intros wfp wfq igp igq.
       induction i.
-      - intro. rewrite bvec_incarry_0. unfold bvec_incarry.
-        destruct x; destruct y; auto.
+      - intro. repeat rewrite bvec_incarry_0. auto.
       -
         intro hidx.
         rewrite bvec_incarry_Si. simpl.

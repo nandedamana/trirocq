@@ -75,16 +75,16 @@ End bitops_simplification.
 
 (* Not accessible from other sections if put inside bitops_simplification. *)
 Ltac simplify_bit_ops_ex_not :=
-  try rewrite bit_and_left_zero;
-  try rewrite bit_and_right_zero;
-  try rewrite bit_and_left_one;
-  try rewrite bit_and_right_one;
-  try rewrite bit_or_left_zero;
-  try rewrite bit_or_right_zero;
-  try rewrite bit_or_left_one;
-  try rewrite bit_or_right_one;
-  try rewrite bit_xor_left_zero;
-  try rewrite bit_xor_right_zero.
+  repeat rewrite bit_and_left_zero;
+  repeat rewrite bit_and_right_zero;
+  repeat rewrite bit_and_left_one;
+  repeat rewrite bit_and_right_one;
+  repeat rewrite bit_or_left_zero;
+  repeat rewrite bit_or_right_zero;
+  repeat rewrite bit_or_left_one;
+  repeat rewrite bit_or_right_one;
+  repeat rewrite bit_xor_left_zero;
+  repeat rewrite bit_xor_right_zero.
 
 Ltac simplify_bit_ops :=
   unfold bit_not;
