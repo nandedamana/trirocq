@@ -72,20 +72,20 @@ Section bvec_addition.
       reflexivity. lia. lia.
   Qed.
 
-  Lemma length_bitlist_sum n : forall (xs ys : list bit) cin,
-    length xs = n -> length ys = n -> length (bitlist_sum xs ys cin) = S n.
+  Lemma length_bitlist_sum_nocarry n : forall (xs ys : list bit) cin,
+      length xs = n -> length ys = n ->
+      length (bitlist_sum_nocarry xs ys cin) = n.
   Proof.
-    unfold bitlist_sum. intros.
-    rewrite List.length_fst_split.
-    apply length_bitlist_fulladd_paired; auto.
+    intros.
+    unfold bitlist_sum_nocarry. rewrite List.length_firstn.
+    unfold bitlist_sum. rewrite List.length_fst_split.
+    rewrite length_bitlist_fulladd_paired with (n := n); lia.
   Qed.
 
   Definition bvec_add {n} (x y : bvec n) : bvec n.
-    refine (exist _ (bitlist_sum_nocarry (Vector.projlist x) (Vector.projlist y) zero) _).
     destruct x as [xs hlenx]. destruct y as [ys hleny].
-    unfold bitlist_sum_nocarry.
-    rewrite List.length_firstn. simpl.
-    rewrite length_bitlist_sum with (n := n); lia.
+    refine (exist _ (bitlist_sum_nocarry xs ys zero) _).
+    apply length_bitlist_sum_nocarry; auto.
   Defined.
 
   Lemma convhi {A} {xs : list A} {n} (hlen : length xs = n) {i} (hi : i < n) :
@@ -386,15 +386,6 @@ Section bvec_shift.
   Proof.
     destruct v as [xs hlen].
     destruct n; try easy.
-  Qed.
-
-  (* TODO rem if not used (written in the hope that it'd simplify many other parts *)
-  Lemma nth_tl_error {n} (v : bvec (S n)) {i} :
-    Vector.nth_error (Vector.tl v) i = Vector.nth_error v (S i).
-  Proof.
-    destruct v as [xs hlen].
-    destruct xs. easy. simpl.
-    reflexivity.
   Qed.
 
   Lemma bvec_lshift1_ith_S {n} (v : bvec (S n)) {i} (hi : S i < S n) :
@@ -758,9 +749,7 @@ Section bvec_add_correct.
     - destruct ys, cin; try easy; auto.
     - destruct ys; try easy.
 
-      revert IHxs.
-      unfold bitlist_sum.
-      intro IHxs.
+      revert IHxs. unfold bitlist_sum. intro IHxs.
 
       unfold bitlist_fulladd_paired.
       intro cin. rewrite fst_split_cons.
@@ -774,5 +763,55 @@ Section bvec_add_correct.
         simplify_bit_ops; simpl; simplify_bit_ops; try lia.
   Qed.
 
-  (* TODO bvec_add_correct *)
+  Lemma half_m_plus_2n n m : m = 0 \/ m = 1 ->
+                    Nat.div (m + Nat.double n) 2 = n.
+  Proof.
+    intros [h0 | h1].
+    destruct m; try rewrite h0; try rewrite h1; try easy.
+    destruct n.
+    - auto.
+    - rewrite plus_O_n.
+      rewrite <- PeanoNat.Nat.div_mul with (b := 2); auto.
+      unfold Nat.double. rewrite x_plus_x_eq_twice_x.
+      rewrite PeanoNat.Nat.mul_comm. auto.
+    - rewrite h1.
+      unfold Nat.double. rewrite x_plus_x_eq_twice_x.
+      rewrite PeanoNat.Nat.mul_comm.
+      rewrite PeanoNat.Nat.div_add; auto.
+  Qed.
+
+  Lemma bitlist_denote_firstn xs : forall n,
+    bitlist_denote_helper (ListDef.firstn n xs) =
+      Nat.modulo (bitlist_denote_helper xs) (Nat.pow 2 n).
+  Proof.
+    induction xs.
+    - destruct n; auto. simpl.
+      rewrite PeanoNat.Nat.Div0.mod_0_l. auto.
+    - destruct n; simpl; auto.
+      rewrite IHxs.
+
+      rewrite <- plus_n_O. rewrite x_plus_x_eq_twice_x.
+      rewrite PeanoNat.Nat.Div0.mod_mul_r.
+      replace (PeanoNat.Nat.modulo
+                 (bit2nat a + Nat.double (bitlist_denote_helper xs)) 2)
+        with (bit2nat a).
+      rewrite half_m_plus_2n. unfold Nat.double. rewrite x_plus_x_eq_twice_x. auto.
+      destruct a; auto.
+      
+      unfold Nat.double. rewrite x_plus_x_eq_twice_x.
+      rewrite PeanoNat.Nat.mul_comm.
+      rewrite PeanoNat.Nat.Div0.mod_add.
+      destruct a; auto.
+  Qed.
+  
+  (* denote(sum x y) = (denote(x) + denote(y)) mod 2^SIZE *)
+  Lemma bvec_add_correct {n} (x y : bvec n) :
+    bvec_denote (bvec_add x y) =
+      Nat.modulo ((bvec_denote x) + (bvec_denote y)) (Nat.pow 2 n).
+  Proof.
+    destruct x as [xs hlenx]. destruct y as [ys hleny].
+    unfold bvec_denote. simpl.
+    unfold bitlist_sum_nocarry. rewrite bitlist_denote_firstn.
+    rewrite bitlist_sum_correct; auto. lia.
+  Qed.
 End bvec_add_correct.
