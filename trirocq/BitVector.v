@@ -420,31 +420,16 @@ Section bvec_shift.
       assert (hlen4 : i < n). lia. rewrite hlen3 in hlen4. assumption.
   Qed.
 
-  (* TODO update the user and remove this *)
-  Lemma bvec_rshift1_ith_0 {n} (v : bvec (S n)) (hi : 0 < S n) (hi2 : 0 <> n) :
-    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
-  Proof.
-    apply bvec_rshift1_ith_ltn.
-  Qed.
-
-  (* TODO rem the third arg after updating the users;
-   * synth with (PeanoNat.Nat.lt_succ_diag_r n)
-   *)
-  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n) :
+  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n):
     Vector.nth_order (Vector.shiftin a v) hi = a.
   Proof.
     destruct v as [xs hlen].
-    unfold Vector.nth_order.
-    assert (n < length (Vector.projlist
-                          (Vector.shiftin a (exist (fun x : list A => length x = n) xs hlen)))). simpl. rewrite <- hlen. rewrite List.length_app. simpl. lia.
-
-    rewrite_safe_nth_auto_left. simpl in hx1.
-    rewrite List.nth_error_app2 in hx1. rewrite hlen in hx1.
-    replace (n - n) with 0 in hx1. rewrite List.nth_error_cons_0 in hx1.
-    congruence. lia. lia.
+    unfold Vector.nth_order. rewrite_safe_nth_anywhere.
+    revert hx1. simpl. rewrite List.nth_error_app2.
+    rewrite hlen. rewrite PeanoNat.Nat.sub_diag. simpl.
+    congruence. lia.
   Qed.
 
-  (* TODO rem the third arg after updating the users *)
   Lemma bvec_rshift1_ith_n {n} (v : bvec (S n)) (hi : n < S n) :
     bvec_ith (bvec_rshift1 v) hi = zero.
   Proof.
@@ -497,7 +482,7 @@ Section bvec_multiplication.
         (bvec_ith vrsh lt_7_8) = zero.
     Proof.
       split. unfold vrsh. assert (hi2 : 0 <> 7). lia.
-      rewrite bvec_rshift1_ith_0 with (hi2 := hi2). auto.
+      rewrite bvec_rshift1_ith_ltn with (hi2 := hi2). auto.
 
       split. unfold vrsh. assert (hi2 : 1 <> 7). lia.
       rewrite bvec_rshift1_ith_ltn with (hi2 := hi2). auto.
