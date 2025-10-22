@@ -525,14 +525,14 @@ Section bvec_denote.
                           | one => 1
                           end.
 
-  Fixpoint bitlist_denote_helper (xs : list bit) : nat :=
+  Fixpoint bitlist_denote (xs : list bit) : nat :=
     match xs with
     | List.nil => 0
-    | List.cons h t => bit2nat h + Nat.double (bitlist_denote_helper t)
+    | List.cons h t => bit2nat h + Nat.double (bitlist_denote t)
     end.
 
   Definition bvec_denote {n} (v : bvec n) :=
-    bitlist_denote_helper (Vector.projlist v).
+    bitlist_denote (Vector.projlist v).
 
   Example v10 : bvec 4 := Vector.cons _ zero _
                             (Vector.cons _ one _
@@ -548,8 +548,8 @@ Section bvec_lshift1_correct.
 
   (* denoted(shifted v) = shifted(denoted v) mod 2^SIZE *)
   Lemma bitlist_lshift1_notrunc_correct xs :
-    bitlist_denote_helper (List.cons zero xs) =
-      Nat.shiftl (bitlist_denote_helper xs) 1.
+    bitlist_denote (List.cons zero xs) =
+      Nat.shiftl (bitlist_denote xs) 1.
   Proof.
     auto.
   Qed.
@@ -574,12 +574,12 @@ Section bvec_lshift1_correct.
   Qed.
 
   Lemma bitlist_double_denote (xs : list bit) :
-    Nat.double (bitlist_denote_helper xs) =
-      bitlist_denote_helper (List.cons zero xs).
+    Nat.double (bitlist_denote xs) =
+      bitlist_denote (List.cons zero xs).
   Proof. simpl. reflexivity. Qed.
 
   Lemma Nat_ones_to_bitlist {n} :
-    PeanoNat.Nat.ones n = bitlist_denote_helper (List.repeat one n).
+    PeanoNat.Nat.ones n = bitlist_denote (List.repeat one n).
   Proof.
     induction n.
     - auto.
@@ -591,28 +591,28 @@ Section bvec_lshift1_correct.
   Lemma x_plus_1_eq_Sx x : x + 1 = S x. lia. Qed.
 
   Lemma Nat_land_cons_cons a xs b ys :
-    Nat.land (bitlist_denote_helper (a :: xs)) (bitlist_denote_helper (b :: ys)) =
-      bit2nat (bit_and a b) + Nat.double (Nat.land (bitlist_denote_helper xs) (bitlist_denote_helper ys)).
+    Nat.land (bitlist_denote (a :: xs)) (bitlist_denote (b :: ys)) =
+      bit2nat (bit_and a b) + Nat.double (Nat.land (bitlist_denote xs) (bitlist_denote ys)).
   Proof.
     simpl.
     repeat rewrite PeanoNat.Nat.double_twice.
     destruct a; simpl; destruct b; simpl; repeat rewrite PeanoNat.Nat.add_0_r; repeat rewrite x_plus_x_eq_twice_x.
     - rewrite PeanoNat.Nat.land_even_even. reflexivity.
-    - replace (S (2 * bitlist_denote_helper ys)) with ((2 * bitlist_denote_helper ys) + 1).
+    - replace (S (2 * bitlist_denote ys)) with ((2 * bitlist_denote ys) + 1).
       rewrite PeanoNat.Nat.land_even_odd. reflexivity.
       apply x_plus_1_eq_Sx.
-    - replace (S (2 * bitlist_denote_helper xs)) with ((2 * bitlist_denote_helper xs) + 1).
+    - replace (S (2 * bitlist_denote xs)) with ((2 * bitlist_denote xs) + 1).
       rewrite PeanoNat.Nat.land_odd_even. reflexivity.
       apply x_plus_1_eq_Sx.
-    - replace (S (2 * bitlist_denote_helper xs)) with ((2 * bitlist_denote_helper xs) + 1).
-      replace (S (2 * bitlist_denote_helper ys)) with ((2 * bitlist_denote_helper ys) + 1).
+    - replace (S (2 * bitlist_denote xs)) with ((2 * bitlist_denote xs) + 1).
+      replace (S (2 * bitlist_denote ys)) with ((2 * bitlist_denote ys) + 1).
       rewrite PeanoNat.Nat.land_odd_odd. simpl. rewrite x_plus_1_eq_Sx. auto.
       apply x_plus_1_eq_Sx. apply x_plus_1_eq_Sx.
   Qed.
 
   Lemma Nat_land_xs_ys xs : forall ys,
-      Nat.land (bitlist_denote_helper xs) (bitlist_denote_helper ys) =
-        bitlist_denote_helper (map2_list bit_and xs ys).
+      Nat.land (bitlist_denote xs) (bitlist_denote ys) =
+        bitlist_denote (map2_list bit_and xs ys).
   Proof.
     induction xs.
     - destruct ys; auto.
@@ -632,16 +632,16 @@ Section bvec_lshift1_correct.
   Qed.
 
   Lemma Nat_land_ones_to_firstn {n} (xs : list bit) :
-    Nat.land (bitlist_denote_helper xs) (PeanoNat.Nat.ones n) =
-      bitlist_denote_helper (List.firstn n xs).
+    Nat.land (bitlist_denote xs) (PeanoNat.Nat.ones n) =
+      bitlist_denote (List.firstn n xs).
   Proof.
     rewrite Nat_ones_to_bitlist. rewrite Nat_land_xs_ys.
     rewrite and_ones_to_firstn. reflexivity.
   Qed.
 
   Lemma Nat_land_double_xs_ones {n} (xs : list bit) :
-    Nat.land (Nat.double (bitlist_denote_helper xs)) (PeanoNat.Nat.ones (S n)) =
-      Nat.double (bitlist_denote_helper (List.firstn n xs)).
+    Nat.land (Nat.double (bitlist_denote xs)) (PeanoNat.Nat.ones (S n)) =
+      Nat.double (bitlist_denote (List.firstn n xs)).
   Proof.
     repeat rewrite bitlist_double_denote.
     rewrite Nat_land_ones_to_firstn.
@@ -681,7 +681,7 @@ Section bvec_rshift1_correct.
   Qed.
 
   Lemma bitlist_denote_msb_zero xs :
-    bitlist_denote_helper (xs ++ zero :: nil) = bitlist_denote_helper xs.
+    bitlist_denote (xs ++ zero :: nil) = bitlist_denote xs.
   Proof.
     induction xs.
     - auto.
@@ -689,12 +689,12 @@ Section bvec_rshift1_correct.
   Qed.
 
   Lemma bvec_rshift1_correct_listify xs a :
-    bitlist_denote_helper (xs ++ zero :: nil) =
-      Nat.div2 (bit2nat a + Nat.double (bitlist_denote_helper xs)).
+    bitlist_denote (xs ++ zero :: nil) =
+      Nat.div2 (bit2nat a + Nat.double (bitlist_denote xs)).
   Proof.
     destruct a; simpl; rewrite bitlist_denote_msb_zero.
     - rewrite div2_double. reflexivity.
-    - destruct (bitlist_denote_helper xs). simpl. reflexivity.
+    - destruct (bitlist_denote xs). simpl. reflexivity.
       simpl. apply eq_S.
       replace (n + S n) with (2 * n + 1).
       rewrite PeanoNat.Nat.div2_odd'. reflexivity.
@@ -727,8 +727,8 @@ Section bvec_add_correct.
 
   Lemma bitlist_sum_correct : forall (xs ys : list bit) cin,
       length xs = length ys ->
-    bitlist_denote_helper (bitlist_sum xs ys cin) =
-      plus (plus (bitlist_denote_helper xs) (bitlist_denote_helper ys)) (bit2nat cin).
+    bitlist_denote (bitlist_sum xs ys cin) =
+      plus (plus (bitlist_denote xs) (bitlist_denote ys)) (bit2nat cin).
   Proof.
     induction xs.
     - destruct ys, cin; try easy; auto.
@@ -739,7 +739,7 @@ Section bvec_add_correct.
       unfold bitlist_fulladd_paired.
       intro cin. rewrite fst_split_cons.
       fold bitlist_fulladd_paired. (* Just for clarity *)
-      unfold bitlist_denote_helper. fold bitlist_denote_helper.
+      unfold bitlist_denote. fold bitlist_denote.
 
       intros hlen. simpl in hlen. apply eq_add_S in hlen.
       rewrite IHxs; auto.
@@ -766,8 +766,8 @@ Section bvec_add_correct.
   Qed.
 
   Lemma bitlist_denote_firstn xs : forall n,
-    bitlist_denote_helper (ListDef.firstn n xs) =
-      Nat.modulo (bitlist_denote_helper xs) (Nat.pow 2 n).
+    bitlist_denote (ListDef.firstn n xs) =
+      Nat.modulo (bitlist_denote xs) (Nat.pow 2 n).
   Proof.
     induction xs.
     - destruct n; auto. simpl.
@@ -778,7 +778,7 @@ Section bvec_add_correct.
       rewrite <- plus_n_O. rewrite x_plus_x_eq_twice_x.
       rewrite PeanoNat.Nat.Div0.mod_mul_r.
       replace (PeanoNat.Nat.modulo
-                 (bit2nat a + Nat.double (bitlist_denote_helper xs)) 2)
+                 (bit2nat a + Nat.double (bitlist_denote xs)) 2)
         with (bit2nat a).
       rewrite half_m_plus_2n. unfold Nat.double. rewrite x_plus_x_eq_twice_x. auto.
       destruct a; auto.
