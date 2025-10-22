@@ -451,10 +451,7 @@ Section bvec_multiplication.
        end.
 
   Section Testing.
-    Fixpoint onevec SIZE := match SIZE with
-                            | 0 => Vector.nil bit
-                            | S p => Vector.cons bit one p (onevec p)
-                            end.
+    Definition onevec SIZE : bvec SIZE := Vector.const one SIZE.
 
     Lemma lt_0_8 : 0 < 8. lia. Qed.
     Lemma lt_1_8 : 1 < 8. lia. Qed.
