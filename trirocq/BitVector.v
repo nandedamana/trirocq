@@ -93,7 +93,7 @@ Section bvec_addition.
   Proof. lia. Qed.
 
   Lemma length_bitlist_incarry n : forall (xs ys : list bit) cin,
-    length xs = n -> length ys = n -> length (bitlist_incarry xs ys cin) = S n.
+      length xs = n -> length ys = n -> length (bitlist_incarry xs ys cin) = S n.
   Proof.
     unfold bitlist_incarry. intros.
     rewrite List.length_snd_split.
@@ -243,12 +243,12 @@ Section bvec_addition.
 
   (* TODO cin and x3 redundant? *)
   Lemma bitlist_fst_fulladd_Si i : forall (xs ys : list bit) x0 x2 x3 cin SIZE,
-    length xs = SIZE -> length ys = SIZE -> i < SIZE ->
-    List.nth_error xs i = Some x0 ->
-    List.nth_error ys i = Some x2 ->
-    List.nth_error (snd (List.split (bitlist_fulladd_paired xs ys cin))) i = Some x3 ->
-    List.nth_error (fst (List.split (bitlist_fulladd_paired xs ys cin))) i =
-      Some (bit_xor x3 (bit_xor x0 x2)).
+      length xs = SIZE -> length ys = SIZE -> i < SIZE ->
+      List.nth_error xs i = Some x0 ->
+      List.nth_error ys i = Some x2 ->
+      List.nth_error (snd (List.split (bitlist_fulladd_paired xs ys cin))) i = Some x3 ->
+      List.nth_error (fst (List.split (bitlist_fulladd_paired xs ys cin))) i =
+        Some (bit_xor x3 (bit_xor x0 x2)).
   Proof.
     induction i.
     - intros xs ys x0 x2 x3 cin SIZE hlenx hleny hi hx hy.
@@ -270,8 +270,8 @@ Section bvec_addition.
   Qed.
 
   Lemma nth_error_firstn {A} i : forall (xs : list A) n,
-    n > 0 -> i < length xs -> i < n ->
-    List.nth_error (ListDef.firstn n xs) i = List.nth_error xs i.
+      n > 0 -> i < length xs -> i < n ->
+      List.nth_error (ListDef.firstn n xs) i = List.nth_error xs i.
   Proof.
     induction i.
     - destruct n; try easy.
@@ -727,8 +727,8 @@ Section bvec_add_correct.
 
   Lemma bitlist_sum_correct : forall (xs ys : list bit) cin,
       length xs = length ys ->
-    bitlist_denote (bitlist_sum xs ys cin) =
-      plus (plus (bitlist_denote xs) (bitlist_denote ys)) (bit2nat cin).
+      bitlist_denote (bitlist_sum xs ys cin) =
+        plus (plus (bitlist_denote xs) (bitlist_denote ys)) (bit2nat cin).
   Proof.
     induction xs.
     - destruct ys, cin; try easy; auto.
@@ -749,7 +749,7 @@ Section bvec_add_correct.
   Qed.
 
   Lemma half_m_plus_2n n m : m = 0 \/ m = 1 ->
-                    Nat.div (m + Nat.double n) 2 = n.
+                             Nat.div (m + Nat.double n) 2 = n.
   Proof.
     intros [h0 | h1].
     destruct m; try rewrite h0; try rewrite h1; try easy.
@@ -766,8 +766,8 @@ Section bvec_add_correct.
   Qed.
 
   Lemma bitlist_denote_firstn xs : forall n,
-    bitlist_denote (ListDef.firstn n xs) =
-      Nat.modulo (bitlist_denote xs) (Nat.pow 2 n).
+      bitlist_denote (ListDef.firstn n xs) =
+        Nat.modulo (bitlist_denote xs) (Nat.pow 2 n).
   Proof.
     induction xs.
     - destruct n; auto. simpl.
