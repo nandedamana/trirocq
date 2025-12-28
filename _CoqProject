@@ -1,6 +1,7 @@
 -Q trirocq/ trirocq
 trirocq/AddSub.v
 trirocq/Bit.v
+trirocq/BitMul.v
 trirocq/BitVector.v
 trirocq/Main.v
 trirocq/SigVector.v
