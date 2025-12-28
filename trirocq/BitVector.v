@@ -39,6 +39,16 @@ Section bvec_addition.
     let carry := bit_or (bit_or (bit_and a b) (bit_and a cin)) (bit_and b cin) in
     pair sum carry.
 
+  Fixpoint bitlist_fulladd_paired_unary (xs : list bit) (cin : bit) :=
+    match xs with
+      | List.cons hx tx =>
+          let lsbsumcarry := fulladd hx zero cin in
+          let lsbsum := fst lsbsumcarry in
+          let lsbcarry := snd lsbsumcarry in
+          List.cons (pair lsbsum cin) (bitlist_fulladd_paired_unary tx lsbcarry)
+    | List.nil => List.cons (fulladd zero zero cin) nil
+    end.
+
   (* Element i is (sum[i], incarry[i]) *)
   Fixpoint bitlist_fulladd_paired (xs ys : list bit) (cin : bit) :=
     match xs, ys with
@@ -47,17 +57,27 @@ Section bvec_addition.
         let lsbsum := fst lsbsumcarry in
         let lsbcarry := snd lsbsumcarry in
         List.cons (pair lsbsum cin) (bitlist_fulladd_paired tx ty lsbcarry)
-    | _, _ => List.cons (fulladd zero zero cin) nil
+    | List.cons _ _, List.nil =>
+        bitlist_fulladd_paired_unary xs cin
+    | List.nil, List.cons _ _ =>
+        bitlist_fulladd_paired_unary ys cin
+    | _, _ =>
+        bitlist_fulladd_paired_unary List.nil cin
     end.
 
-  Definition bitlist_sum (xs ys : list bit) (cin : bit) : list bit :=
-    fst (List.split (bitlist_fulladd_paired xs ys cin)).
+  Definition bitlist_sum_internal (xs ys : list bit) cin : list bit :=
+    match xs, ys with
+    | _, _ => fst (List.split (bitlist_fulladd_paired xs ys cin))
+    end.
 
-  Definition bitlist_incarry (xs ys : list bit) (cin : bit) : list bit :=
+  Definition bitlist_sum (xs ys : list bit) : list bit :=
+    bitlist_sum_internal xs ys zero.
+
+  Definition bitlist_incarry (xs ys : list bit) cin : list bit :=
     snd (List.split (bitlist_fulladd_paired xs ys cin)).
 
-  Definition bitlist_sum_nocarry (xs ys : list bit) (cin : bit) : list bit :=
-    List.firstn (length xs) (bitlist_sum xs ys cin).
+  Definition bitlist_sum_nocarry (xs ys : list bit) : list bit :=
+    List.firstn (length xs) (bitlist_sum xs ys).
 
   Lemma length_bitlist_fulladd_paired n : forall (xs ys : list bit) cin,
       length xs = n -> length ys = n ->
@@ -72,19 +92,20 @@ Section bvec_addition.
       reflexivity. lia. lia.
   Qed.
 
-  Lemma length_bitlist_sum_nocarry n : forall (xs ys : list bit) cin,
+  Lemma length_bitlist_sum_nocarry n : forall (xs ys : list bit),
       length xs = n -> length ys = n ->
-      length (bitlist_sum_nocarry xs ys cin) = n.
+      length (bitlist_sum_nocarry xs ys) = n.
   Proof.
     intros.
     unfold bitlist_sum_nocarry. rewrite List.length_firstn.
-    unfold bitlist_sum. rewrite List.length_fst_split.
+    unfold bitlist_sum. unfold bitlist_sum_internal.
+    rewrite List.length_fst_split.
     rewrite length_bitlist_fulladd_paired with (n := n); lia.
   Qed.
 
   Definition bvec_add {n} (x y : bvec n) : bvec n.
     destruct x as [xs hlenx]. destruct y as [ys hleny].
-    refine (exist _ (bitlist_sum_nocarry xs ys zero) _).
+    refine (exist _ (bitlist_sum_nocarry xs ys) _).
     apply length_bitlist_sum_nocarry; auto.
   Defined.
 
@@ -100,15 +121,15 @@ Section bvec_addition.
     apply length_bitlist_fulladd_paired; auto.
   Qed.
 
-  Definition bitlist_ith_incarry {n} (xs ys : list bit)
+  Definition bitlist_ith_incarry {n} (xs ys : list bit) cin
     (hlenx : length xs = n) (hleny : length ys = n) {i} (hidx : i < n) :=
-    safe_nth (bitlist_incarry xs ys zero)
-      (convhi (length_bitlist_incarry n xs ys zero hlenx hleny) (ltsuc _ _ hidx)).
+    safe_nth (bitlist_incarry xs ys cin)
+      (convhi (length_bitlist_incarry n xs ys cin hlenx hleny) (ltsuc _ _ hidx)).
 
   (* TODO rename as bvec_ith_incarry *)
   Definition bvec_incarry {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit.
     destruct x as [xs hlenx]. destruct y as [ys hleny].
-    exact (bitlist_ith_incarry xs ys hlenx hleny hidx).
+    exact (bitlist_ith_incarry xs ys zero hlenx hleny hidx).
   Defined.
 
   Lemma bvec_incarry_0 {SIZE} (x y : bvec SIZE) (hidx : 0 < SIZE) :
@@ -119,8 +140,7 @@ Section bvec_addition.
     rewrite_safe_nth_anywhere.
     revert hx1. unfold bitlist_incarry.
     rewrite nth_error_snd_split.
-    destruct xs; destruct ys; try easy.
-    simpl. congruence.
+    destruct xs; destruct ys; try easy; simpl; congruence.
   Qed.
 
   Lemma length_cons_imp_predecessor {A} (xs : list A) x m :
@@ -295,17 +315,24 @@ Section bvec_addition.
     - intros. rewrite bvec_incarry_0.
       destruct x as [xs hlenx]. destruct y as [ys hleny].
       unfold bvec_ith. unfold Vector.nth_order. simpl.
-      unfold bitlist_sum_nocarry. unfold bitlist_sum.
+      unfold bitlist_sum_nocarry.
+      unfold bitlist_sum. unfold bitlist_sum_internal.
       repeat rewrite_safe_nth_anywhere.
       apply eqxy2Some.
       rewrite <- hx1.
 
+      destruct xs, ys; try easy.
       rewrite nth_error_firstn.
+
       rewrite nth_error_fst_split. unfold bitlist_fulladd_paired.
       destruct xs; destruct ys; try easy. simpl.
       simpl in hx0. apply eqxy2Some in hx0.
       simpl in hx2. apply eqxy2Some in hx2.
-      congruence. lia.
+      congruence.
+      subst. simpl. auto.
+      subst. simpl. auto.
+      subst. simpl. auto.
+      lia.
       rewrite List.length_fst_split.
       rewrite (length_bitlist_fulladd_paired SIZE); lia.
       lia.
@@ -314,13 +341,15 @@ Section bvec_addition.
       unfold bvec_incarry. unfold bitlist_ith_incarry.
       unfold bitlist_incarry.
       unfold bvec_ith. unfold Vector.nth_order. simpl.
-      unfold bitlist_sum_nocarry. unfold bitlist_sum.
+      unfold bitlist_sum_nocarry.
+      unfold bitlist_sum. unfold bitlist_sum_internal.
       repeat rewrite_safe_nth_anywhere.
       apply eqxy2Some.
       rewrite <- hx1.
 
+      destruct xs, ys; try easy.
       rewrite nth_error_firstn.
-      apply (bitlist_fst_fulladd_Si (S i) xs ys x2 x3 x0 zero SIZE); auto.
+      apply (bitlist_fst_fulladd_Si (S i) _ _ x2 x3 x0 zero SIZE); auto.
       rewrite hlenx. lia.
       rewrite List.length_fst_split.
       rewrite (length_bitlist_fulladd_paired SIZE); lia; auto.
@@ -722,27 +751,56 @@ Section bvec_add_correct.
       simpl. auto.
   Qed.
 
-  Lemma bitlist_sum_correct : forall (xs ys : list bit) cin,
-      length xs = length ys ->
-      bitlist_denote (bitlist_sum xs ys cin) =
+  Lemma bitlist_fulladd_paired_unary_correct : forall xs cin,
+      bitlist_denote (fst (List.split (bitlist_fulladd_paired_unary xs cin))) =
+        bitlist_denote xs + bit2nat cin.
+  Proof.
+    induction xs.
+    - destruct cin; auto.
+    - unfold bitlist_fulladd_paired_unary.
+      fold bitlist_fulladd_paired_unary.
+      intro. rewrite fst_split_cons.
+      unfold bitlist_denote. fold bitlist_denote.
+      rewrite IHxs.
+
+      destruct a, cin; simpl; lia.
+  Qed.
+
+  Lemma bitlist_sum_internal_correct : forall (xs ys : list bit) cin,
+      bitlist_denote (bitlist_sum_internal xs ys cin) =
         plus (plus (bitlist_denote xs) (bitlist_denote ys)) (bit2nat cin).
   Proof.
     induction xs.
-    - destruct ys, cin; try easy; auto.
+    - destruct ys, cin; try easy; auto;
+      try unfold bitlist_sum_internal, bitlist_fulladd_paired;
+      try rewrite bitlist_fulladd_paired_unary_correct;
+      auto.
     - destruct ys; try easy.
 
-      revert IHxs. unfold bitlist_sum. intro IHxs.
+      + intro cin.
+        unfold bitlist_sum_internal, bitlist_fulladd_paired.
+        rewrite bitlist_fulladd_paired_unary_correct;
+          auto.
+      +
+        revert IHxs. unfold bitlist_sum, bitlist_sum_internal. intro IHxs.
+        unfold bitlist_fulladd_paired.
+        intro cin. rewrite fst_split_cons.
+        fold bitlist_fulladd_paired. (* Just for clarity *)
+        unfold bitlist_denote. fold bitlist_denote.
 
-      unfold bitlist_fulladd_paired.
-      intro cin. rewrite fst_split_cons.
-      fold bitlist_fulladd_paired. (* Just for clarity *)
-      unfold bitlist_denote. fold bitlist_denote.
+        rewrite IHxs; auto.
 
-      intros hlen. simpl in hlen. apply eq_add_S in hlen.
-      rewrite IHxs; auto.
+        destruct a, b, cin;
+          simplify_bit_ops; simpl; simplify_bit_ops; try lia.
+  Qed.
 
-      destruct a, b, cin;
-        simplify_bit_ops; simpl; simplify_bit_ops; try lia.
+  Lemma bitlist_sum_correct : forall (xs ys : list bit),
+      bitlist_denote (bitlist_sum xs ys) =
+        plus (bitlist_denote xs) (bitlist_denote ys).
+  Proof.
+    unfold bitlist_sum.
+    intros.
+    rewrite bitlist_sum_internal_correct; auto.
   Qed.
 
   Lemma half_m_plus_2n n m : m = 0 \/ m = 1 ->
@@ -779,13 +837,13 @@ Section bvec_add_correct.
         with (bit2nat a).
       rewrite half_m_plus_2n. unfold Nat.double. rewrite x_plus_x_eq_twice_x. auto.
       destruct a; auto.
-      
+
       unfold Nat.double. rewrite x_plus_x_eq_twice_x.
       rewrite PeanoNat.Nat.mul_comm.
       rewrite PeanoNat.Nat.Div0.mod_add.
       destruct a; auto.
   Qed.
-  
+
   (* denote(sum x y) = (denote(x) + denote(y)) mod 2^SIZE *)
   Lemma bvec_add_correct {n} (x y : bvec n) :
     bvec_denote (bvec_add x y) =
@@ -794,6 +852,6 @@ Section bvec_add_correct.
     destruct x as [xs hlenx]. destruct y as [ys hleny].
     unfold bvec_denote. simpl.
     unfold bitlist_sum_nocarry. rewrite bitlist_denote_firstn.
-    rewrite bitlist_sum_correct; auto. lia.
+    rewrite bitlist_sum_correct; auto.
   Qed.
 End bvec_add_correct.
