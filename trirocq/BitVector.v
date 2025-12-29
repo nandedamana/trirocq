@@ -820,6 +820,15 @@ Section bvec_add_correct.
       rewrite PeanoNat.Nat.div_add; auto.
   Qed.
 
+  Lemma bitlist_denote_firstn xs n :
+    bitlist_denote (List.firstn n xs) =
+      Nat.modulo (bitlist_denote xs) (Nat.pow 2 n).
+  Proof.
+    rewrite <- PeanoNat.Nat.land_ones.
+    rewrite Nat_land_ones_to_firstn. reflexivity.
+  Qed.
+
+  (* Alternative proof that does not use land:
   Lemma bitlist_denote_firstn xs : forall n,
       bitlist_denote (ListDef.firstn n xs) =
         Nat.modulo (bitlist_denote xs) (Nat.pow 2 n).
@@ -843,6 +852,7 @@ Section bvec_add_correct.
       rewrite PeanoNat.Nat.Div0.mod_add.
       destruct a; auto.
   Qed.
+   *)
 
   (* denote(sum x y) = (denote(x) + denote(y)) mod 2^SIZE *)
   Lemma bvec_add_correct {n} (x y : bvec n) :
