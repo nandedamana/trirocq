@@ -76,9 +76,8 @@ Section bvec_addition.
   Definition bitlist_incarry (xs ys : list bit) cin : list bit :=
     snd (List.split (bitlist_fulladd_paired xs ys cin)).
 
-  (* TODO FIXME redefine now that xs and ys can be differently-sized *)
   Definition bitlist_sum_nocarry (xs ys : list bit) : list bit :=
-    List.firstn (length xs) (bitlist_sum xs ys).
+    List.firstn (Nat.max (length xs) (length ys)) (bitlist_sum xs ys).
 
   Lemma length_bitlist_fulladd_paired n : forall (xs ys : list bit) cin,
       length xs = n -> length ys = n ->
@@ -863,6 +862,7 @@ Section bvec_add_correct.
     destruct x as [xs hlenx]. destruct y as [ys hleny].
     unfold bvec_denote. simpl.
     unfold bitlist_sum_nocarry. rewrite bitlist_denote_firstn.
+    subst. rewrite hleny. rewrite PeanoNat.Nat.max_id.
     rewrite bitlist_sum_correct; auto.
   Qed.
 End bvec_add_correct.
