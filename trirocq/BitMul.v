@@ -290,6 +290,30 @@ Section bvec_mul.
 
           destruct (bitlist_sum _ _).
           rewrite List.firstn_nil. reflexivity.
-          rewrite hlenz. rewrite List.firstn_cons. reflexivity.
+          rewrite hleny, hlenz. rewrite PeanoNat.Nat.max_id.
+          rewrite List.firstn_cons. reflexivity.
+  Qed.
+
+  Definition bvec_mul {n} (a b : bvec (S n)) :=
+    bvec_mul_shrinkinga _ a _ b (zerovec (S n)).
+
+  Lemma bvec_mul_correct : forall n (a b : bvec (S n)),
+    bvec_denote (bvec_mul a b) =
+      Nat.modulo (bvec_denote a * bvec_denote b) (Nat.pow 2 (S n)).
+  Proof.
+    intros. unfold bvec_mul.
+    rewrite bvec_mul_shrinkinga_correct.
+
+    assert (H : forall n', bitlist_denote (List.repeat zero n') = 0).
+    induction n'.
+    auto.
+    unfold bitlist_denote. unfold List.repeat. fold bitlist_denote.
+    revert IHn'. unfold ListDef.repeat. intro IHn'.
+    rewrite IHn'. auto.
+
+    unfold bvec_denote at 1. simpl.
+    rewrite H. unfold Nat.double.
+    rewrite plus_O_n.
+    reflexivity.
   Qed.
 End bvec_mul.
