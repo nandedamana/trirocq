@@ -76,6 +76,7 @@ Section bvec_addition.
   Definition bitlist_incarry (xs ys : list bit) cin : list bit :=
     snd (List.split (bitlist_fulladd_paired xs ys cin)).
 
+  (* TODO FIXME redefine now that xs and ys can be differently-sized *)
   Definition bitlist_sum_nocarry (xs ys : list bit) : list bit :=
     List.firstn (length xs) (bitlist_sum xs ys).
 
