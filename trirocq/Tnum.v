@@ -1,5 +1,6 @@
 Require Import trirocq.Bit.
 Require Import trirocq.BitVector.
+Require Import trirocq.SigVector.
 
 From Stdlib Require Import Lia.
 
@@ -47,6 +48,9 @@ Module tnum.
   Lemma v_cons_simplify {SIZE} n1 n2 : v (cons SIZE n1 n2) = n1.
     unfold v. reflexivity.
   Qed.
+
+  Definition tl {n} (tn : t (S n)) : t n :=
+    cons n (Vector.tl (v tn)) (Vector.tl (m tn)).
 End tnum.
 
 Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
@@ -83,6 +87,44 @@ Section tnum_shift.
     destruct i.
     - repeat rewrite bvec_lshift1_ith_0. auto.
     - repeat rewrite bvec_lshift1_ith_S. apply igx.
+  Qed.
+
+  Definition tnum_rshift1_shrink {n} (P : tnum.t (S n)) : tnum.t n :=
+    tnum.tl P.
+
+  Lemma tnum_rshift1_shrink_wellformed {n} (P : tnum.t (S n)) :
+    tnum.wellformed P -> tnum.wellformed (tnum_rshift1_shrink P).
+  Proof.
+    unfold tnum.wellformed.
+    unfold tnum_rshift1_shrink, tnum.tl.
+    destruct P as [pv pm].
+    unfold tnum.m, tnum.v.
+    unfold bvec_ith.
+    intros wfp i hi.
+    repeat rewrite Vector.nth_order_tl. auto.
+  Qed.
+
+  Lemma tnum_tl_ingamma : forall n (x : bvec (S n)) (P : tnum.t (S n)),
+      ingamma x P -> ingamma (Vector.tl x) (tnum.tl P).
+  Proof.
+    intros n x P.
+    unfold ingamma, tnum.tl, tnum.ith_m, tnum.ith_v.
+    destruct P as [pv pm].
+    unfold bvec_ith. simpl.
+    intro igx. intros i hi.
+    repeat rewrite Vector.nth_order_tl.
+    auto.
+  Qed.
+    
+  Lemma tnum_rshift1_shrink_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_rshift1_shrink P) /\ ingamma (Vector.tl x) (tnum_rshift1_shrink P).
+  Proof.
+    intros wfp igx.
+    split. apply tnum_rshift1_shrink_wellformed; auto.
+
+    unfold tnum_rshift1_shrink.
+    apply tnum_tl_ingamma; auto.
   Qed.
 
   Definition tnum_rshift1 {n} (P : tnum.t (S n)) :=

@@ -250,6 +250,18 @@ Module Vector.
 
   Definition nth_order {A} {n} (v : t A n) {i} (hi : i < n) : A := safe_nth (projlist v) (convhi v hi).
 
+  Lemma nth_order_tl {A} {n} (v : t A (S n)) {i} (hi : i < n) :
+    nth_order (tl v) hi = nth_order v (ltS hi).
+  Proof.
+    unfold Vector.nth_order.
+    destruct v as [xs hlenx].
+    destruct xs.
+    - easy.
+    - rewrite_safe_nth_auto.
+      rewrite_eqxy2Some.
+      simpl. reflexivity.
+  Qed.
+
   Lemma nth_map {A} {B} (f : A -> B) {n} (v : t A n) :
     forall {i} (hi : i < n), nth_order (map f v) hi = f (nth_order v hi).
   Proof.

@@ -392,19 +392,6 @@ End bvec_subtraction.
      https://docs.rocq-prover.org/v8.16/stdlib/Coq.Bool.Bvector.html
  *)
 
-Module bmir. (* bvec_mul_iter_result *)
-  Inductive t {n} := cons (a b acc : bvec (S n)).
-
-  Definition a {n} (r : @bmir.t n) :=
-    match r with cons a _ _ => a end.
-
-  Definition b {n} (r : @bmir.t n) :=
-    match r with cons _ b _ => b end.
-
-  Definition acc {n} (r : @bmir.t n) :=
-    match r with cons _ _ acc => acc end.
-End bmir.
-
 Section bvec_shift.
   (* Remember: head (i = 0) has the LSB *)
   Definition bvec_lshift1 {n} (v : bvec (S n)) : bvec (S n) :=
@@ -430,7 +417,7 @@ Section bvec_shift.
   (* Using logical shift since the type used in Linux is u64 *)
   Definition bvec_rshift1 {n} (v : bvec (S n)) : bvec (S n) :=
     Vector.shiftin zero (Vector.tl v).
-
+  
   Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
 
   Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
@@ -466,18 +453,12 @@ Section bvec_shift.
   Qed.
 End bvec_shift.
 
-Section bvec_multiplication.
+Section bvec_multiplication_helpers.
   Definition zerovec SIZE : bvec SIZE := Vector.const zero SIZE.
 
   Lemma zerovec_ith {n} {i} (hidx : i < n) : bvec_ith (zerovec n) hidx = zero.
     apply Vector.const_nth.
   Qed.
-
-  Definition bvec_mul_single {SIZE} y (x : bvec SIZE)
-    := match y with
-       | zero => zerovec SIZE
-       | one => x
-       end.
 
   Section Testing.
     Definition onevec SIZE : bvec SIZE := Vector.const one SIZE.
@@ -521,22 +502,7 @@ Section bvec_multiplication.
   End Testing.
 
   Definition bvec_lsb {n} (x : bvec (S n)) := bvec_ith x (PeanoNat.Nat.lt_0_succ n).
-
-  Definition bvec_mul_iter {n} (input : @bmir.t n) :=
-    let a := bmir.a input in
-    let b := bmir.b input in
-    let acc := bmir.acc input in
-    let nxt_acc := match bvec_lsb a with
-                   | one => bvec_add acc b
-                   | zero => acc
-                   end in
-    let nxt_a := bvec_rshift1 a in
-    let nxt_b := bvec_lshift1 b in
-    bmir.cons nxt_a nxt_b nxt_acc.
-
-  Definition bvec_mul {n} (a b : bvec (S n)) :=
-    bmir.acc (Nat.iter (S n) bvec_mul_iter (bmir.cons a b (zerovec (S n)))).
-End bvec_multiplication.
+End bvec_multiplication_helpers.
 
 Ltac unwrap_bvec_ops := match goal with
                           _ => repeat rewrite bvec_and_rel;
