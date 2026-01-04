@@ -12,6 +12,14 @@ Ltac specialize_wf_ig hi :=
      specialize (H _ hi); try specialize_wf_ig hi
   end.
 
+Ltac dismiss_absurd :=
+  try match goal with
+    | [ H : ?x = ?x -> zero = one |- _ ] =>
+        discriminate H; auto
+    | [ H : ?x = ?x -> one = zero |- _ ] =>
+        discriminate H; auto
+    end.
+
 Ltac try_wf_ig :=
   match goal with
   |[ H : bvec_ith ?x ?hi = _ -> bvec_ith _ _ = _ |- _ ] =>
@@ -31,11 +39,11 @@ Ltac crush11 :=
   match goal with
     [ |- _ ] =>
       try_wf_ig; (* TODO FIXME only the first one is matched *)
-      repeat (destruct (bvec_ith _ _);
+      repeat (destruct (bvec_ith _ _); dismiss_absurd;
               simplify_bit_ops; try easy);
-      repeat (destruct (bvec_incarry _ _ _);
+      repeat (destruct (bvec_incarry _ _ _); dismiss_absurd;
               simplify_bit_ops; try easy);
-      repeat (destruct (bvec_inborrow _ _ _);
+      repeat (destruct (bvec_inborrow _ _ _); dismiss_absurd;
               simplify_bit_ops; try easy);
       intuition
   end.
@@ -156,7 +164,10 @@ Section linux_tnum_addition.
       revert h66. unfold_tnum_goodies.
 
       specialize_wf_ig (ltprv hidx).
-      crush11.
+
+      repeat destruct (bvec_ith _ _);
+        repeat destruct (bvec_incarry _ _ _);
+        simplify_bit_ops; try easy; intuition.
   Qed.
 
   Lemma specialize_wf_ig {SIZE} {x y} {P Q : tnum.t SIZE} :
