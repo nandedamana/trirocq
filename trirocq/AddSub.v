@@ -20,25 +20,10 @@ Ltac dismiss_absurd :=
         discriminate H; auto
     end.
 
-Ltac try_wf_ig :=
-  match goal with
-  |[ H : bvec_ith ?x ?hi = _ -> bvec_ith _ _ = _ |- _ ] =>
-     destruct (bvec_ith x hi);
-     simplify_bit_ops; try easy; repeat rewrite_if_holds H; revert H; try_wf_ig
-  |[ H : bvec_incarry ?x ?y ?hi = _ -> bvec_incarry _ _ _ = _ |- _ ] =>
-     destruct (bvec_incarry x y hi);
-     simplify_bit_ops; try easy; repeat rewrite_if_holds H; revert H; try_wf_ig
-  |[ H : bvec_inborrow ?x ?y ?hi = _ -> bvec_inborrow _ _ _ = _ |- _ ] =>
-     destruct (bvec_inborrow x y hi);
-     simplify_bit_ops; try easy; repeat rewrite_if_holds H; revert H; try_wf_ig
-  |[ |- _ ] => idtac
-  end.
-
 (* TODO rename *)
 Ltac crush11 :=
   match goal with
     [ |- _ ] =>
-      try_wf_ig; (* TODO FIXME only the first one is matched *)
       repeat (destruct (bvec_ith _ _); dismiss_absurd;
               simplify_bit_ops; try easy);
       repeat (destruct (bvec_incarry _ _ _); dismiss_absurd;
