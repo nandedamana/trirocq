@@ -1,8 +1,1 @@
--Q trirocq/ trirocq
-trirocq/AddSub.v
-trirocq/Bit.v
-trirocq/BitMul.v
-trirocq/BitVector.v
-trirocq/SigVector.v
-trirocq/Tnum.v
-trirocq/TnumMul.v
+-Q _build/default/theories/ trirocq
