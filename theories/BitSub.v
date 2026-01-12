@@ -1,5 +1,10 @@
 Require Import trirocq.Bit.
+
+(* TODO BitVector contains many list/vector-related general lemmas
+ * used to prove bvec_add_correct. Move them out.
+ *)
 Require Import trirocq.BitVector.
+
 Require Import trirocq.SigVector.
 From Stdlib Require Import Lia.
 
@@ -79,11 +84,6 @@ Section bvec_subtraction.
     apply length_bitlist_sub_noborrow; auto.
   Defined.
 
-  (* TODO FIXME duplication with another file *)
-  Lemma convhi {A} {xs : list A} {n} (hlen : length xs = n) {i} (hi : i < n) :
-    i < length xs.
-  Proof. lia. Qed.
-
   Lemma length_bitlist_inborrow n : forall (xs ys : list bit) cin,
       length xs = n -> length ys = n -> length (bitlist_inborrow xs ys cin) = S n.
   Proof.
@@ -112,15 +112,6 @@ Section bvec_subtraction.
     revert hx1. unfold bitlist_inborrow.
     rewrite nth_error_snd_split.
     destruct xs; destruct ys; try easy; simpl; congruence.
-  Qed.
-
-  (* TODO FIXME duplication with another file *)
-  Lemma length_cons_imp_predecessor {A} (xs : list A) x m :
-    length (x :: xs) = m -> exists n, m = S n /\ length xs = n.
-  Proof.
-    simpl. destruct m. easy.
-    exists m. apply eq_add_S in H.
-    split; auto.
   Qed.
 
   Lemma bitlist_fullsub_Si :
@@ -226,15 +217,6 @@ Section bvec_subtraction.
     unfold bitlist_inborrow. apply (bitlist_snd_fullsub_Si SIZE); auto.
   Qed.
 
-  (* TODO FIXME duplication with another file *)
-  Lemma split_cons_pair A B (xs : list (prod A B)) x :
-    List.split (List.cons x xs) =
-      pair (List.cons (fst x) (fst (List.split xs)))
-        (List.cons (snd x) (snd (List.split xs))).
-  Proof.
-    simpl. destruct (List.split xs). intuition.
-  Qed.
-
   (* TODO cin and x3 redundant? *)
   Lemma bitlist_fst_fullsub_Si i : forall (xs ys : list bit) x0 x2 x3 cin SIZE,
       length xs = SIZE -> length ys = SIZE -> i < SIZE ->
@@ -261,25 +243,6 @@ Section bvec_subtraction.
       pose (h8 := length_cons_imp_predecessor ys b0 SIZE hleny).
       destruct h8 as (pzy & (hpzy0 & hpzy1)).
       apply IHi with (SIZE := pzx); try auto; lia.
-  Qed.
-
-  (* TODO FIXME duplication with another file *)
-  Lemma nth_error_firstn {A} i : forall (xs : list A) n,
-      n > 0 -> i < length xs -> i < n ->
-      List.nth_error (ListDef.firstn n xs) i = List.nth_error xs i.
-  Proof.
-    induction i.
-    - destruct n; try easy.
-      unfold List.nth_error. fold List.nth_error.
-      destruct xs.
-      unfold ListDef.firstn. fold ListDef.firstn.
-      auto. simpl. auto.
-    - destruct xs; try easy.
-      destruct n; try easy.
-      rewrite List.firstn_cons. simpl.
-      intros h1 h2 h3.
-      apply PeanoNat.lt_S_n in h2, h3.
-      apply IHi; auto. lia.
   Qed.
 
   Lemma bvec_fullsub_result : forall {SIZE} x y [i] (hidx : i < SIZE),
