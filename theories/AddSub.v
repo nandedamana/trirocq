@@ -254,10 +254,10 @@ Section linux_tnum_addition.
   Qed.
 
   Lemma tnum_add_wellformed {SIZE} (P Q : tnum.t SIZE) :
-    tnum.wellformed P /\ tnum.wellformed Q -> tnum.wellformed (tnum_add P Q).
+    tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed (tnum_add P Q).
   Proof.
     unfold tnum.wellformed.
-    intro H.
+    intros h1 h2.
     unfold tnum_add.
     apply wellformed_general.
   Qed.
@@ -266,12 +266,13 @@ Section linux_tnum_addition.
    * of adding any concrete p and q (written less formally for simplicity).
    *)
   Lemma tnum_add_sound {SIZE} x y (P Q : tnum.t SIZE) :
-    tnum.wellformed P /\ tnum.wellformed Q /\ ingamma x P /\ ingamma y Q ->
+    tnum.wellformed P -> tnum.wellformed Q ->
+    ingamma x P -> ingamma y Q ->
     tnum.wellformed (tnum_add P Q) /\
       ingamma (bvec_add x y) (tnum_add P Q).
   Proof.
     unfold_tnum_goodies.
-    intros H. destruct H as (wfp & wfq & igP & igQ).
+    intros wfp wfq igP igQ.
 
     split. apply tnum_add_wellformed; auto.
 
@@ -327,7 +328,8 @@ Section linux_tnum_addition.
 
     (* Mirrors Harishankar et al. *)
     Lemma minimum_carries {SIZE} x y P Q :
-      tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
+      tnum.wellformed P -> tnum.wellformed Q ->
+      ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
         bvec_incarry (tnum.v P) (tnum.v Q) hidx = one ->
         bvec_incarry x y hidx = one.
@@ -348,7 +350,8 @@ Section linux_tnum_addition.
     Qed.
 
     Lemma maximum_carries {SIZE} x y P Q :
-      tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
+      tnum.wellformed P -> tnum.wellformed Q ->
+      ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
         bvec_incarry (maxval P) (maxval Q) hidx = zero ->
         bvec_incarry x y hidx = zero.
