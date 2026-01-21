@@ -4,6 +4,8 @@ Require Import trirocq.SigVector.
 
 From Stdlib Require Import Lia.
 
+(** printing < %\texttt{<}% *)
+
 Ltac rewrite_if_holds H :=
   match type of H with
   | ?b = ?b -> _ => rewrite H
