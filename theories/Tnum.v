@@ -22,7 +22,8 @@ Module tnum.
   Definition ith_m {SIZE} (tn : t SIZE) {i} (hidx : i < SIZE) := bvec_ith (m tn) hidx.
 
   Definition wellformed {SIZE} (tn : t SIZE) :=
-    forall i (hidx : i < SIZE), bvec_ith (m tn) hidx = one -> bvec_ith (v tn) hidx = zero.
+    forall i (hidx : i < SIZE),
+      bvec_ith (m tn) hidx = one -> bvec_ith (v tn) hidx = zero.
 
   Lemma ith_m_simplify {SIZE} n1 n2 i (hidx : i < SIZE) : ith_m (cons SIZE n1 n2) hidx = bvec_ith n2 hidx.
     unfold ith_m. simpl. reflexivity.
@@ -53,7 +54,7 @@ Module tnum.
     cons n (Vector.tl (v tn)) (Vector.tl (m tn)).
 End tnum.
 
-Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) : Prop :=
+Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) :=
   forall i (hidx : i < SIZE),
     tnum.ith_m T hidx = zero -> bvec_ith x hidx = tnum.ith_v T hidx.
 
