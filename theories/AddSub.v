@@ -306,7 +306,7 @@ Section linux_tnum_addition.
     auto.
   Qed.
 
-  Section tnum_add_optimality'.
+  Section tnum_add_optimality.
     (* Finding the bits that can be uncertain (by propagation) involves taking the
      * difference of the maximum concrete sum and the minimum concrete sum of P and Q.
      * The idea comes from https://dougallj.wordpress.com/2020/01/13/bit-twiddling-addition-with-unknown-bits/
@@ -329,7 +329,7 @@ Section linux_tnum_addition.
      *)
 
     (* Mirrors Harishankar et al. *)
-    Lemma minimum_carries' {SIZE} x y P Q :
+    Lemma minimum_carries {SIZE} x y P Q :
       tnum.wellformed P -> tnum.wellformed Q ->
       ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
@@ -351,7 +351,7 @@ Section linux_tnum_addition.
         crush11.
     Qed.
 
-    Lemma maximum_carries' {SIZE} x y P Q :
+    Lemma maximum_carries {SIZE} x y P Q :
       tnum.wellformed P -> tnum.wellformed Q ->
       ingamma x P -> ingamma y Q ->
       forall [i] (hidx : i < SIZE),
@@ -380,7 +380,7 @@ Section linux_tnum_addition.
      * The fact that minsum and maxsum are enough to find the uncertainty propagated by carry
      * is established by the lemmas minimum_carries and maximum_carries.
      *)
-    Lemma tnum_add_optimal' {SIZE} P Q :
+    Lemma tnum_add_optimal {SIZE} P Q :
       tnum.wellformed P -> tnum.wellformed Q ->
       forall [i] (hidx : i < SIZE),
         tnum_ith_chi P Q hidx = bvec_ith (minmask P Q) hidx.
@@ -415,7 +415,7 @@ Section linux_tnum_addition.
         repeat destruct (bvec_incarry _ _ (ltprv hidx));
           simplify_bit_ops; crush11.
     Qed.
-  End tnum_add_optimality'.
+  End tnum_add_optimality.
 End linux_tnum_addition.
 
 Section linux_tnum_subtraction.
