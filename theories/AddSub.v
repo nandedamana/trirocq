@@ -321,10 +321,10 @@ Section linux_tnum_addition.
     Definition maxsum {SIZE} (P : tnum.t SIZE) Q :=
       bvec_add (maxval P) (maxval Q).
 
-    Definition minmask {SIZE} (P : tnum.t SIZE) Q :=
+    Definition sumdiff {SIZE} (P : tnum.t SIZE) Q :=
       bvec_xor (minsum P Q) (maxsum P Q).
 
-    (* minmask considers minsum and maxsum only. We need to show that that's enough to find the
+    (* sumdiff considers minsum and maxsum only. We need to show that that's enough to find the
      * minimum uncertainty by carry.
      *)
 
@@ -383,11 +383,11 @@ Section linux_tnum_addition.
     Lemma tnum_add_optimal {SIZE} P Q :
       tnum.wellformed P -> tnum.wellformed Q ->
       forall [i] (hidx : i < SIZE),
-        tnum_ith_chi P Q hidx = bvec_ith (minmask P Q) hidx.
+        tnum_ith_chi P Q hidx = bvec_ith (sumdiff P Q) hidx.
     Proof.
       unfold tnum.wellformed.
       intros wfp wfq i hidx.
-      unfold tnum_ith_chi. unfold minmask. unfold maxsum. unfold maxval. unfold minsum.
+      unfold tnum_ith_chi. unfold sumdiff. unfold maxsum. unfold maxval. unfold minsum.
       induction i.
       - specialize_wf_ig hidx.
         unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
