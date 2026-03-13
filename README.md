@@ -29,11 +29,25 @@ proven to be sound.
 
 ## Building
 
-This project uses Dune as the build system. As of writing this, the
-latest version of Dune (v3.20.2) available from opam does not support
-the `rocq` language (it supports `coq`, but then you'll have to
-uninstall `rocq-*` packages and install `coq-*` packages). If your
-version of Dune has the same issue, you can clone [their GitHub
-repository](https://github.com/ocaml/dune) and do a `make release`
-(please make sure to use `CLONED_PATH/dune.exe` instead of `dune`
-then). It builds without much hassle.
+Following is the build environment we use:
+
+- `rocq-core` (9.1.1), `rocq-stdlib` (9.0.0) from opam
+
+- Latest version of Dune built from the
+  [source](https://github.com/ocaml/dune) using `make release` at
+  commit `bb781c774a17438e52720dff0d5f5245c6a6b86a`
+
+With the appropriate opam environment loaded (using `eval $(opam
+env)`) and Dune built at say, `PATH_TO_DUNE`, one could build this
+project using:
+
+```
+PATH_TO_DUNE/dune.exe build
+```
+
+The reason we recommend building Dune from source is because the
+latest version of Dune available in opam as of writing this does not
+support the `rocq` language (it supports `coq`, but then you'll have
+to uninstall `rocq-*` packages and install `coq-*` packages). If your
+version of Dune from opam doesn't have this issue, there is no need to
+build it from source.
