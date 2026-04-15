@@ -31,7 +31,8 @@ proven to be sound.
 
 Following is the build environment we use:
 
-- `rocq-core` (9.1.1), `rocq-stdlib` (9.0.0) from opam
+- opam switch based on `coq.9.1.0` with the packages `rocq-core`
+  (9.1.1) and `rocq-stdlib` (9.0.0)
 
 - Latest version of Dune built from the
   [source](https://github.com/ocaml/dune) using `make release` at
