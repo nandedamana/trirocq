@@ -76,16 +76,6 @@ Section linux_tnum_addition.
     unfold ith_mask_incarry; unfold ith_value_incarry;
     unfold value_sum; unfold mask_sum.
 
-  (* TODO rename *)
-  (* Unused, but still an interesting observation. *)
-  Lemma helper14 {SIZE} v1 v2 {i} (hidx : i < SIZE) :
-    bvec_ith (bvec_xor (bvec_add v1 v2) v1) hidx = bit_xor (bvec_ith v2 hidx) (bvec_incarry v1 v2 hidx).
-  Proof.
-    unwrap_bvec_ops.
-    rewrite bvec_fulladd_result with (x := v1) (y := v2).
-    destruct (bvec_ith v1 hidx); destruct (bvec_ith v2 hidx); destruct (bvec_incarry v1 v2 hidx); auto.
-  Qed.
-
   (* Is chi is the mask bit of the incoming carry? No; it considers v bits as well. chi[i] in fact `tnum.ith_m (tnum_add P Q) hidx` excluding P.m[i] | Q.m[i] *)
   Lemma helper32 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
