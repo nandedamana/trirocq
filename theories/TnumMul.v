@@ -1,9 +1,9 @@
-Require Import trirocq.AddSub.
 Require Import trirocq.Bit.
 Require Import trirocq.BitMul.
 Require Import trirocq.BitVector.
 Require Import trirocq.SigVector.
 Require Import trirocq.Tnum.
+Require Import trirocq.TnumAdd.
 
 From Stdlib Require Import Lia.
 
