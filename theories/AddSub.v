@@ -76,8 +76,11 @@ Section linux_tnum_addition.
     unfold ith_mask_incarry; unfold ith_value_incarry;
     unfold value_sum; unfold mask_sum.
 
-  (* Is chi is the mask bit of the incoming carry? No; it considers v bits as well. chi[i] in fact `tnum.ith_m (tnum_add P Q) hidx` excluding P.m[i] | Q.m[i] *)
-  Lemma helper32 {SIZE} P Q :
+  (* Is chi is the mask bit of the incoming carry? No; it considers v bits
+   * as well. chi[i] in fact `tnum.ith_m (tnum_add P Q) hidx` excluding
+   * P.m[i] | Q.m[i]
+   *)
+  Lemma hlp_tnum_add_no_mask_imp_known_inputs {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_add P Q) hidx = zero ->
@@ -99,7 +102,7 @@ Section linux_tnum_addition.
       repeat simplify_bit_ops; split; try easy.
   Qed.
 
-  Lemma helper66 {SIZE} P Q :
+  Lemma hlp_tnum_add_incarry_exmv {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
       bit_and (ith_mask_incarry P Q hidx) (ith_value_incarry P Q hidx) = zero.
@@ -137,7 +140,7 @@ Section linux_tnum_addition.
 
       specialize (IHi (ltprv hidx)).
 
-      assert (h66 := helper66 _ _ wfp wfq (ltprv hidx)).
+      assert (h66 := hlp_tnum_add_incarry_exmv _ _ wfp wfq (ltprv hidx)).
       revert h66. unfold_tnum_goodies.
 
       specialize_wf_ig (ltprv hidx).
@@ -187,7 +190,7 @@ Section linux_tnum_addition.
       pose (H := specialize_wf_ig wfp wfq igp igq (ltprv hidx)).
       destruct H as (wfps & wfqs & igps & igqs).
 
-      assert (h66 := helper66 P Q wfp wfq (ltprv hidx)).
+      assert (h66 := hlp_tnum_add_incarry_exmv P Q wfp wfq (ltprv hidx)).
       assert (h64 := helper63 P Q wfp wfq (ltprv hidx)).
       revert h66. revert h64. unfold_tnum_goodies.
 
@@ -271,7 +274,7 @@ Section linux_tnum_addition.
     intros i hidx rmskz.
 
     assert (H33 := helper33 x y P Q wfp wfq igP igQ hidx rmskz).
-    assert (H32 := helper32 P Q wfp wfq hidx rmskz).
+    assert (H32 := hlp_tnum_add_no_mask_imp_known_inputs P Q wfp wfq hidx rmskz).
     revert H32 H33. unfold_tnum_goodies. intros H32 H33.
 
     destruct H32 as (xmskz & ymskz & cinmskz).
@@ -391,7 +394,7 @@ Section linux_tnum_addition.
         assert (wfqp := wfq _ (ltprv hidx)).
         specialize (IHi (ltprv hidx)).
 
-        assert (h66 := helper66 P Q wfp wfq (ltprv hidx)).
+        assert (h66 := hlp_tnum_add_incarry_exmv P Q wfp wfq (ltprv hidx)).
         assert (h63 := helper63 P Q wfp wfq (ltprv hidx)).
         revert h66. revert h63. unfold_tnum_goodies.
         specialize_wf_ig (ltprv hidx).
