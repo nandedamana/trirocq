@@ -29,26 +29,15 @@ proven to be sound.
 
 ## Building
 
-Following is the build environment we use:
+We use an opam-based build environment with:
 
-- opam switch based on `coq.9.1.0` with the packages `rocq-core`
-  (9.1.1) and `rocq-stdlib` (9.0.0)
+- `rocq-core` (9.1.1)
+- `rocq-runtime` (9.1.1)
+- `rocq-stdlib` (9.0.0)
+- `dune` (3.22.2)
 
-- Latest version of Dune built from the
-  [source](https://github.com/ocaml/dune) using `make release` at
-  commit `bb781c774a17438e52720dff0d5f5245c6a6b86a`
-
-With the appropriate opam environment loaded (using `eval $(opam
-env)`) and Dune built at say, `PATH_TO_DUNE`, one could build this
-project using:
-
-```
-PATH_TO_DUNE/dune.exe build
-```
-
-The reason we recommend building Dune from source is because the
-latest version of Dune available in opam as of writing this does not
-support the `rocq` language (it supports `coq`, but then you'll have
-to uninstall `rocq-*` packages and install `coq-*` packages). If your
-version of Dune from opam doesn't have this issue, there is no need to
-build it from source.
+Earlier versions of dune do not support the `rocq` language (they
+supports `coq`, but then you'll have to uninstall `rocq-*` packages
+and install `coq-*` packages). If you are unable to install a recent
+version of dune via opam, you can build it from the
+[source](https://github.com/ocaml/dune).
