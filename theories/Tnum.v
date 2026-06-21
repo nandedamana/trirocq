@@ -171,18 +171,15 @@ Section tnum_union.
     tnum.cons SIZE (bvec_and v (bvec_neg m)) m.
 
   Lemma tnum_union_wellformed {SIZE} (P Q : tnum.t SIZE) :
-    tnum.wellformed P -> tnum.wellformed Q ->
     tnum.wellformed (tnum_union P Q).
   Proof.
-    unfold tnum_union. unfold tnum.wellformed.
-    intros wfP wfQ i hidx.
+    unfold tnum_union.
+    intros i hidx.
     rewrite tnum.ith_m_simplify2.
     rewrite tnum.ith_v_simplify2.
     unwrap_bvec_ops.
-    specialize (wfP i hidx).
-    specialize (wfQ i hidx).
-    destruct (bvec_ith (tnum.m P) hidx); try rewrite_if_holds wfP;
-      destruct (bvec_ith (tnum.m Q) hidx); try rewrite_if_holds wfQ; try easy;
+    destruct (bvec_ith (tnum.m P) hidx);
+      destruct (bvec_ith (tnum.m Q) hidx);
       destruct (bvec_ith (tnum.v P) hidx);
       destruct (bvec_ith (tnum.v Q) hidx);
       repeat simplify_bit_ops; auto.
