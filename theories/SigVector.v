@@ -119,6 +119,53 @@ Proof.
   simpl. apply safe_nth_eq.
 Qed.
 
+Lemma list_all_ith_eq_cons : forall {A} {x y : list A} {xh yh},
+    length x = length y ->
+    (forall i (hi : i < length (List.cons xh x)) (hj : i < length (List.cons yh y)),
+        (safe_nth (List.cons xh x) hi) = (safe_nth (List.cons yh y) hj)) -> 
+    (forall i (hi : i < length x) (hj : i < length y),
+        (safe_nth x hi) = (safe_nth y hj)).
+Proof.
+  intros A x y xh yh hlen heq.
+
+  intros i hi hj.
+  assert (lxi : S i < length (List.cons xh x)). simpl. lia.
+  assert (lyi : S i < length (List.cons yh y)). simpl. lia.
+  specialize (heq (S i) lxi lyi).
+  repeat rewrite safe_nth_cons in heq.
+
+  assert (hix : safe_nth x hi = safe_nth x (PeanoNat.lt_S_n i (length x) lxi)).
+  apply safe_nth_eq.
+
+  assert (hiy : safe_nth y hj = safe_nth y (PeanoNat.lt_S_n i (length y) lyi)).
+  apply safe_nth_eq.
+
+  rewrite hix, hiy. auto.
+Qed.
+
+Lemma list_eq_by_ith : forall {A} (x y : list A),
+    length x = length y ->
+    (forall i (hi : i < length x) (hj : i < length y),
+        (safe_nth x hi) = (safe_nth y hj)) -> x = y.
+Proof.
+  intros A x y.
+  induction x as [|xh] in y |- *. (* "generalize over y" to sync both lists *)
+  - intro hlen. destruct y; try easy.
+  - intro hlen. destruct y as [|yh]; try easy.
+    assert (hlen' : length x = length y). auto.
+    specialize (IHx y hlen').
+
+    intro heq.
+    assert (xh = yh).
+    specialize (heq 0 (PeanoNat.Nat.lt_0_succ (length x)) (PeanoNat.Nat.lt_0_succ (length y))).
+    simpl in heq. auto.
+
+    enough (x = y). congruence.
+
+    pose (H' := list_all_ith_eq_cons hlen' heq).
+    auto.
+Qed.
+
 Section map2_list.
   (* Providing custom map2 since it is no longer found in the Stdlib. *)
   Fixpoint map2_list {A} {B} {C} (f : A -> B -> C) (xs : list A) (ys : list B) : list C :=

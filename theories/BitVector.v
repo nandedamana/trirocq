@@ -33,6 +33,45 @@ Section bvec_bitwise.
   Proof. intros. apply Vector.nth_map2; auto. Qed.
 End bvec_bitwise.
 
+Lemma bvec_eq_by_ith : forall {SIZE} (x y : bvec SIZE),
+    (forall i (hidx : i < SIZE), (bvec_ith x hidx) = (bvec_ith y hidx)) -> x = y.
+Proof.
+  destruct x as [x lx].
+  destruct y as [y ly].
+  intro heqi.
+  apply SigVector.Vector.eqlist_imp_eqvec.
+
+  simpl.
+  apply list_eq_by_ith. subst. auto.
+
+  intros i hix hiy.
+  subst. specialize (heqi i hix).
+  
+  revert heqi.
+  unfold bvec_ith. unfold SigVector.Vector.nth_order.
+  simpl.
+
+  match goal with
+    [ |- ?x = ?y -> ?x' = ?y' ] => assert (hx : x = x')
+  end.
+  match goal with
+    [ |- SigVector.safe_nth ?x ?hi = SigVector.safe_nth ?x ?hi' ] =>
+      rewrite (SigVector.safe_nth_eq x hi hi')
+  end.
+  reflexivity.
+
+  match goal with
+    [ |- ?x = ?y -> ?x' = ?y' ] => assert (hy : y = y')
+  end.
+  match goal with
+    [ |- SigVector.safe_nth ?x ?hi = SigVector.safe_nth ?x ?hi' ] =>
+      rewrite (SigVector.safe_nth_eq x hi hi')
+  end.
+  reflexivity.
+
+  rewrite hx, hy. auto.
+Qed.
+
 Section bvec_addition.
   Definition fulladd a b cin :=
     let sum := bit_xor cin (bit_xor a b) in
@@ -705,7 +744,7 @@ Section bvec_rshift1_correct.
 End bvec_rshift1_correct.
 
 Section bvec_add_correct.
-  Lemma fst_split_cons : forall A x (xs : list (prod A A)),
+  Lemma fst_split_cons : forall A B x (xs : list (prod A B)),
       fst (List.split (List.cons x xs)) =
         List.cons (fst x) (fst (List.split xs)).
   Proof.
