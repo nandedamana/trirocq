@@ -1,0 +1,175 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{listings}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+
+\lstset{basicstyle=\ttfamily}
+
+\newcommand{\case}[2]{\textbf{Case #1: #2}}
+\newcommand{\wfdomn}{\mathbb{T}_n}
+
+\newcommand{\ith}[1]{#1[i]}
+\newcommand{\tv}[1]{#1.v}
+\newcommand{\tm}[1]{#1.m}
+
+\newcommand{\ithv}[1]{\ith{\tv{#1}}}
+\newcommand{\ithm}[1]{\ith{\tm{#1}}}
+
+\newcommand{\wf}[1]{wellformed(#1)}
+\newcommand{\ingamma}[2]{#1 \in \gamma(#2)}
+
+\newcommand{\tadd}[2]{tnum\_add(#1, #2)}
+
+\newcommand{\seti}[1]{set(#1, i)}
+
+\newcommand{\sv}[2]{(\tv{#1} + \tv{#2})}
+\newcommand{\sm}[2]{(\tm{#1} + \tm{#2})}
+\newcommand{\svm}[1]{(\tv{#1} + \tm{#1})}
+\newcommand{\orvm}[1]{(\tv{#1} \mathbin{|} \tm{#1})}
+
+\begin{document}
+
+\title{Tnum Arithmetic Proofs for Humans}
+\author{Nandakumar Edamana}
+
+\maketitle
+
+\begin{abstract}
+  This document provides a pen-and-paper-style explanation for
+  our Rocq proofs related to tnum arithmetic.
+\end{abstract}
+
+\section{Convention}
+
+This document uses upper case letters to denote tnums that have a
+value-mask representation internally.  $\wfdomn$ is used to represent
+the set of all possible well-formed (see
+Definition~\ref{def:wellformed}) tnums in $n$-bit value-mask
+representation.  For a tnum $P$, $\ithv{P}$ represents the $i$-th
+value bit of $P$, and $\ithm{P}$ represents the $i$-th mask bit of $P$
+(Note that unlike in the Rocq proofs, this document uses
+1-indexing). For a bit vector $x$, $\seti{x}$ denotes the same bit
+vector with its $i$-ith bit set to $1$.
+
+\section{Background}
+
+In this section, $i$ denotes a valid index (bit position) for the bit
+vector it is used with. Details like bounds are omitted for brevity.
+
+\begin{definition}
+  \label{def:wellformed} (Well-formedness)
+  $$\forall P \in \wfdomn, \ithm{P} = 1 \implies \ithv{P} = 0$$
+\end{definition}
+
+\begin{definition}
+  \label{def:ingamma} (Membership)
+  $$\forall p \in \{0, 1\}^{n}, P \in \wfdomn : \ingamma{p}{P} \iff \ithm{P} = 0 \implies \ith{p} = \ithv{P}$$
+\end{definition}
+
+\begin{lemma}
+  \label{lem:ingamma_value}
+  $\forall P \in \wfdomn, \ingamma{\tv{P}}{P}$
+\end{lemma}
+\begin{proof}
+  Follows from Definition~\ref{def:ingamma}.
+\end{proof}
+
+\begin{lemma}
+  \label{lem:ingamma_value_bitor_mask}
+  $\forall P \in \wfdomn, \ingamma{\orvm{P}}{P}$
+\end{lemma}
+\begin{proof}
+  Follows from Definition~\ref{def:ingamma}.
+\end{proof}
+
+\begin{lemma}
+  \label{lem:ingamma_set_at_mask}
+  Consider any $P \in \wfdomn$. If $\ithm{P} = 1$, then $\ingamma{\seti{\tv{P}}}{P}$.
+\end{lemma}
+\begin{proof}
+  Follows from Definition~\ref{def:ingamma}. (Note that
+  $\seti{\tv{P}}$ is the same as $\tv{P}$, except at position $i$. At
+  position $i$, the mask is set, so the value bit is free to be either
+  $0$ or $1$ without losing membership.)
+\end{proof}
+
+\begin{lemma}
+  \label{lem:tnum_add_v_m_is_or}
+  $\forall P \in \wfdomn, \tv{P} + \tm{Q} = \tv{P} \mathbin{|} \tm{Q}$
+\end{lemma}
+\begin{proof}
+  Due to well-formedness, $\ithv{P}$ and $\ithm{P}$ cannot be both $1$
+  for any $i$. For such inputs, addition decomposes to bitwise OR.
+\end{proof}
+
+\section{Optimality of tnum\_add}
+
+Informally speaking, an abstract arithmetic operation is optimal if it
+has no more uncertainty than there is in the concrete result set.
+
+In the case of tnum addition, this means if the abstract sum of two
+tnums have $\mu$ at some position $i$, there should be at least one
+pair of concrete sums that differ at $i$. We formally state and prove
+this in the following lemma, showing \lstinline{tnum_add} from the
+Linux kernel is optimal.
+
+\begin{lemma}
+  Consider any $P, Q \in \wfdomn$, and a position $i \le n$. If $\ithm{\tadd{P}{Q}} = 1$, then
+  \[
+  \exists \ingamma{p, p'}{P}, \exists \ingamma{q, q'}{Q} : \ith{(p + q)} \neq \ith{(p' + q')}.
+  \]
+\end{lemma}
+
+\begin{proof}
+  There are exactly three cases by which $\ithm{\tadd{P}{Q}}$ can be
+  $1$. Either $\ithm{P} = 1$, $\ithm{Q} = 1$, or $\ithm{\chi} = 1$.
+  We consider these three cases individually and show that there exist
+  $\ingamma{p, p'}{P}$ and $\ingamma{q, q'}{Q}$ such that $\ith{(p +
+    q)} \neq \ith{(p' + q')}$. (Note that either of $p \neq p'$ or $q
+  \neq q'$ must hold, but both need not be true.)
+
+  \case{1}{$\ithm{P} = 1$}. Taking $p = \tv{P}$, $p' = \seti{\tv{P}}$,
+  and $q = q' = \tv{Q}$ satisfies our goal. Their membership follows
+  from Lemma~\ref{lem:ingamma_value} and
+  Lemma~\ref{lem:ingamma_set_at_mask}. We know that $\ithv{P} = 0$
+  since {$\ithm{P} = 1$}. Hence $p$ and $p'$ differ at (and only at)
+  position $i$, and $\ith{(p + q)} \neq \ith{(p' + q')}$.
+
+  \case{2}{$\ithm{Q} = 1$}. Similar to the previous case, we take $q =
+  \tv{Q}$, $q' = \seti{\tv{Q}}$, and $p = p' = \tv{P}$.
+
+  \case{3}{$\ithm{\chi} = 1$}. Recall that $\chi = (\sv{P}{Q} +
+  \sm{P}{Q}) \oplus \sv{P}{Q}$. Since we know that $\ithm{\chi} = 1$,
+  we have two possibilities here:
+
+  \case{3.1}{$\ith{(\sv{P}{Q} + \sm{P}{Q})} = 1, \ithv{P} = \ithm{P} = \ith{\sv{P}{Q}} = 0$}.
+
+  After a basic rearranging and application of
+  Lemma~\ref{lem:tnum_add_v_m_is_or}, $\ith{(\orvm{P} + \orvm{Q})} =
+  1$. We know that $\ingamma{\orvm{P}}{P}$ and $\ingamma{\orvm{Q}}{Q}$
+  (by Lemma~\ref{lem:ingamma_value_bitor_mask}). Hence we can pick
+  $\ingamma{p, p'}{P}$ and $\ingamma{q, q'}{Q}$ in the following
+  manner to satisfy $\ith{(p + q)} \neq \ith{(p' + q')}$:
+
+  \begin{align*}
+    p &= \tv{P} \\
+    q &= \tv{Q} \\
+    p' &= \orvm{P} \\
+    q' &= \orvm{Q}
+  \end{align*}
+
+  \case{3.2}{$\ith{\sv{P}{Q}} = 1, \ith{(\sv{P}{Q} + \sm{P}{Q})} =
+    \ithv{P} = \ithm{P} = 0$}. Same assignments for $p$, $p'$, $q$ and
+  $q'$ work in this case as well.
+\end{proof}
+
+As a side note, it is interesting to note that $\tv{P}$ is the
+smallest concrete value and $\orvm{P}$ is the largest concrete value
+represented by $P$, for any $P$.
+
+\end{document}
