@@ -301,118 +301,7 @@ Section linux_tnum_addition.
     auto.
   Qed.
 
-  Section tnum_add_optimality.
-    (* Finding the bits that can be uncertain (by propagation) involves taking the
-     * difference of the maximum concrete sum and the minimum concrete sum of P and Q.
-     * The idea comes from https://dougallj.wordpress.com/2020/01/13/bit-twiddling-addition-with-unknown-bits/
-     *)
-
-    Definition minsum {SIZE} (P : tnum.t SIZE) Q :=
-      bvec_add (tnum.v P) (tnum.v Q).
-
-    Definition maxval {SIZE} (P : tnum.t SIZE) :=
-      bvec_or (tnum.v P) (tnum.m P).
-
-    Definition maxsum {SIZE} (P : tnum.t SIZE) Q :=
-      bvec_add (maxval P) (maxval Q).
-
-    Definition sumdiff {SIZE} (P : tnum.t SIZE) Q :=
-      bvec_xor (minsum P Q) (maxsum P Q).
-
-    (* sumdiff considers minsum and maxsum only. We need to show that that's enough to find the
-     * minimum uncertainty by carry.
-     *)
-
-    (* Mirrors Harishankar et al. *)
-    Lemma minimum_carries {SIZE} x y P Q :
-      tnum.wellformed P -> tnum.wellformed Q ->
-      ingamma x P -> ingamma y Q ->
-      forall [i] (hidx : i < SIZE),
-        bvec_incarry (tnum.v P) (tnum.v Q) hidx = one ->
-        bvec_incarry x y hidx = one.
-    Proof.
-      unfold tnum.wellformed. unfold ingamma.
-      unfold tnum.ith_m. unfold tnum.ith_v.
-      intros wfp wfq igp igq.
-      induction i.
-      - intro. rewrite bvec_incarry_0. easy.
-      -
-        intro hidx.
-        rewrite bvec_incarry_Si. simpl.
-
-        specialize (IHi (ltprv hidx)).
-        specialize_wf_ig (ltprv hidx).
-        rewrite bvec_incarry_Si. simpl.
-        crush11.
-    Qed.
-
-    Lemma maximum_carries {SIZE} x y P Q :
-      tnum.wellformed P -> tnum.wellformed Q ->
-      ingamma x P -> ingamma y Q ->
-      forall [i] (hidx : i < SIZE),
-        bvec_incarry (maxval P) (maxval Q) hidx = zero ->
-        bvec_incarry x y hidx = zero.
-    Proof.
-      unfold maxval. unfold tnum.wellformed. unfold ingamma.
-      unfold tnum.ith_m. unfold tnum.ith_v.
-      intros wfp wfq igp igq.
-      induction i.
-      - intro. repeat rewrite bvec_incarry_0. auto.
-      -
-        intro hidx.
-        rewrite bvec_incarry_Si. simpl.
-
-        specialize (IHi (ltprv hidx)).
-        specialize_wf_ig (ltprv hidx).
-        unwrap_bvec_ops.
-        rewrite bvec_incarry_Si.
-        crush11.
-    Qed.
-
-    (* TODO better, directly work on the result of tnum_add(). *)
-    (* This lemma essentially shows the optimization of chi is correct.
-     * chi is meant to be the minimum mask via carry, which is the xor of minsum and maxsum.
-     * The fact that minsum and maxsum are enough to find the uncertainty propagated by carry
-     * is established by the lemmas minimum_carries and maximum_carries.
-     *)
-    Lemma tnum_add_optimal {SIZE} P Q :
-      tnum.wellformed P -> tnum.wellformed Q ->
-      forall [i] (hidx : i < SIZE),
-        tnum_ith_chi P Q hidx = bvec_ith (sumdiff P Q) hidx.
-    Proof.
-      unfold tnum.wellformed.
-      intros wfp wfq i hidx.
-      unfold tnum_ith_chi. unfold sumdiff. unfold maxsum. unfold maxval. unfold minsum.
-      induction i.
-      - specialize_wf_ig hidx.
-        unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
-        repeat rewrite bvec_incarry_0.
-        unwrap_bvec_ops.
-        crush11.
-      -
-        assert (wfpi := wfp _ hidx).
-        assert (wfqi := wfq _ hidx).
-        assert (wfpp := wfp _ (ltprv hidx)).
-        assert (wfqp := wfq _ (ltprv hidx)).
-        specialize (IHi (ltprv hidx)).
-
-        assert (h66 := hlp_tnum_add_incarry_exmv P Q wfp wfq (ltprv hidx)).
-        assert (h63 := helper63 P Q wfp wfq (ltprv hidx)).
-        revert h66. revert h63. unfold_tnum_goodies.
-        specialize_wf_ig (ltprv hidx).
-
-        revert IHi.
-        unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
-        repeat rewrite bvec_incarry_Si. unwrap_bvec_ops. repeat simplify_bit_ops.
-        repeat rewrite bvec_fulladd_result.
-
-        (* TODO FIXME crush11 to replace this whole part is painfully slow *)
-        repeat destruct (bvec_incarry _ _ (ltprv hidx));
-          simplify_bit_ops; crush11.
-    Qed.
-  End tnum_add_optimality.
-
-  (* TODO rem/archive the optimality lemma that follows Viswanathan et al. *)
+  (* TODO rem/archive the optimality lemma that follows Vishwanathan et al. *)
   Section tnum_add_optimality_me.
 
     (* - Recall: chi is `tnum.ith_m (tnum_add P Q) hidx` excluding P.m[i] | Q.m[i]
@@ -594,9 +483,11 @@ Section linux_tnum_addition.
       apply bvec_ith_set_sets_ith_sum.
     Qed.
 
-    (* If the abstract result indicates uncertainty at some bit, there should be concrete sums with mismatching bits at that position. *)
-    (* TODO note: all of x, y, m, and n need not be distinct. *)
-    Lemma tnum_add_optimal_me {SIZE} P Q i (hidx : i < SIZE) :
+    (* If the abstract result indicates uncertainty at some bit, there
+     * should be concrete sums with mismatching bits at that position.
+     * Note: Either x <> m or y <> n should hold, but both need not.
+     *)
+    Lemma tnum_add_optimal {SIZE} P Q i (hidx : i < SIZE) :
       tnum.wellformed P -> tnum.wellformed Q ->
       tnum.ith_m (tnum_add P Q) hidx = one ->
       exists x y m n, ingamma x P /\ ingamma y Q /\
@@ -663,4 +554,114 @@ Section linux_tnum_addition.
           * assumption.
     Qed.
   End tnum_add_optimality_me.
+
+  Section tnum_add_optimality_hari.
+    (* Finding the bits that can be uncertain (by propagation) involves taking the
+     * difference of the maximum concrete sum and the minimum concrete sum of P and Q.
+     * The idea comes from https://dougallj.wordpress.com/2020/01/13/bit-twiddling-addition-with-unknown-bits/
+     *)
+
+    Definition minsum {SIZE} (P : tnum.t SIZE) Q :=
+      bvec_add (tnum.v P) (tnum.v Q).
+
+    Definition maxval {SIZE} (P : tnum.t SIZE) :=
+      bvec_or (tnum.v P) (tnum.m P).
+
+    Definition maxsum {SIZE} (P : tnum.t SIZE) Q :=
+      bvec_add (maxval P) (maxval Q).
+
+    Definition sumdiff {SIZE} (P : tnum.t SIZE) Q :=
+      bvec_xor (minsum P Q) (maxsum P Q).
+
+    (* sumdiff considers minsum and maxsum only. We need to show that that's enough to find the
+     * minimum uncertainty by carry.
+     *)
+
+    (* Mirrors Harishankar et al. *)
+    Lemma minimum_carries {SIZE} x y P Q :
+      tnum.wellformed P -> tnum.wellformed Q ->
+      ingamma x P -> ingamma y Q ->
+      forall [i] (hidx : i < SIZE),
+        bvec_incarry (tnum.v P) (tnum.v Q) hidx = one ->
+        bvec_incarry x y hidx = one.
+    Proof.
+      unfold tnum.wellformed. unfold ingamma.
+      unfold tnum.ith_m. unfold tnum.ith_v.
+      intros wfp wfq igp igq.
+      induction i.
+      - intro. rewrite bvec_incarry_0. easy.
+      -
+        intro hidx.
+        rewrite bvec_incarry_Si. simpl.
+
+        specialize (IHi (ltprv hidx)).
+        specialize_wf_ig (ltprv hidx).
+        rewrite bvec_incarry_Si. simpl.
+        crush11.
+    Qed.
+
+    Lemma maximum_carries {SIZE} x y P Q :
+      tnum.wellformed P -> tnum.wellformed Q ->
+      ingamma x P -> ingamma y Q ->
+      forall [i] (hidx : i < SIZE),
+        bvec_incarry (maxval P) (maxval Q) hidx = zero ->
+        bvec_incarry x y hidx = zero.
+    Proof.
+      unfold maxval. unfold tnum.wellformed. unfold ingamma.
+      unfold tnum.ith_m. unfold tnum.ith_v.
+      intros wfp wfq igp igq.
+      induction i.
+      - intro. repeat rewrite bvec_incarry_0. auto.
+      -
+        intro hidx.
+        rewrite bvec_incarry_Si. simpl.
+
+        specialize (IHi (ltprv hidx)).
+        specialize_wf_ig (ltprv hidx).
+        unwrap_bvec_ops.
+        rewrite bvec_incarry_Si.
+        crush11.
+    Qed.
+
+    (* This lemma essentially shows the optimization of chi is correct.
+     * chi is meant to be the minimum mask via carry, which is the xor of minsum and maxsum.
+     * The fact that minsum and maxsum are enough to find the uncertainty propagated by carry
+     * is established by the lemmas minimum_carries and maximum_carries.
+     *)
+    Lemma tnum_add_optimal_hari {SIZE} P Q :
+      tnum.wellformed P -> tnum.wellformed Q ->
+      forall [i] (hidx : i < SIZE),
+        tnum_ith_chi P Q hidx = bvec_ith (sumdiff P Q) hidx.
+    Proof.
+      unfold tnum.wellformed.
+      intros wfp wfq i hidx.
+      unfold tnum_ith_chi. unfold sumdiff. unfold maxsum. unfold maxval. unfold minsum.
+      induction i.
+      - specialize_wf_ig hidx.
+        unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
+        repeat rewrite bvec_incarry_0.
+        unwrap_bvec_ops.
+        crush11.
+      -
+        assert (wfpi := wfp _ hidx).
+        assert (wfqi := wfq _ hidx).
+        assert (wfpp := wfp _ (ltprv hidx)).
+        assert (wfqp := wfq _ (ltprv hidx)).
+        specialize (IHi (ltprv hidx)).
+
+        assert (h66 := hlp_tnum_add_incarry_exmv P Q wfp wfq (ltprv hidx)).
+        assert (h63 := helper63 P Q wfp wfq (ltprv hidx)).
+        revert h66. revert h63. unfold_tnum_goodies.
+        specialize_wf_ig (ltprv hidx).
+
+        revert IHi.
+        unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
+        repeat rewrite bvec_incarry_Si. unwrap_bvec_ops. repeat simplify_bit_ops.
+        repeat rewrite bvec_fulladd_result.
+
+        (* TODO FIXME crush11 to replace this whole part is painfully slow *)
+        repeat destruct (bvec_incarry _ _ (ltprv hidx));
+          simplify_bit_ops; crush11.
+    Qed.
+  End tnum_add_optimality_hari.
 End linux_tnum_addition.
