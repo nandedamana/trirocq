@@ -46,7 +46,7 @@ Proof.
 
   intros i hix hiy.
   subst. specialize (heqi i hix).
-  
+
   revert heqi.
   unfold bvec_ith. unfold SigVector.Vector.nth_order.
   simpl.
@@ -131,15 +131,42 @@ Section bvec_addition.
       reflexivity. lia. lia.
   Qed.
 
+  Lemma length_bitlist_sum (x y : list bit) :
+    length x = length y ->
+    length (bitlist_sum x y) = S (Nat.max (length x) (length y)).
+  Proof.
+    unfold bitlist_sum. unfold bitlist_sum_internal.
+    rewrite List.length_fst_split.
+    intro hlen. rewrite hlen.
+    apply length_bitlist_fulladd_paired; lia.
+  Qed.
+  
   Lemma length_bitlist_sum_nocarry n : forall (xs ys : list bit),
       length xs = n -> length ys = n ->
       length (bitlist_sum_nocarry xs ys) = n.
   Proof.
     intros.
     unfold bitlist_sum_nocarry. rewrite List.length_firstn.
+    rewrite length_bitlist_sum; lia.
+  Qed.
+
+  Lemma bitlist_fulladd_paired_commutative (xs ys : list bit) :
+    forall cin, bitlist_fulladd_paired xs ys cin = bitlist_fulladd_paired ys xs cin.
+  Proof.
+    induction xs in ys |- *.
+    - destruct ys. auto.
+      intuition.
+    - destruct ys. auto.
+      simpl. intro cin. rewrite IHxs.
+      destruct a, b, cin; auto.
+  Qed.
+
+  Lemma bitlist_sum_commutative (xs ys : list bit) :
+    bitlist_sum xs ys = bitlist_sum ys xs.
+  Proof.
     unfold bitlist_sum. unfold bitlist_sum_internal.
-    rewrite List.length_fst_split.
-    rewrite length_bitlist_fulladd_paired with (n := n); lia.
+    rewrite bitlist_fulladd_paired_commutative.
+    reflexivity.
   Qed.
 
   Definition bvec_add {n} (x y : bvec n) : bvec n.
@@ -147,6 +174,18 @@ Section bvec_addition.
     refine (exist _ (bitlist_sum_nocarry xs ys) _).
     apply length_bitlist_sum_nocarry; auto.
   Defined.
+
+  Lemma bvec_add_commutative {SIZE} (x y : bvec SIZE) :
+    bvec_add x y = bvec_add y x.
+  Proof.
+    destruct x as [xs xlen], y as [ys ylen].
+    apply SigVector.Vector.eqlist_imp_eqvec.
+    simpl. unfold bitlist_sum_nocarry.
+    rewrite xlen, ylen.
+    assert (heq : bitlist_sum xs ys = bitlist_sum ys xs).
+    apply bitlist_sum_commutative.
+    rewrite heq. reflexivity.
+  Qed.
 
   Lemma convhi {A} {xs : list A} {n} (hlen : length xs = n) {i} (hi : i < n) :
     i < length xs.
@@ -456,7 +495,7 @@ Section bvec_shift.
   (* Using logical shift since the type used in Linux is u64 *)
   Definition bvec_rshift1 {n} (v : bvec (S n)) : bvec (S n) :=
     Vector.shiftin zero (Vector.tl v).
-  
+
   Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
 
   Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
@@ -871,3 +910,125 @@ Section bvec_add_correct.
     rewrite bitlist_sum_correct; auto.
   Qed.
 End bvec_add_correct.
+
+Lemma eqdenote_imp_eqlist : forall (x y : list bit),
+    length x = length y ->
+    bitlist_denote x = bitlist_denote y ->
+    x = y.
+Proof.
+  intros x y.
+  induction x as [|xh] in y |- *.
+  - destruct y; easy.
+  - destruct y as [|yh]; try easy.
+    simpl.
+    intro hlen. apply eq_add_S in hlen.
+    specialize (IHx y hlen).
+
+    assert (Hem : bitlist_denote x = bitlist_denote y \/ bitlist_denote x <> bitlist_denote y). lia.
+    destruct Hem as [Heml | Hemr].
+    + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
+        try easy;
+        simpl;
+        rewrite IHx; try rewrite Heml; try lia; try auto.
+    + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
+        try easy; simpl; try lia.
+Qed.
+
+Lemma eqdenote_imp_eqvec : forall {SIZE} (x y : bvec SIZE),
+    bvec_denote x = bvec_denote y -> x = y.
+Proof.
+  intros SIZE x y heq.
+  apply SigVector.Vector.eqlist_imp_eqvec.
+  revert heq.
+  unfold bvec_denote. simpl.
+  intro eqlist. apply eqdenote_imp_eqlist in eqlist.
+  auto.
+
+  destruct x as [x xlen], y as [y ylen]. subst. auto.
+Qed.
+
+Section poking.
+  Fixpoint list_set_ith A (x : list A) i value :=
+    match x, i with
+    | nil, _ => nil
+    | List.cons h t, 0 => List.cons value t
+    | List.cons h t, S n => List.cons h (list_set_ith _ t n value)
+    end.
+
+  Lemma length_list_set_ith : forall {A} (x : list A) i value,
+      length (list_set_ith _ x i value) = length x.
+  Proof.
+    induction x.
+    - auto.
+    - unfold list_set_ith. fold list_set_ith.
+      destruct i. auto.
+      intro value. simpl. auto.
+  Qed.
+
+  Lemma list_ith_set_is_set : forall {A} (x : list A) i value,
+      i < length x ->
+      List.nth_error (list_set_ith _ x i value) i = Some value.
+  Proof.
+    induction x.
+    - easy.
+    - intros i value hidx.
+      unfold list_set_ith. fold list_set_ith.
+      destruct i. auto.
+      rewrite List.nth_error_cons.
+      apply IHx.
+      simpl in hidx. lia.
+  Qed.
+
+  Lemma list_ith_unset_is_id : forall {A} (x : list A) i value j,
+      j <> i ->
+      List.nth_error (list_set_ith _ x i value) j = List.nth_error x j.
+  Proof.
+    induction x.
+    - easy.
+    - intros i value j hj.
+      unfold list_set_ith. fold list_set_ith.
+      destruct i.
+      + destruct j. easy.
+        repeat rewrite List.nth_error_cons. auto.
+      + destruct j. easy.
+        repeat rewrite List.nth_error_cons. auto.
+  Qed.
+
+  Definition bitlist_set_ith (x : list bit) i := list_set_ith _ x i one.
+
+  Definition bvec_set_ith {SIZE} (x : bvec SIZE) {i} (setpos : i < SIZE) : bvec SIZE.
+    destruct x as [xs hlen].
+    exists (bitlist_set_ith xs i).
+    subst. apply length_list_set_ith.
+  Defined.
+
+  Lemma bvec_ith_set_is_one {SIZE} (x : bvec SIZE) {i} (setpos : i < SIZE) :
+    bvec_ith (bvec_set_ith x setpos) setpos = one.
+  Proof.
+    destruct x as [xs hlen].
+    unfold bvec_ith.
+    unfold bvec_set_ith.
+    unfold bitlist_set_ith.
+    unfold SigVector.Vector.nth_order. simpl.
+    SigVector.rewrite_safe_nth_anywhere.
+    subst.
+    pose (H := list_ith_set_is_set xs i one setpos).
+    congruence.
+  Qed.
+
+  Lemma bvec_ith_unset_is_id {SIZE} (x : bvec SIZE) {i} (hi : i < SIZE) {j} (hj : j < SIZE) :
+    j <> i ->
+    bvec_ith (bvec_set_ith x hi) hj = bvec_ith x hj.
+  Proof.
+    destruct x as [xs hlen].
+    unfold bvec_ith.
+    unfold bvec_set_ith.
+    unfold bitlist_set_ith.
+    unfold SigVector.Vector.nth_order. simpl.
+    repeat SigVector.rewrite_safe_nth_anywhere.
+    subst.
+    pose (H := list_ith_unset_is_id xs i one).
+    intro hj'. specialize (H j hj').
+    congruence.
+  Qed.
+End poking.

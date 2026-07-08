@@ -477,40 +477,6 @@ Section linux_tnum_addition.
       destruct x, y; auto.
     Qed.
 
-    (* TODO move. *)
-    Lemma bitlist_fulladd_paired_commutative (xs ys : list bit) :
-      forall cin, bitlist_fulladd_paired xs ys cin = bitlist_fulladd_paired ys xs cin.
-    Proof.
-      induction xs in ys |- *.
-      - destruct ys. auto.
-        intuition.
-      - destruct ys. auto.
-        simpl. intro cin. rewrite IHxs.
-        destruct a, b, cin; auto.
-    Qed.
-
-    (* TODO move. *)
-    Lemma bitlist_sum_commutative (xs ys : list bit) :
-      bitlist_sum xs ys = bitlist_sum ys xs.
-    Proof.
-      unfold bitlist_sum. unfold bitlist_sum_internal.
-      rewrite bitlist_fulladd_paired_commutative.
-      reflexivity.
-    Qed.
-
-    (* TODO move. *)
-    Lemma bvec_add_commutative {SIZE} (x y : bvec SIZE) :
-      bvec_add x y = bvec_add y x.
-    Proof.
-      destruct x as [xs xlen], y as [ys ylen].
-      apply SigVector.Vector.eqlist_imp_eqvec.
-      simpl. unfold bitlist_sum_nocarry.
-      rewrite xlen, ylen.
-      assert (heq : bitlist_sum xs ys = bitlist_sum ys xs).
-      apply bitlist_sum_commutative.
-      rewrite heq. reflexivity.
-    Qed.
-
     (* TODO not just to prove the new optimality lemma;
      * might be useful simplify some existing helpers I wrote for
      * tnum_add_sound.
@@ -576,42 +542,6 @@ Section linux_tnum_addition.
       - rewrite wfp; auto.
     Qed.
 
-    Lemma eqdenote_imp_eqlist : forall (x y : list bit),
-        length x = length y ->
-        BitVector.bitlist_denote x = BitVector.bitlist_denote y ->
-        x = y.
-    Proof.
-      intros x y.
-      induction x as [|xh] in y |- *.
-      - destruct y; easy.
-      - destruct y as [|yh]; try easy.
-        simpl.
-        intro hlen. apply eq_add_S in hlen.
-        specialize (IHx y hlen).
-
-        assert (Hem : bitlist_denote x = bitlist_denote y \/ bitlist_denote x <> bitlist_denote y). lia.
-        destruct Hem as [Heml | Hemr].
-        + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
-            try easy;
-            simpl;
-            rewrite IHx; try rewrite Heml; try lia; try auto.
-        + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
-            try easy; simpl; try lia.
-    Qed.
-
-    Lemma eqdenote_imp_eqvec : forall {SIZE} (x y : bvec SIZE),
-        BitVector.bvec_denote x = BitVector.bvec_denote y -> x = y.
-    Proof.
-      intros SIZE x y heq.
-      apply SigVector.Vector.eqlist_imp_eqvec.
-      revert heq.
-      unfold bvec_denote. simpl.
-      intro eqlist. apply eqdenote_imp_eqlist in eqlist.
-      auto.
-
-      destruct x as [x xlen], y as [y ylen]. subst. auto.
-    Qed.
-
     Lemma bvec_add_regroup : forall {SIZE} (a b c d : bvec SIZE),
         bvec_add (bvec_add a b) (bvec_add c d) =
           bvec_add (bvec_add a c) (bvec_add b d).
@@ -622,22 +552,6 @@ Section linux_tnum_addition.
       replace (bvec_denote a + bvec_denote b + (bvec_denote c + bvec_denote d)) with
         (bvec_denote a + bvec_denote c + (bvec_denote b + bvec_denote d)).
       lia. lia.
-    Qed.
-
-    Lemma listeq_imp_sliceeq : forall {A} (x y : list A) n,
-        x = y -> ListDef.firstn n x = ListDef.firstn n y.
-    Proof.
-      intros. subst. auto.
-    Qed.
-
-    Lemma length_bitlist_sum (x y : list bit) :
-      length x = length y ->
-      length (bitlist_sum x y) = S (Nat.max (length x) (length y)).
-    Proof.
-      unfold bitlist_sum. unfold bitlist_sum_internal.
-      rewrite List.length_fst_split.
-      intro hlen. rewrite hlen.
-      apply BitVector.length_bitlist_fulladd_paired; lia.
     Qed.
 
     Lemma bitlist_fulladd_paired_unary_firstn : forall n (x : list bit) cin,
@@ -718,99 +632,11 @@ Section linux_tnum_addition.
       repeat rewrite tnum_add_v_m_is_or; auto.
     Qed.
 
-    (* TODO begin move *)
-    (* TODO rem all SigVector prefix *)
-
-    Fixpoint list_ith_set A (x : list A) i value :=
-      match x, i with
-      | nil, _ => nil
-      | List.cons h t, 0 => List.cons value t
-      | List.cons h t, S n => List.cons h (list_ith_set _ t n value)
-      end.
-
-    Lemma length_list_ith_set : forall {A} (x : list A) i value,
-        length (list_ith_set _ x i value) = length x.
-    Proof.
-      induction x.
-      - auto.
-      - unfold list_ith_set. fold list_ith_set.
-        destruct i. auto.
-        intro value. simpl. auto.
-    Qed.
-
-    Lemma list_ith_set_is_set : forall {A} (x : list A) i value,
-        i < length x ->
-        List.nth_error (list_ith_set _ x i value) i = Some value.
-    Proof.
-      induction x.
-      - easy.
-      - intros i value hidx.
-        unfold list_ith_set. fold list_ith_set.
-        destruct i. auto.
-        rewrite List.nth_error_cons.
-        apply IHx.
-        simpl in hidx. lia.
-    Qed.
-
-    Lemma list_ith_unset_is_id : forall {A} (x : list A) i value j,
-        j <> i ->
-        List.nth_error (list_ith_set _ x i value) j = List.nth_error x j.
-    Proof.
-      induction x.
-      - easy.
-      - intros i value j hj.
-        unfold list_ith_set. fold list_ith_set.
-        destruct i.
-        + destruct j. easy.
-          repeat rewrite List.nth_error_cons. auto.
-        + destruct j. easy.
-          repeat rewrite List.nth_error_cons. auto.
-    Qed.
-
-    Definition bitlist_ith_set (x : list bit) i := list_ith_set _ x i one.
-
-    Definition bvec_ith_set {SIZE} (x : bvec SIZE) {i} (setpos : i < SIZE) : bvec SIZE.
-      destruct x as [xs hlen].
-      exists (bitlist_ith_set xs i).
-      subst. apply length_list_ith_set.
-    Defined.
-
-    Lemma bvec_ith_set_is_one {SIZE} (x : bvec SIZE) {i} (setpos : i < SIZE) :
-      bvec_ith (bvec_ith_set x setpos) setpos = one.
-    Proof.
-      destruct x as [xs hlen].
-      unfold bvec_ith.
-      unfold bvec_ith_set.
-      unfold bitlist_ith_set.
-      unfold SigVector.Vector.nth_order. simpl.
-      SigVector.rewrite_safe_nth_anywhere.
-      subst.
-      pose (H := list_ith_set_is_set xs i one setpos).
-      congruence.
-    Qed.
-
-    Lemma bvec_ith_unset_is_id {SIZE} (x : bvec SIZE) {i} (hi : i < SIZE) {j} (hj : j < SIZE) :
-      j <> i ->
-      bvec_ith (bvec_ith_set x hi) hj = bvec_ith x hj.
-    Proof.
-      destruct x as [xs hlen].
-      unfold bvec_ith.
-      unfold bvec_ith_set.
-      unfold bitlist_ith_set.
-      unfold SigVector.Vector.nth_order. simpl.
-      repeat SigVector.rewrite_safe_nth_anywhere.
-      subst.
-      pose (H := list_ith_unset_is_id xs i one).
-      intro hj'. specialize (H j hj').
-      congruence.
-    Qed.
-
-    (* TODO end move *)
-
     Lemma tnum_ingamma_set_at_mask {SIZE} P i (hidx : i < SIZE) :
       tnum.wellformed P ->
       tnum.ith_m P hidx = one ->
-      ingamma (bvec_ith_set (tnum.v P) hidx) P.
+      ingamma (BitVector.bvec_set_ith (tnum.v P) hidx) P.
+
     Proof.
       unfold_tnum_goodies.
       intros wfp msk1.
@@ -829,7 +655,7 @@ Section linux_tnum_addition.
 
     Lemma bvec_ith_set_prv_carry_intact {SIZE} (x y : bvec SIZE) i (hi : i < SIZE) j (hj : j < SIZE) :
       j < i ->
-      bvec_incarry x y hj = bvec_incarry (bvec_ith_set x hi) y hj.
+      bvec_incarry x y hj = bvec_incarry (BitVector.bvec_set_ith x hi) y hj.
     Proof.
       induction j.
       - repeat rewrite bvec_incarry_0. auto.
@@ -845,7 +671,7 @@ Section linux_tnum_addition.
     Lemma bvec_ith_set_sets_ith_sum {SIZE} (x y : bvec SIZE) i (hidx : i < SIZE) :
       bvec_ith x hidx = zero ->
       bvec_ith (bvec_add x y) hidx <>
-        bvec_ith (bvec_add (bvec_ith_set x hidx) y) hidx.
+        bvec_ith (bvec_add (BitVector.bvec_set_ith x hidx) y) hidx.
     Proof.
       repeat rewrite bvec_fulladd_result.
       destruct i.
@@ -865,10 +691,10 @@ Section linux_tnum_addition.
     Lemma bvec_ith_set_sets_ith_sum_comm {SIZE} (x y : bvec SIZE) i (hidx : i < SIZE) :
       bvec_ith x hidx = zero ->
       bvec_ith (bvec_add y x) hidx <>
-        bvec_ith (bvec_add y (bvec_ith_set x hidx)) hidx.
+        bvec_ith (bvec_add y (BitVector.bvec_set_ith x hidx)) hidx.
     Proof.
       rewrite bvec_add_commutative with (y := x).
-      rewrite bvec_add_commutative with (y := (bvec_ith_set x hidx)).
+      rewrite bvec_add_commutative with (y := (BitVector.bvec_set_ith x hidx)).
       apply bvec_ith_set_sets_ith_sum.
     Qed.
 
@@ -886,13 +712,13 @@ Section linux_tnum_addition.
 
       destruct sum_mu as [ pm | [ qm | chim ] ].
       - exists (tnum.v P), (tnum.v Q).
-        exists (bvec_ith_set (tnum.v P) hidx), (tnum.v Q).
+        exists (BitVector.bvec_set_ith (tnum.v P) hidx), (tnum.v Q).
         repeat split.
         + apply tnum_ingamma_set_at_mask; auto.
         + apply bvec_ith_set_sets_ith_sum. auto.
 
       - exists (tnum.v P), (tnum.v Q).
-        exists (tnum.v P), (bvec_ith_set (tnum.v Q) hidx).
+        exists (tnum.v P), (BitVector.bvec_set_ith (tnum.v Q) hidx).
         repeat split.
         + apply tnum_ingamma_set_at_mask; auto.
         + apply bvec_ith_set_sets_ith_sum_comm. auto.
