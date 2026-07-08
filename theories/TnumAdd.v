@@ -448,29 +448,6 @@ Section linux_tnum_addition.
       destruct (bvec_ith (tnum.m P) hidx); simplify_bit_ops; easy.
     Qed.
 
-    Lemma tnum_ith_m_one_imp {SIZE} P i (hidx : i < SIZE) :
-      tnum.wellformed P ->
-      tnum.ith_m P hidx = one ->
-      exists x y, ingamma x P /\ ingamma y P /\ bvec_ith x hidx <> bvec_ith y hidx.
-    Proof.
-      unfold tnum.wellformed. unfold tnum.ith_m.
-      intro hmo. specialize (hmo i hidx).
-
-      exists (tnum.v P), (bvec_or (tnum.v P) (tnum.m P)).
-
-      repeat split.
-      apply ingamma_value_bitor_mask.
-      rewrite bvec_or_rel. rewrite hmo.
-      destruct (bvec_ith (tnum.m P) hidx); simplify_bit_ops; try easy.
-      auto.
-    Qed.
-
-    Lemma bit_xor_zero_imp x y :
-      bit_xor x y = zero -> bit_or x y = zero \/ bit_and x y = one.
-    Proof.
-      destruct x, y; auto.
-    Qed.
-
     Lemma bit_xor_one_imp x y :
       bit_xor x y = one -> bit_or x y = one /\ bit_and x y = zero.
     Proof.
@@ -496,6 +473,8 @@ Section linux_tnum_addition.
         repeat destruct (bvec_ith _ _); auto.
     Qed.
 
+    (* TODO try to simplify tnum_add_sound and sublemmas using bvec_eq_by_ith *)
+
     (* OR eqiv. ADD since both value and mask cannot be 1 at i *)
     (* TODO doc better: the need for this lemma is the fact that
      * the min(P) is (P.v) and [IMPORTANT] max(P) is (P.v | P.m).
@@ -503,26 +482,6 @@ Section linux_tnum_addition.
      * tnum_add uses.
      *)
     (* TODO see if I can improve othe proofs based on this. *)
-    Lemma tnum_add_v_m_is_or__ith {SIZE} P i (hidx : i < SIZE) :
-      tnum.wellformed P ->
-      bit_or (tnum.ith_v P hidx) (tnum.ith_m P hidx) =
-        bvec_ith (bvec_add (tnum.v P) (tnum.m P)) hidx.
-    Proof.
-      unfold tnum.wellformed.
-      intro wfp.
-      rewrite bvec_fulladd_result.
-      rewrite (tnum_incarry_v_m_0 _ _ hidx wfp).
-      specialize (wfp i hidx).
-      simplify_bit_ops.
-      unfold_tnum_goodies.
-      match goal with
-      | [ |- context[bit_or ?x ?y] ] => destruct x, y
-      | [ |- context[bit_xor ?x ?y] ] => destruct x, y
-      end; simplify_bit_ops; auto.
-    Qed.
-
-    (* TODO try to simplify tnum_add_sound and sublemmas using bvec_eq_by_ith *)
-
     Lemma tnum_add_v_m_is_or {SIZE} (P : tnum.t SIZE) :
       tnum.wellformed P ->
       bvec_or (tnum.v P) (tnum.m P) =
@@ -552,69 +511,6 @@ Section linux_tnum_addition.
       replace (bvec_denote a + bvec_denote b + (bvec_denote c + bvec_denote d)) with
         (bvec_denote a + bvec_denote c + (bvec_denote b + bvec_denote d)).
       lia. lia.
-    Qed.
-
-    Lemma bitlist_fulladd_paired_unary_firstn : forall n (x : list bit) cin,
-        ListDef.firstn n (bitlist_fulladd_paired_unary (ListDef.firstn n x) cin) =
-          ListDef.firstn n (bitlist_fulladd_paired_unary x cin).
-    Proof.
-      induction n.
-      - simpl. auto.
-      - destruct x.
-        + auto.
-        + repeat rewrite List.firstn_cons.
-          repeat rewrite List.firstn_nil.
-          unfold bitlist_fulladd_paired_unary. fold bitlist_fulladd_paired_unary.
-          intros.
-          rewrite List.firstn_cons.
-          rewrite IHn.
-          auto.
-    Qed.
-
-    Lemma bitlist_fulladd_paired_firstn : forall n (x y : list bit) cin,
-        ListDef.firstn n (bitlist_fulladd_paired (ListDef.firstn n x) (ListDef.firstn n y) cin) =
-          ListDef.firstn n (bitlist_fulladd_paired x y cin).
-    Proof.
-      induction n.
-      - simpl. auto.
-      - destruct x, y.
-        + auto.
-        + rewrite List.firstn_nil.
-          apply bitlist_fulladd_paired_unary_firstn.
-        + rewrite List.firstn_nil.
-          unfold bitlist_fulladd_paired.
-          fold bitlist_fulladd_paired.
-          intros.
-          rewrite <- bitlist_fulladd_paired_unary_firstn.
-          auto.
-        + intros.
-          repeat rewrite List.firstn_cons.
-          unfold bitlist_fulladd_paired.
-          fold bitlist_fulladd_paired.
-          repeat rewrite List.firstn_cons.
-          intros. rewrite IHn.
-          auto.
-    Qed.
-
-    Lemma bitlist_sum_firstn : forall n (x y : list bit),
-        ListDef.firstn n (bitlist_sum (ListDef.firstn n x) (ListDef.firstn n y)) =
-          ListDef.firstn n (bitlist_sum x y).
-    Proof.
-      unfold bitlist_sum. unfold bitlist_sum_internal.
-      enough (H : forall A B n (x : list (A * B)), ListDef.firstn n (fst (List.split x)) =
-                                                     fst (List.split (ListDef.firstn n x))).
-      intros. rewrite H.
-      rewrite bitlist_fulladd_paired_firstn.
-      congruence.
-
-      induction n.
-      - auto.
-      - destruct x. auto.
-        rewrite fst_split_cons.
-        repeat rewrite List.firstn_cons.
-        rewrite fst_split_cons.
-        rewrite IHn.
-        reflexivity.
     Qed.
 
     Lemma tnum_add_sv_sm_as_or {SIZE} P Q i (hidx : i < SIZE) :
