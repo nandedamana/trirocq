@@ -122,7 +122,7 @@ Qed.
 Lemma list_all_ith_eq_cons : forall {A} {x y : list A} {xh yh},
     length x = length y ->
     (forall i (hi : i < length (List.cons xh x)) (hj : i < length (List.cons yh y)),
-        (safe_nth (List.cons xh x) hi) = (safe_nth (List.cons yh y) hj)) -> 
+        (safe_nth (List.cons xh x) hi) = (safe_nth (List.cons yh y) hj)) ->
     (forall i (hi : i < length x) (hj : i < length y),
         (safe_nth x hi) = (safe_nth y hj)).
 Proof.
@@ -256,7 +256,7 @@ Module Vector.
     destruct v1 as [xs hlenx]. destruct v2 as [ys hleny].
     apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
   Qed.
-  
+
   Definition tl {A} {n} (v : t A (S n)) : t A n.
     destruct v as [xs hlen]. destruct xs. destruct n; easy.
     refine (exist _ xs _). auto.

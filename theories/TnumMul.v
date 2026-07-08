@@ -28,7 +28,7 @@ Section linux_tnum_multiplication.
     pose (H := tnum_union_sound P Q wfP wfQ).
     simpl in H. simpl. destruct H as (h1 & h2 & h3). auto.
   Qed.
-  
+
   (* Using a and b instead of P and Q (unlike in other parts of this project)
    * to make comparison with the in-kernel code easier.
    *)
@@ -75,7 +75,7 @@ Section linux_tnum_multiplication.
                               end) ] =>
           destruct (e)
       end.
-  
+
   Lemma tnum_mul_shrinkinga_wellformed : forall m (a : tnum.t m) n (b acc : tnum.t (S n)),
     tnum.wellformed a -> tnum.wellformed b -> tnum.wellformed acc ->
     tnum.wellformed (tnum_mul_shrinkinga m a n b acc).
@@ -164,7 +164,7 @@ Section linux_tnum_multiplication.
     - intros a A iga.
 
       intro h1. assert (h2 := lsb_denote_0 _ _ h1). revert h1.
-      
+
       repeat rewrite bvec_denote_cons.
       destruct (bit2nat _); simpl; try easy.
 
@@ -184,7 +184,7 @@ Section linux_tnum_multiplication.
       rewrite knwonlsb with (A := A); auto.
       apply tnum_tl_ingamma; auto.
   Qed.
-  
+
   Lemma tnum_mul_shrinkinga_sound :
     forall m (A : tnum.t m) (a : bvec m) {n} (B C : tnum.t (S n)) (b c : bvec (S n)),
       tnum.wellformed A -> tnum.wellformed B -> tnum.wellformed C ->
@@ -209,7 +209,7 @@ Section linux_tnum_multiplication.
 
       assert (hig_lsh :  ingamma (bvec_lshift1 b) (tnum_lshift1 B)).
       apply tnum_lshift1_sound; auto.
-      
+
       assert (hbmul0 :
                bvec_denote a = 0 ->
                c = bvec_mul_shrinkinga m (Vector.tl a) n (bvec_lshift1 b) c).
@@ -225,7 +225,7 @@ Section linux_tnum_multiplication.
       (* So that `auto` can pick it (needed in several cases) *)
       pose (tnum_rshift1_shrink_wellformed A).
       pose (tnum_lshift1_wellformed B).
-      
+
       destruct (bvec_denote (tnum.v A));
         destruct (bvec_denote (tnum.m A));
         destruct (bvec_denote a);
@@ -245,7 +245,7 @@ Section linux_tnum_multiplication.
         end;
         try lia;
         try (apply IHm; auto; crush_tnum_mul_shrinkinga_sound).
-      
+
       + rewrite hbmul0; auto.
       + rewrite hbmul0; auto. apply IHm; auto;
         crush_tnum_mul_shrinkinga_sound.

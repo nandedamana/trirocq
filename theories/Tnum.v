@@ -118,7 +118,7 @@ Section tnum_shift.
     repeat rewrite Vector.nth_order_tl.
     auto.
   Qed.
-    
+
   Lemma tnum_rshift1_shrink_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
     tnum.wellformed P -> ingamma x P ->
     tnum.wellformed (tnum_rshift1_shrink P) /\ ingamma (Vector.tl x) (tnum_rshift1_shrink P).

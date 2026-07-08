@@ -140,7 +140,7 @@ Section bvec_addition.
     intro hlen. rewrite hlen.
     apply length_bitlist_fulladd_paired; lia.
   Qed.
-  
+
   Lemma length_bitlist_sum_nocarry n : forall (xs ys : list bit),
       length xs = n -> length ys = n ->
       length (bitlist_sum_nocarry xs ys) = n.
