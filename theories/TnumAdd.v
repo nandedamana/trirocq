@@ -551,6 +551,8 @@ Section linux_tnum_addition.
     Qed.
   End tnum_add_optimality_me.
 
+  (* Commented out because painfully slow *)
+  (*
   Section tnum_add_optimality_hari.
     (* Finding the bits that can be uncertain (by propagation) involves taking the
      * difference of the maximum concrete sum and the minimum concrete sum of P and Q.
@@ -660,4 +662,5 @@ Section linux_tnum_addition.
           simplify_bit_ops; crush_bvec_add.
     Qed.
   End tnum_add_optimality_hari.
+   *)
 End linux_tnum_addition.
