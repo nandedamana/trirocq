@@ -535,7 +535,7 @@ Section linux_tnum_addition.
             discriminate.
           * assumption.
           * assumption.
-        + (* Pm[i] = Qm[i] = 0; sv[i] = 0; (sv + sm)[i] = 0 *)
+        + (* Pm[i] = Qm[i] = 0; sv[i] = 1; (sv + sm)[i] = 0 *)
 
           rewrite tnum_add_sv_sm_as_or.
 
