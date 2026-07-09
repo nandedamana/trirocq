@@ -1,4 +1,4 @@
-From Stdlib Require Import Lia. (* TODO rem if not needed *)
+From Stdlib Require Import Lia.
 
 Require Import trirocq.Bit.
 Require Import trirocq.BitVector.
@@ -24,8 +24,7 @@ Ltac dismiss_absurd :=
         discriminate H; auto
     end.
 
-(* TODO rename *)
-Ltac crush11 :=
+Ltac crush_bvec_add :=
   match goal with
     [ |- _ ] =>
       repeat (destruct (bvec_ith _ _); dismiss_absurd;
@@ -104,7 +103,7 @@ Section linux_tnum_addition.
       repeat simplify_bit_ops; split; try easy.
   Qed.
 
-  Lemma hlp_tnum_add_incarry_exmv {SIZE} P Q :
+  Lemma hlp_tnum_add_incarry_exmv1 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
       bit_and (ith_mask_incarry P Q hidx) (ith_value_incarry P Q hidx) = zero.
@@ -118,14 +117,14 @@ Section linux_tnum_addition.
 
       specialize (IHi (ltprv hidx)).
       specialize_wf_ig (ltprv hidx).
-      crush11.
+      crush_bvec_add.
   Qed.
 
   (* Interesting: proving only one side would seem easier, but it is actually
    * difficult, if not impossible. I suppose it is because that way the
    * induction hypothesis becomes weaker.
    *)
-  Lemma helper63 {SIZE} P Q :
+  Lemma hlp_tnum_add_incarry_exmv2 {SIZE} P Q :
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
       let vm_incarry := ith_value_mask_incarry P Q hidx in
@@ -142,7 +141,7 @@ Section linux_tnum_addition.
 
       specialize (IHi (ltprv hidx)).
 
-      assert (h66 := hlp_tnum_add_incarry_exmv _ _ wfp wfq (ltprv hidx)).
+      assert (h66 := hlp_tnum_add_incarry_exmv1 _ _ wfp wfq (ltprv hidx)).
       revert h66. unfold_tnum_goodies.
 
       specialize_wf_ig (ltprv hidx).
@@ -163,9 +162,9 @@ Section linux_tnum_addition.
     auto.
   Qed.
 
-  Lemma helper45 {SIZE} x y P Q :
+  Lemma hlp_xy_incarry_eq_minsum_incarry_internal {SIZE} x y P Q :
     tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
-    forall [i] (hidx : S i < SIZE),
+    forall [i] (hidx : i < SIZE),
       ith_mask_incarry P Q hidx = zero ->
       ith_value_mask_incarry P Q hidx = zero ->
       bvec_incarry x y hidx = ith_value_incarry P Q hidx.
@@ -178,9 +177,7 @@ Section linux_tnum_addition.
       repeat rewrite bvec_incarry_Si. simpl.
       repeat rewrite bvec_fulladd_result.
       repeat rewrite bvec_incarry_0. repeat simplify_bit_ops.
-
-      specialize_wf_ig (ltprv hidx).
-      crush11.
+      auto.
     - intro hidx.
       rewrite bvec_incarry_Si.
       rewrite bvec_incarry_Si with (x := x).
@@ -192,18 +189,19 @@ Section linux_tnum_addition.
       pose (H := specialize_wf_ig wfp wfq igp igq (ltprv hidx)).
       destruct H as (wfps & wfqs & igps & igqs).
 
-      assert (h66 := hlp_tnum_add_incarry_exmv P Q wfp wfq (ltprv hidx)).
-      assert (h64 := helper63 P Q wfp wfq (ltprv hidx)).
+      assert (h66 := hlp_tnum_add_incarry_exmv1 P Q wfp wfq (ltprv hidx)).
+      assert (h64 := hlp_tnum_add_incarry_exmv2 P Q wfp wfq (ltprv hidx)).
       revert h66. revert h64. unfold_tnum_goodies.
 
-      crush11.
+      crush_bvec_add.
   Qed.
 
-  Lemma helper82 [x] [y] : bit_xor x y = zero -> bit_and y x = zero -> x = zero /\ y = zero.
+  Lemma bit_xor_and_and_imp [x] [y] : bit_xor x y = zero -> bit_and y x = zero -> x = zero /\ y = zero.
     unfold bit_xor. unfold bit_and. destruct x; destruct y; auto.
   Qed.
 
-  Lemma helper33 {SIZE} x y P Q :
+  (* TODO dedup with hlp_xy_incarry_eq_minsum_incarry if possible *)
+  Lemma hlp_xy_incarry_eq_minsum_incarry {SIZE} x y P Q :
     tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
     forall [i] (hidx : i < SIZE),
       tnum.ith_m (tnum_add P Q) hidx = zero ->
@@ -235,10 +233,10 @@ Section linux_tnum_addition.
 
       revert H1. rewrite hmp. rewrite hmq. repeat simplify_bit_ops.
 
-      pose (h63 := helper63 P Q wfp wfq hidx).
+      pose (h63 := hlp_tnum_add_incarry_exmv2 P Q wfp wfq hidx).
       destruct h63 as (h1 & h2). intro h3.
-      pose (h82 := helper82 h3 h1). destruct h82.
-      apply helper45; auto.
+      pose (h82 := bit_xor_and_and_imp h3 h1). destruct h82.
+      apply hlp_xy_incarry_eq_minsum_incarry_internal; auto.
   Qed.
 
   Lemma wellformed_general {SIZE} inval mu :
@@ -275,30 +273,28 @@ Section linux_tnum_addition.
 
     intros i hidx rmskz.
 
-    assert (H33 := helper33 x y P Q wfp wfq igP igQ hidx rmskz).
-    assert (H32 := hlp_tnum_add_no_mask_imp_known_inputs P Q wfp wfq hidx rmskz).
-    revert H32 H33. unfold_tnum_goodies. intros H32 H33.
+    assert (knownip := hlp_tnum_add_no_mask_imp_known_inputs P Q wfp wfq hidx rmskz).
+    unfold tnum.ith_m, tnum.ith_v, tnum_ith_chi in knownip.
+    destruct knownip as (hpmi & hqmi & hchimi).
 
-    destruct H32 as (xmskz & ymskz & cinmskz).
-    revert cinmskz rmskz.
+    assert (hxycarry := hlp_xy_incarry_eq_minsum_incarry x y P Q wfp wfq igP igQ hidx rmskz).
+    revert hxycarry. unfold_tnum_goodies. intro hxycarry.
 
-    unfold tnum_add.
-    rewrite tnum.ith_m_simplify2.
-    rewrite tnum.ith_v_simplify2.
+    unfold tnum_add. simpl.
 
-    unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
-    rewrite xmskz. rewrite ymskz. rewrite igP; auto. rewrite igQ; auto. simpl.
+    rewrite bvec_and_rel. rewrite bvec_neg_rel. rewrite bvec_or_rel.
+    rewrite hchimi.
 
-    intros H1 H2.
+    rewrite bvec_or_rel.
+    rewrite hpmi, hqmi.
+    simplify_bit_ops.
 
-    (* Replaces the subexpression H2 from the goal with zero because it is
-     * the ith bit of `mu` (the `mu` from `sv & ~mu`), which is zero as per
-     * the assumption.
-     *)
-    rewrite H2. simpl.
-    rewrite H33.
-    rewrite bit_and_right_one.
-    auto.
+    (* Goal at this point: bvec_ith (bvec_add x y) hidx = bvec_ith (bvec_add (tnum.v P) (tnum.v Q)) hidx *)
+    repeat rewrite bvec_fulladd_result.
+    rewrite hxycarry.
+
+    rewrite (igP i hidx hpmi).
+    rewrite (igQ i hidx hqmi). auto.
   Qed.
 
   (* TODO rem/archive the optimality lemma that follows Vishwanathan et al. *)
@@ -597,7 +593,7 @@ Section linux_tnum_addition.
         specialize (IHi (ltprv hidx)).
         specialize_wf_ig (ltprv hidx).
         rewrite bvec_incarry_Si. simpl.
-        crush11.
+        crush_bvec_add.
     Qed.
 
     Lemma maximum_carries {SIZE} x y P Q :
@@ -620,7 +616,7 @@ Section linux_tnum_addition.
         specialize_wf_ig (ltprv hidx).
         unwrap_bvec_ops.
         rewrite bvec_incarry_Si.
-        crush11.
+        crush_bvec_add.
     Qed.
 
     (* This lemma essentially shows the optimization of chi is correct.
@@ -641,7 +637,7 @@ Section linux_tnum_addition.
         unwrap_bvec_ops. repeat rewrite bvec_fulladd_result.
         repeat rewrite bvec_incarry_0.
         unwrap_bvec_ops.
-        crush11.
+        crush_bvec_add.
       -
         assert (wfpi := wfp _ hidx).
         assert (wfqi := wfq _ hidx).
@@ -649,8 +645,8 @@ Section linux_tnum_addition.
         assert (wfqp := wfq _ (ltprv hidx)).
         specialize (IHi (ltprv hidx)).
 
-        assert (h66 := hlp_tnum_add_incarry_exmv P Q wfp wfq (ltprv hidx)).
-        assert (h63 := helper63 P Q wfp wfq (ltprv hidx)).
+        assert (h66 := hlp_tnum_add_incarry_exmv1 P Q wfp wfq (ltprv hidx)).
+        assert (h63 := hlp_tnum_add_incarry_exmv2 P Q wfp wfq (ltprv hidx)).
         revert h66. revert h63. unfold_tnum_goodies.
         specialize_wf_ig (ltprv hidx).
 
@@ -659,9 +655,9 @@ Section linux_tnum_addition.
         repeat rewrite bvec_incarry_Si. unwrap_bvec_ops. repeat simplify_bit_ops.
         repeat rewrite bvec_fulladd_result.
 
-        (* TODO FIXME crush11 to replace this whole part is painfully slow *)
+        (* TODO FIXME crush_bvec_add to replace this whole part is painfully slow *)
         repeat destruct (bvec_incarry _ _ (ltprv hidx));
-          simplify_bit_ops; crush11.
+          simplify_bit_ops; crush_bvec_add.
     Qed.
   End tnum_add_optimality_hari.
 End linux_tnum_addition.

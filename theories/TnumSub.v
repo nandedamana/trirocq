@@ -39,7 +39,7 @@ Section linux_tnum_subtraction.
       unwrap_bvec_ops; unfold tnum.ith_m;
       rewrite bvec_fullsub_result;
       unfold bvec_inborrow;
-      crush11.
+      crush_bvec_add.
   Qed.
 
   Lemma xor_x_y_eq_z_y x y z : bit_xor x y = bit_xor z y -> x = z.
@@ -72,7 +72,7 @@ Section linux_tnum_subtraction.
 
       repeat rewrite bvec_inborrow_Si. simpl.
       repeat rewrite bvec_fullsub_result. simpl.
-      crush11.
+      crush_bvec_add.
   Qed.
 
   (* TODO fuse with sublemma64? *)
@@ -97,7 +97,7 @@ Section linux_tnum_subtraction.
       repeat rewrite bvec_incarry_Si. repeat rewrite bvec_inborrow_Si. simpl.
       repeat rewrite bvec_fullsub_result. simpl.
 
-      crush11.
+      crush_bvec_add.
   Qed.
 
   Lemma sublemma42 {SIZE} P Q :
@@ -108,7 +108,7 @@ Section linux_tnum_subtraction.
     unfold tnum.wellformed.
     intros i hidx.
     rewrite bvec_incarry_Si.
-    crush11.
+    crush_bvec_add.
   Qed.
 
   Lemma sublemma43 {SIZE} P Q :
@@ -136,7 +136,7 @@ Section linux_tnum_subtraction.
       simpl.
       repeat rewrite bvec_fullsub_result. simpl.
 
-      crush11.
+      crush_bvec_add.
   Qed.
 
   (* Turns out inborrow = incarry if the result has mask = 0. *)
@@ -172,7 +172,7 @@ Section linux_tnum_subtraction.
       pose (hspec := specialize_wf_ig wfp wfq igP igQ (ltprv hidx)).
       destruct hspec as (wfps & wfqs & igps & igqs).
 
-      crush11.
+      crush_bvec_add.
   Qed.
 
   Lemma sublemma33 {SIZE} x y P Q :
