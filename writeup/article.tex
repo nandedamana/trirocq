@@ -24,6 +24,7 @@
 \newcommand{\ingamma}[2]{#1 \in \gamma(#2)}
 
 \newcommand{\tadd}[2]{tnum\_add(#1, #2)}
+\newcommand{\tunion}[2]{tnum\_union(#1, #2)}
 
 \newcommand{\seti}[1]{set(#1, i)}
 
@@ -171,5 +172,46 @@ Linux kernel is optimal.
 As a side note, it is interesting to note that $\tv{P}$ is the
 smallest concrete value and $\orvm{P}$ is the largest concrete value
 represented by $P$, for any $P$.
+
+\section{Optimality of \lstinline{tnum_union}}
+
+The concrete union of two tnums $P$ and $Q$ is $\gamma(P) \cup
+\gamma(Q)$. This can be rewritten like the following:
+
+\begin{definition}
+  \[
+  \text{concrete\_union}(P, Q) = \{ x \mathbin{|} \ingamma{x}{P} \lor \ingamma{x}{Q} \}
+  \]
+\end{definition}
+
+\begin{lemma}
+  Consider any $P, Q \in \wfdomn$, and a position $i \le n$. If $\ithm{\tunion{P}{Q}} = 1$, then
+  \[
+  \exists x, y \in \text{concrete\_union}(P, Q) : \ith{x} \neq \ith{y}.
+  \]
+\end{lemma}
+
+\begin{proof}
+  The proof progresses on a case analysis of $\ithm{P}$ and $\ithm{Q}$.
+
+  \case{1}{$\ithm{P} = \ithm{Q} = 0$}. Since we know that
+  $\ithm{\tunion{P}{Q}} = 1$, by the definition of
+  \lstinline{tnum_union}, $\ithv{P} \oplus \ithv{Q} = 1$.  This means
+  $\ithv{P} \neq \ithv{Q}$, and since $\ingamma{\tv{P}}{P} \land
+  \ingamma{\tv{Q}}{Q}$, we pick $x = \tv{P}$ and $y = \tv{Q}$,
+  satisfying our goal.
+
+  \case{2}{$\ithm{P} = 0, \ithm{Q} = 1$}. In this case, $\gamma({Q})$
+  itself has two elements that disagree at the $i$-th bit: $x =
+  \tv{Q}$ and $y = \orvm{Q}$ (membership of the latter,
+  $\ingamma{y}{Q}$, is shown by
+  Lemma~\ref{lem:ingamma_value_bitor_mask}).
+
+  \case{3}{$\ithm{P} = 1, \ithm{Q} = 0$}. Similar to the previous
+  case. We pick $x = \tv{P}$ and $y = \orvm{P}$.
+
+  \case{4}{$\ithm{P} = \ithm{Q} = 1$}. We can reuse the choices for
+  $x$ and $y$ from either Case 2 or Case 3 in this case.
+\end{proof}
 
 \end{document}
