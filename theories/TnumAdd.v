@@ -322,17 +322,6 @@ Section linux_tnum_addition.
         repeat simplify_bit_ops; try auto.
     Qed.
 
-    Lemma ingamma_value_bitor_mask :
-      forall SIZE (P : tnum.t SIZE),
-        ingamma (bvec_or (tnum.v P) (tnum.m P)) P.
-    Proof.
-      intros SIZE P.
-      unfold ingamma. unfold_tnum_goodies.
-      intros i hidx.
-      rewrite bvec_or_rel.
-      destruct (bvec_ith (tnum.m P) hidx); simplify_bit_ops; easy.
-    Qed.
-
     Lemma bit_xor_one_imp x y :
       bit_xor x y = one -> bit_or x y = one /\ bit_and x y = zero.
     Proof.

@@ -218,3 +218,19 @@ Lemma zerotnum_wellformed {n} : tnum.wellformed (zerotnum n).
   unfold tnum.wellformed.
   destruct i; intro hidx; pose (H := zerovec_ith hidx); easy.
 Qed.
+
+Lemma ingamma_value {SIZE} (P : tnum.t SIZE) : ingamma (tnum.v P) P.
+  unfold ingamma.
+  auto.
+Qed.
+
+Lemma ingamma_value_bitor_mask :
+  forall {SIZE} (P : tnum.t SIZE),
+    ingamma (bvec_or (tnum.v P) (tnum.m P)) P.
+Proof.
+  intros SIZE P.
+  unfold ingamma, tnum.ith_m, tnum.ith_v.
+  intros i hidx.
+  rewrite bvec_or_rel.
+  destruct (bvec_ith (tnum.m P) hidx); simplify_bit_ops; easy.
+Qed.
