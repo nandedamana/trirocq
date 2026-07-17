@@ -10,10 +10,14 @@
 
 \lstset{basicstyle=\ttfamily}
 
-\newcommand{\case}[2]{\textbf{Case #1: #2}}
+\newcommand{\case}[2]{\textbf{Case #1:} #2}
+\newcommand{\basecase}[1]{\textbf{Base Case:} #1}
+\newcommand{\inductionStep}{\textbf{Induction Step.}}
 \newcommand{\wfdomn}{\mathbb{V}^{n}}
+\newcommand{\wfdom}[1]{\mathbb{V}^{#1}}
 
 \newcommand{\ith}[1]{#1[i]}
+\newcommand{\lsb}[1]{#1[0]}
 \newcommand{\tv}[1]{#1.v}
 \newcommand{\tm}[1]{#1.m}
 
@@ -212,6 +216,101 @@ The concrete union of two tnums $P$ and $Q$ is $\gamma(P) \cup
 
   \case{4}{$\ithm{P} = \ithm{Q} = 1$}. We can reuse the choices for
   $x$ and $y$ from either Case 2 or Case 3 in this case.
+\end{proof}
+
+\section{Soundness of \lstinline{tnum_mul}}
+
+\newcommand{\bmulshrId}{\text{bvec\_mul\_loop}}
+\newcommand{\bmulshrABC}{\bmulshr{a}{b}{c}}
+\newcommand{\bmulshrABCp}{\bmulshr{a'}{b'}{c'}}
+\newcommand{\bmulshr}[3]{$\bmulshrId{}(#1, #2, #3)$}
+
+\newcommand{\tmulshrId}{\text{tnum\_mul\_loop}}
+\newcommand{\tmulshr}[3]{$\tmulshrId{}(#1, #2, #3)$}
+\newcommand{\tmulshrABC}{\tmulshr{A}{B}{C}}
+\newcommand{\tmulshrABCp}{\tmulshr{A'}{B'}{C'}}
+\newcommand{\tmulId}{\text{tnum\_mul}}
+\newcommand{\tmulAB}{$\tmulId{}(A, B)$}
+
+We model the while loop from our algorithm as a recursive function
+\tmulshrABC{}, where $C$ is the partial accumulator. Note that $A$ is
+a well-formed tnum of length $m \ge 0$, and the other two arguments
+are well-formed tnums of length $n > 0$. \tmulAB{}, where $A$ and $B$
+are well-formed tnums of equal length, can be defined as
+\tmulshr{A}{B}{\text{TNUM}(0, 0)}.
+
+Apart from taking the partial accumulator as an input argument,
+\tmulshrId{} employs unpadded right-shift, reducing the length of the
+multiplier $A$ by one (this does not affect its value compared to the
+zero-padded right shift used in the actual algorithm). It is the
+truncated multiplier that gets passed to the recursive call
+corresponding to the next iteration of the while loop. This truncation
+and the presence of the partial accumulator as an argument helps us
+present a soundness proof using induction.
+
+Now, the main goal of the proof becomes the following:
+
+\begin{lemma}
+  Consider a well-formed tnum $A$ and a bit vector $\ingamma{a}{A}$,
+  both of length $m \ge 0$. Also consider well-formed tnums $B$, $C$,
+  and bit vectors $\ingamma{b}{B}, \ingamma{c}{C}$, all of length $n >
+  0$. Then
+
+  \[
+  \ingamma{\bmulshrId(a, b, c)}{\tmulshrId(A, B, C)}
+  \]
+
+  where \bmulshrId{}~\footnote{Proven to be correct against the
+  built-in multiplication of natural numbers in Rocq.} is a bit-vector
+  analog of \tmulshrId{}.
+\end{lemma}
+
+\begin{proof}
+  The proof progresses by induction on $m$, the length of $A$.
+
+  \basecase{$m = 0.$} For a zero-length multiplier, both the tnum and
+  bit vector multiplication algorithms return the partial accumulator
+  as the final product. This satisfies our goal due to the
+  precondition $\ingamma{c}{C}$.
+
+  \inductionStep{} When $m > 0$, \tmulshrABC{} is \tmulshrABCp{},
+  where $C'$ is the updated accumulator obtained using tnum addition
+  and union as needed, and $A'$ and $B'$ are the shifted versions of
+  the multiplication operands. Similarly, \bmulshrABC{} becomes
+  \bmulshrABCp{}. So, we need to show the membership of \bmulshrABCp{}
+  in \tmulshrABCp{}. But this will follow from the induction
+  hypothesis if we can show $\ingamma{a'}{A'}$, $\ingamma{b'}{B'}$,
+  and $\ingamma{c'}{C'}$. The first two memberships follow from the
+  soundness of tnum shifts. But $\ingamma{c'}{C'}$ needs discussion
+  because the calculation of $C$ is not straightforward.
+  
+  There are only two cases to consider: $\lsb{\tv{A}}
+  = 1$ and $\lsb{\tm{A}} = 1$.
+  In the first case, $C' = \text{tnum\_add}(C, B)$, where the bit
+  vector multiplication algorithm computes $c' = \text{bvec\_add}(c,
+  b)$. $\ingamma{c'}{C'}$ due to the soundness of
+  \text{tnum\_add}.
+
+  \newcommand{\newCforMu}{\text{tnum\_union}(C, \text{tnum\_add}(C, B))}
+  
+  When $\lsb{\tm{A}} = 1$, the tnum multiplication algorithm computes
+  $C' = \newCforMu{}$. Since $\lsb{a}$ can be either $0$ or $1$ in
+  this case, we need to show the following, considering two different
+  possible executions of \bmulshrId{}:
+
+  \begin{enumerate}
+  \item $\ingamma{c}{\newCforMu{}}$ (case: $\lsb{a} = 0$)
+  \item $\ingamma{\text{bvec\_add}(c, b)}{\newCforMu{}}$ (case:
+    $\lsb{a} = 1$)
+  \end{enumerate}
+
+  Both are satisfied by the memberships given in the preconditions,
+  the soundness of \text{tnum\_add}, and the soundness of
+  \text{tnum\_union}.
+
+  Since we showed that $\ingamma{a'}{A'}$, $\ingamma{b'}{B'}$, and
+  $\ingamma{c'}{C'}$, our original goal follows from the induction
+  hypothesis.
 \end{proof}
 
 \end{document}
