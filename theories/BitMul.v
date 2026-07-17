@@ -191,7 +191,7 @@ Section bvec_mul.
    * This makes defining it easier in Rocq, because at least one
    * parameter (the size of the vector a) is decreasing.
    *)
-  Fixpoint bvec_mul_shrinkinga m (a : bvec m) :=
+  Fixpoint bvec_mul_loop m (a : bvec m) :=
     match m return bvec m -> forall n, bvec (S n) -> bvec (S n) -> bvec (S n) with
     | 0 => fun (a : bvec 0) n (b acc : bvec (S n)) => acc
     | S mp => fun (a : bvec (S mp)) n (b acc : bvec (S n)) =>
@@ -201,8 +201,8 @@ Section bvec_mul.
             let nxta := Vector.tl a in
             let nxtb := bvec_lshift1 b in
             match (bvec_lsb a) with
-            | zero => bvec_mul_shrinkinga _ nxta _ nxtb acc
-            | one => bvec_mul_shrinkinga _ nxta _ nxtb (bvec_add acc b)
+            | zero => bvec_mul_loop _ nxta _ nxtb acc
+            | one => bvec_mul_loop _ nxta _ nxtb (bvec_add acc b)
             end
         end
     end a.
@@ -227,8 +227,8 @@ Section bvec_mul.
         rewrite List.firstn_all; try reflexivity
     end.
 
-  Lemma bvec_mul_shrinkinga_correct : forall m (a : bvec m) n (b acc : bvec (S n)),
-    bvec_denote (bvec_mul_shrinkinga m a n b acc) =
+  Lemma bvec_mul_loop_correct : forall m (a : bvec m) n (b acc : bvec (S n)),
+    bvec_denote (bvec_mul_loop m a n b acc) =
       Nat.modulo (bvec_denote acc + bvec_denote a * bvec_denote b) (Nat.pow 2 (S n)).
   Proof.
     induction m.
@@ -240,7 +240,7 @@ Section bvec_mul.
       rewrite <- bitlist_mul_correct.
       rewrite <- bitlist_mul_trunc_correct.
 
-      unfold bvec_mul_shrinkinga.
+      unfold bvec_mul_loop.
       unfold bitlist_mul_trunc.
       destruct xs; try easy.
       repeat rewrite bvec_denote_to_bitlist_denote.
@@ -253,7 +253,7 @@ Section bvec_mul.
       rewrite <- bitlist_mul_correct.
       rewrite <- bitlist_mul_trunc_correct.
 
-      unfold bvec_mul_shrinkinga. fold bvec_mul_shrinkinga.
+      unfold bvec_mul_loop. fold bvec_mul_loop.
       unfold bitlist_mul_trunc.
       repeat rewrite bvec_denote_to_bitlist_denote.
       destruct xs as [|hx tx].
@@ -295,14 +295,14 @@ Section bvec_mul.
   Qed.
 
   Definition bvec_mul {n} (a b : bvec (S n)) :=
-    bvec_mul_shrinkinga _ a _ b (zerovec (S n)).
+    bvec_mul_loop _ a _ b (zerovec (S n)).
 
   Lemma bvec_mul_correct : forall n (a b : bvec (S n)),
     bvec_denote (bvec_mul a b) =
       Nat.modulo (bvec_denote a * bvec_denote b) (Nat.pow 2 (S n)).
   Proof.
     intros. unfold bvec_mul.
-    rewrite bvec_mul_shrinkinga_correct.
+    rewrite bvec_mul_loop_correct.
 
     assert (H : forall n', bitlist_denote (List.repeat zero n') = 0).
     induction n'.

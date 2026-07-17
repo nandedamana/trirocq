@@ -32,7 +32,7 @@ Section linux_tnum_multiplication.
   (* Using a and b instead of P and Q (unlike in other parts of this project)
    * to make comparison with the in-kernel code easier.
    *)
-  Fixpoint tnum_mul_shrinkinga m (a : tnum.t m) :=
+  Fixpoint tnum_mul_loop m (a : tnum.t m) :=
     match m return tnum.t m -> forall n, tnum.t (S n) -> tnum.t (S n) -> tnum.t (S n) with
     | 0 => fun (a : tnum.t 0) n (b acc : tnum.t (S n)) => acc
     | S mp => fun (a : tnum.t (S mp)) n (b acc : tnum.t (S n)) =>
@@ -48,14 +48,14 @@ Section linux_tnum_multiplication.
                            end in
             let nxt_a := tnum_rshift1_shrink a in
             let nxt_b := tnum_lshift1 b in
-            tnum_mul_shrinkinga _ nxt_a _ nxt_b nxt_acc
+            tnum_mul_loop _ nxt_a _ nxt_b nxt_acc
         end
     end a.
 
   Definition tnum_mul {n} (a b : tnum.t (S n)) :=
-    tnum_mul_shrinkinga _ a _ b (zerotnum (S n)).
+    tnum_mul_loop _ a _ b (zerotnum (S n)).
 
-  Ltac crush_tnum_mul_shrinkinga_wellformed :=
+  Ltac crush_tnum_mul_loop_wellformed :=
     try assumption;
     try apply tnum_add_wellformed; auto;
     try apply tnum_union_wellformed; auto;
@@ -64,8 +64,8 @@ Section linux_tnum_multiplication.
     try match goal with
     | [ IH : forall _ _ _ _,
           _ -> _ -> _ ->
-          tnum.wellformed (tnum_mul_shrinkinga _ _ _ _ _) |-
-            tnum.wellformed (tnum_mul_shrinkinga _ _ _ _ _) ] =>
+          tnum.wellformed (tnum_mul_loop _ _ _ _ _) |-
+            tnum.wellformed (tnum_mul_loop _ _ _ _ _) ] =>
         try apply IH
       end;
     try match goal with
@@ -76,30 +76,30 @@ Section linux_tnum_multiplication.
           destruct (e)
       end.
 
-  Lemma tnum_mul_shrinkinga_wellformed : forall m (a : tnum.t m) n (b acc : tnum.t (S n)),
+  Lemma tnum_mul_loop_wellformed : forall m (a : tnum.t m) n (b acc : tnum.t (S n)),
     tnum.wellformed a -> tnum.wellformed b -> tnum.wellformed acc ->
-    tnum.wellformed (tnum_mul_shrinkinga m a n b acc).
+    tnum.wellformed (tnum_mul_loop m a n b acc).
   Proof.
     induction m.
     - auto.
     - intros a n b acc wfa wfb wfc.
-      unfold tnum_mul_shrinkinga.
-      fold tnum_mul_shrinkinga.
+      unfold tnum_mul_loop.
+      fold tnum_mul_loop.
       destruct (bvec_denote (tnum.v a));
-        repeat crush_tnum_mul_shrinkinga_wellformed.
+        repeat crush_tnum_mul_loop_wellformed.
       destruct (bvec_denote (tnum.m a));
-        repeat crush_tnum_mul_shrinkinga_wellformed.
+        repeat crush_tnum_mul_loop_wellformed.
   Qed.
 
   Lemma tnum_mul_wellformed {n} (P Q : tnum.t (S n)) :
     tnum.wellformed P -> tnum.wellformed Q -> tnum.wellformed (tnum_mul P Q).
   Proof.
     unfold tnum_mul. intros.
-    apply tnum_mul_shrinkinga_wellformed; auto.
+    apply tnum_mul_loop_wellformed; auto.
     apply zerotnum_wellformed.
   Qed.
 
-  Ltac crush_tnum_mul_shrinkinga_sound :=
+  Ltac crush_tnum_mul_loop_sound :=
     repeat (match goal with
             | [ |- tnum.wellformed (tnum_add ?y ?z) ] => apply tnum_add_wellformed
             | [ |- ingamma ?x (tnum_add ?y ?z) ] => apply tnum_add_sound
@@ -185,12 +185,12 @@ Section linux_tnum_multiplication.
       apply tnum_tl_ingamma; auto.
   Qed.
 
-  Lemma tnum_mul_shrinkinga_sound :
+  Lemma tnum_mul_loop_sound :
     forall m (A : tnum.t m) (a : bvec m) {n} (B C : tnum.t (S n)) (b c : bvec (S n)),
       tnum.wellformed A -> tnum.wellformed B -> tnum.wellformed C ->
       ingamma a A -> ingamma b B -> ingamma c C ->
-      let R := tnum_mul_shrinkinga _ A _ B C in
-      let r := bvec_mul_shrinkinga _ a _ b c in
+      let R := tnum_mul_loop _ A _ B C in
+      let r := bvec_mul_loop _ a _ b c in
       ingamma r R.
   Proof.
     induction m.
@@ -212,9 +212,9 @@ Section linux_tnum_multiplication.
 
       assert (hbmul0 :
                bvec_denote a = 0 ->
-               c = bvec_mul_shrinkinga m (Vector.tl a) n (bvec_lshift1 b) c).
+               c = bvec_mul_loop m (Vector.tl a) n (bvec_lshift1 b) c).
       intro h.
-      unfold bvec_mul_shrinkinga.
+      unfold bvec_mul_loop.
       destruct m. reflexivity.
       enough (h2 : bvec_denote a = 0 -> bvec_denote (Vector.tl a) = 0).
       rewrite h2; auto.
@@ -244,21 +244,21 @@ Section linux_tnum_multiplication.
             discriminate H; auto
         end;
         try lia;
-        try (apply IHm; auto; crush_tnum_mul_shrinkinga_sound).
+        try (apply IHm; auto; crush_tnum_mul_loop_sound).
 
       + rewrite hbmul0; auto.
       + rewrite hbmul0; auto. apply IHm; auto;
-        crush_tnum_mul_shrinkinga_sound.
+        crush_tnum_mul_loop_sound.
       + apply tnum_union_sound_r; auto;
-          crush_tnum_mul_shrinkinga_sound.
+          crush_tnum_mul_loop_sound.
       + apply tnum_union_sound_r; auto;
-          crush_tnum_mul_shrinkinga_sound.
+          crush_tnum_mul_loop_sound.
       + rewrite hbmul0; auto.
       + rewrite hbmul0; auto.
         apply IHm; auto;
-          crush_tnum_mul_shrinkinga_sound.
+          crush_tnum_mul_loop_sound.
       + apply tnum_union_sound_r; auto;
-          crush_tnum_mul_shrinkinga_sound.
+          crush_tnum_mul_loop_sound.
   Qed.
 
   Lemma tnum_mul_sound {n} x y (P Q : tnum.t (S n)) :
@@ -270,9 +270,9 @@ Section linux_tnum_multiplication.
     unfold tnum_mul.
     intros.
     split.
-    - apply tnum_mul_shrinkinga_wellformed; auto.
+    - apply tnum_mul_loop_wellformed; auto.
       apply zerotnum_wellformed.
-    - apply tnum_mul_shrinkinga_sound; auto.
+    - apply tnum_mul_loop_sound; auto.
       apply zerotnum_wellformed.
       unfold ingamma. auto.
   Qed.
