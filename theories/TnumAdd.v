@@ -260,14 +260,10 @@ Section linux_tnum_addition.
   (* Soundness: the result of adding abstract numbers P and Q include the results
    * of adding any concrete p and q (written less formally for simplicity).
    *)
-  Lemma tnum_add_sound {SIZE} x y (P Q : tnum.t SIZE) :
-    tnum.wellformed P -> tnum.wellformed Q ->
-    ingamma x P -> ingamma y Q ->
-    tnum.wellformed (tnum_add P Q) /\
-      ingamma (bvec_add x y) (tnum_add P Q).
-  Proof.
+  Lemma tnum_add_sound {SIZE} : sound2 SIZE bvec_add tnum_add.
+    unfold sound2.
     unfold_tnum_goodies.
-    intros wfp wfq igP igQ.
+    intros p q P Q wfp wfq igP igQ.
 
     split. apply tnum_add_wellformed; auto.
 
@@ -277,7 +273,7 @@ Section linux_tnum_addition.
     unfold tnum.ith_m, tnum.ith_v, tnum_ith_chi in knownip.
     destruct knownip as (hpmi & hqmi & hchimi).
 
-    assert (hxycarry := hlp_xy_incarry_eq_minsum_incarry x y P Q wfp wfq igP igQ hidx rmskz).
+    assert (hxycarry := hlp_xy_incarry_eq_minsum_incarry p q P Q wfp wfq igP igQ hidx rmskz).
     revert hxycarry. unfold_tnum_goodies. intro hxycarry.
 
     unfold tnum_add. simpl.

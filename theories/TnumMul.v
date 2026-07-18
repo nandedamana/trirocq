@@ -261,12 +261,8 @@ Section linux_tnum_multiplication.
           crush_tnum_mul_loop_sound.
   Qed.
 
-  Lemma tnum_mul_sound {n} x y (P Q : tnum.t (S n)) :
-    tnum.wellformed P -> tnum.wellformed Q ->
-    ingamma x P -> ingamma y Q ->
-    let R := tnum_mul P Q in let r := bvec_mul x y in
-    tnum.wellformed R /\ ingamma r R.
-  Proof.
+  Lemma tnum_mul_sound (n : nat) : sound2 (S n) bvec_mul tnum_mul.
+    unfold sound2.
     unfold tnum_mul.
     intros.
     split.

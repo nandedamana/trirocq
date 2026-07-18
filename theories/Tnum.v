@@ -60,6 +60,18 @@ Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) :=
   forall i (hidx : i < SIZE),
     tnum.ith_m T hidx = zero -> bvec_ith x hidx = tnum.ith_v T hidx.
 
+(**
+ * 2-ary function F on tnum is a sound abstraction of f on bvec.
+ * `sound f F` instead of `sound F f` in order to be consistent with `ingamma`.
+ *)
+Definition sound2 SIZE
+  (f : bvec SIZE -> bvec SIZE -> bvec SIZE)
+  (F : tnum.t SIZE -> tnum.t SIZE -> tnum.t SIZE) :=
+  forall (p q : bvec SIZE) P Q,
+    tnum.wellformed P -> tnum.wellformed Q ->
+    ingamma p P -> ingamma q Q ->
+    tnum.wellformed (F P Q) /\ ingamma (f p q) (F P Q).
+
 Section tnum_shift.
   Definition tnum_lshift1 {n} (P : tnum.t (S n)) :=
     tnum.cons _ (bvec_lshift1 (tnum.v P)) (bvec_lshift1 (tnum.m P)).
