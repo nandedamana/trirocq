@@ -467,15 +467,15 @@ Section linux_tnum_addition.
 
     (* If the abstract result indicates uncertainty at some bit, there
      * should be concrete sums with mismatching bits at that position.
-     * Note: Either x <> m or y <> n should hold, but both need not.
+     * Note: Either p <> p' or q <> q' should hold, but both need not.
      *)
     Lemma tnum_add_optimal : forall [SIZE] P Q i (hidx : i < SIZE),
       tnum.wellformed P -> tnum.wellformed Q ->
       tnum.ith_m (tnum_add P Q) hidx = one ->
-      exists x y m n,
-        ingamma x P /\ ingamma y Q /\
-          ingamma m P /\ ingamma n Q /\
-          bvec_ith (bvec_add x y) hidx <> bvec_ith (bvec_add m n) hidx.
+      exists p q p' q',
+        ingamma p P /\ ingamma q Q /\
+          ingamma p' P /\ ingamma q' Q /\
+          bvec_ith (bvec_add p q) hidx <> bvec_ith (bvec_add p' q') hidx.
     Proof.
       intros SIZE P Q i hidx wfp wfq sum_mu.
       apply (tnum_add_mu_imp_inputs_mu P Q) in sum_mu.
