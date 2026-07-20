@@ -468,14 +468,14 @@ Section linux_tnum_addition.
      * should be concrete sums with mismatching bits at that position.
      * Note: Either x <> m or y <> n should hold, but both need not.
      *)
-    Lemma tnum_add_optimal {SIZE} P Q i (hidx : i < SIZE) :
+    Lemma tnum_add_optimal : forall [SIZE] P Q i (hidx : i < SIZE),
       tnum.wellformed P -> tnum.wellformed Q ->
       tnum.ith_m (tnum_add P Q) hidx = one ->
       exists x y m n, ingamma x P /\ ingamma y Q /\
                         ingamma m P /\ ingamma n Q /\
                         bvec_ith (bvec_add x y) hidx <> bvec_ith (bvec_add m n) hidx.
     Proof.
-      intros wfp wfq sum_mu.
+      intros SIZE P Q i hidx wfp wfq sum_mu.
       apply (tnum_add_mu_imp_inputs_mu P Q) in sum_mu.
 
       destruct sum_mu as [ pm | [ qm | chim ] ].
@@ -533,6 +533,70 @@ Section linux_tnum_addition.
             discriminate.
           * assumption.
           * assumption.
+    Qed.
+
+    Lemma tnum_add_optimal_by_subset [SIZE] : optimal2 SIZE bvec_add tnum_add.
+      unfold optimal2. unfold sound2.
+      intros soundF F' soundF' P Q wfp wfq.
+      pose (hopt := tnum_add_optimal P Q).
+      unfold subset. unfold ingamma.
+      intros x' igxF i hidx.
+      specialize (hopt i hidx wfp wfq).
+      specialize (igxF i hidx).
+
+      (* Goal: tnum.ith_m (F' P Q) hidx = zero -> bvec_ith x hidx = tnum.ith_v (F' P Q) hidx *)
+
+      destruct (tnum.ith_m (tnum_add P Q) hidx) eqn : Fim.
+      - rewrite igxF; auto.
+        destruct (tnum.ith_m (F' P Q) hidx) eqn : F'im.
+        + (* F(P, Q).m[i] = F'(P, Q).m[i] = 0 *)
+
+          (* In this case, P.m[i] = Q.m[i] = 0.
+           * I can specialize soundF and soundF' with
+           * p = (tnum.v P) and q = (tnum.v Q) to obtain
+           * preconditions that will help me rewrite and discharge the goal.
+           *)
+
+          assert (igvp : ingamma (tnum.v P) P). unfold ingamma. auto.
+          assert (igvq : ingamma (tnum.v Q) Q). unfold ingamma. auto.
+
+          specialize (soundF (tnum.v P) (tnum.v Q) P Q wfp wfq igvp igvq).
+          destruct soundF as (wfF & igF).
+          unfold ingamma in igF.
+          rewrite <- igF; auto.
+
+          specialize (soundF' (tnum.v P) (tnum.v Q) P Q wfp wfq igvp igvq).
+          destruct soundF' as (wfF' & igF').
+          unfold ingamma in igF.
+          rewrite <- igF'; auto.
+
+        + (* F(P, Q).m[i] = 0; F'(P, Q).m[i] = 1 *)
+          easy. (* F'(P, Q) is uncertain; F(P, Q)[i] is auto-included. *)
+      -
+        destruct (tnum.ith_m (F' P Q) hidx) eqn : F'im.
+        + (* F(P, Q).m[i] = 1; F'(P, Q).m[i] = 0 *)
+          (* If F is optimal, F is uncertain at i and F' is certain at i
+           * cannot happen. We need to show that it is the case.
+           *)
+          destruct hopt as [p [q [p' [q' [igp [igq [igp' [igq' hopt]]]]]]]]; auto.
+
+          (* Now hopt says bvec_ith (bvec_add x y) hidx <> bvec_ith (bvec_add m n) hidx.
+           * But this contradicts the precondition that F'(P, Q).m[i] = 0
+           * (given F' is also a sound abstraction of bvec_add).
+           *)
+
+          assert (hF'pq := soundF' p q P Q wfp wfq igp igq).
+          assert (hF'p'q' := soundF' p' q' P Q wfp wfq igp' igq').
+          destruct hF'pq as [wfF'pq hF'pq].
+          destruct hF'p'q' as [wfF'p'q' hF'p'q'].
+          unfold ingamma in hF'pq, hF'p'q'.
+
+          specialize (hF'pq i hidx F'im).
+          specialize (hF'p'q' i hidx F'im).
+          rewrite <- hF'p'q' in hF'pq.
+          easy.
+        + (* F(P, Q).m[i] = 1; F'(P, Q).m[i] = 1 *)
+          easy. (* Uncertainty includes uncertainty. *)
     Qed.
   End tnum_add_optimality_me.
 

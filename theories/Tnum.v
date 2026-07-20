@@ -72,6 +72,19 @@ Definition sound2 SIZE
     ingamma p P -> ingamma q Q ->
     tnum.wellformed (F P Q) /\ ingamma (f p q) (F P Q).
 
+Definition subset {SIZE} (P Q : tnum.t SIZE) :=
+  forall x, ingamma x P -> ingamma x Q.
+
+(**
+ * If F is an optimal approximation of f, that means F(P, Q) is
+ * a subset of F'(P, Q), for any sound approximation F' of f.
+ *)
+Definition optimal2 SIZE (f : bvec SIZE -> bvec SIZE -> bvec SIZE) F :=
+  sound2 SIZE f F ->
+  forall F', sound2 SIZE f F' ->
+             forall (P Q : tnum.t SIZE),
+               tnum.wellformed P -> tnum.wellformed Q -> subset (F P Q) (F' P Q).
+
 Section tnum_shift.
   Definition tnum_lshift1 {n} (P : tnum.t (S n)) :=
     tnum.cons _ (bvec_lshift1 (tnum.v P)) (bvec_lshift1 (tnum.m P)).
@@ -196,9 +209,6 @@ Section tnum_union.
       destruct (bvec_ith (tnum.v Q) hidx);
       repeat simplify_bit_ops; auto.
   Qed.
-
-  Definition subset {SIZE} (P Q : tnum.t SIZE) :=
-    forall x, ingamma x P -> ingamma x Q.
 
   Lemma tnum_union_sound {SIZE} (P Q : tnum.t SIZE) :
     tnum.wellformed P -> tnum.wellformed Q ->
