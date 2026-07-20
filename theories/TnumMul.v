@@ -4,6 +4,7 @@ Require Import trirocq.BitVector.
 Require Import trirocq.SigVector.
 Require Import trirocq.Tnum.
 Require Import trirocq.TnumAdd.
+Require Import trirocq.TnumUnion.
 
 From Stdlib Require Import Lia.
 
@@ -273,75 +274,3 @@ Section linux_tnum_multiplication.
       unfold ingamma. auto.
   Qed.
 End linux_tnum_multiplication.
-
-Definition concrete_union_element {SIZE} (P Q : tnum.t SIZE) :=
-  { x | ingamma x P \/ ingamma x Q }.
-
-(* NOTE: x and y can be both from P or Q *)
-Lemma tnum_union_optimal {SIZE} (P Q : tnum.t SIZE) :
-  tnum.wellformed P -> tnum.wellformed Q ->
-  forall {i} (hidx : i < SIZE),
-    tnum.ith_m (tnum_union P Q) hidx = one ->
-    exists (x y : concrete_union_element P Q), bvec_ith (proj1_sig x) hidx <> bvec_ith (proj1_sig y) hidx.
-Proof.
-  unfold tnum.wellformed, tnum.ith_m.
-  intros wfp wfq i hidx ithm.
-
-  unfold tnum_union in ithm. simpl in ithm.
-  repeat rewrite bvec_or_rel in ithm.
-  repeat rewrite bvec_xor_rel in ithm.
-
-  specialize (wfp i hidx).
-  specialize (wfq i hidx).
-
-  destruct (bvec_ith (tnum.m P) hidx) eqn : pmi;
-    destruct (bvec_ith (tnum.m Q) hidx) eqn : qmi.
-  - (* P.m[i] = Q.m[i] = 0 *)
-
-    (* Take P.v as x *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (tnum.v P) (or_introl (ingamma_value P))).
-
-    (* Take Q.v as y *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (tnum.v Q) (or_intror (ingamma_value Q))).
-
-    simpl.
-    revert ithm.
-    repeat destruct (bvec_ith (tnum.v _) _); simplify_bit_ops; easy.
-  - (* P.m[i] = 0, Q.m[i] = 1 *)
-
-    (* Take Q.v as x *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (tnum.v Q) (or_intror (ingamma_value Q))).
-
-    (* Take (Q.v | Q.m) as y *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (bvec_or (tnum.v Q) (tnum.m Q)) (or_intror (ingamma_value_bitor_mask Q))).
-
-    simpl.
-    revert ithm.
-    rewrite bvec_or_rel.
-    rewrite qmi. rewrite wfq; auto. simplify_bit_ops. discriminate.
-  - (* P.m[i] = 1, Q.m[i] = 0 *)
-
-    (* Take P.v as x *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (tnum.v P) (or_introl (ingamma_value P))).
-
-    (* Take (P.v | P.m) as y *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (bvec_or (tnum.v P) (tnum.m P)) (or_introl (ingamma_value_bitor_mask P))).
-
-    simpl.
-    revert ithm.
-    rewrite bvec_or_rel.
-    rewrite pmi. rewrite wfp; auto. simplify_bit_ops. discriminate.
-  - (* P.m[i] = Q.m[i] = 1 *)
-
-    (* Just reuse the proof from the last case. *)
-    (* Take P.v as x *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (tnum.v P) (or_introl (ingamma_value P))).
-
-    (* Take (P.v | P.m) as y *)
-    exists (exist (fun x => ingamma x P \/ ingamma x Q) (bvec_or (tnum.v P) (tnum.m P)) (or_introl (ingamma_value_bitor_mask P))).
-
-    simpl.
-    revert ithm.
-    rewrite bvec_or_rel.
-    rewrite pmi. rewrite wfp; auto. simplify_bit_ops. discriminate.
-Qed.

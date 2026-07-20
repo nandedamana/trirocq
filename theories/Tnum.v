@@ -189,52 +189,6 @@ Section tnum_shift.
   Qed.
 End tnum_shift.
 
-Section tnum_union.
-  Definition tnum_union {SIZE} (P Q : tnum.t SIZE) :=
-    let v := bvec_and (tnum.v P) (tnum.v Q) in
-    let m := bvec_or (bvec_or (bvec_xor (tnum.v P) (tnum.v Q)) (tnum.m P)) (tnum.m Q) in
-    tnum.cons SIZE (bvec_and v (bvec_neg m)) m.
-
-  Lemma tnum_union_wellformed {SIZE} (P Q : tnum.t SIZE) :
-    tnum.wellformed (tnum_union P Q).
-  Proof.
-    unfold tnum_union.
-    intros i hidx.
-    rewrite tnum.ith_m_simplify2.
-    rewrite tnum.ith_v_simplify2.
-    unwrap_bvec_ops.
-    destruct (bvec_ith (tnum.m P) hidx);
-      destruct (bvec_ith (tnum.m Q) hidx);
-      destruct (bvec_ith (tnum.v P) hidx);
-      destruct (bvec_ith (tnum.v Q) hidx);
-      repeat simplify_bit_ops; auto.
-  Qed.
-
-  Lemma tnum_union_sound {SIZE} (P Q : tnum.t SIZE) :
-    tnum.wellformed P -> tnum.wellformed Q ->
-    let U := tnum_union P Q in
-    tnum.wellformed U /\ subset P U /\ subset Q U.
-  Proof.
-    unfold subset. intros wfP wfQ.
-    split. apply tnum_union_wellformed; auto.
-    split;
-      unfold tnum.wellformed; unfold ingamma; unfold tnum.ith_m; unfold tnum.ith_v;
-      intros x igx;
-      unfold tnum_union; intros i hidx;
-      specialize (wfP i hidx); specialize (wfQ i hidx); specialize (igx i hidx);
-      rewrite tnum.ith_m_simplify2;
-      rewrite tnum.ith_v_simplify2;
-      unwrap_bvec_ops;
-      destruct (bvec_ith (tnum.m P) hidx);
-      destruct (bvec_ith (tnum.m Q) hidx);
-      try rewrite_if_holds wfP;
-      try rewrite_if_holds wfQ;
-      destruct (bvec_ith (tnum.v P) hidx);
-      destruct (bvec_ith (tnum.v Q) hidx);
-      repeat simplify_bit_ops; try easy.
-  Qed.
-End tnum_union.
-
 Definition zerotnum n := tnum.cons n (zerovec n) (zerovec n).
 Lemma zerotnum_wellformed {n} : tnum.wellformed (zerotnum n).
   unfold tnum.wellformed.
