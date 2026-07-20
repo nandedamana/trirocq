@@ -163,7 +163,8 @@ Section linux_tnum_addition.
   Qed.
 
   Lemma hlp_xy_incarry_eq_minsum_incarry_internal {SIZE} x y P Q :
-    tnum.wellformed P -> tnum.wellformed Q -> ingamma x P -> ingamma y Q ->
+    tnum.wellformed P -> tnum.wellformed Q ->
+    ingamma x P -> ingamma y Q ->
     forall [i] (hidx : i < SIZE),
       ith_mask_incarry P Q hidx = zero ->
       ith_value_mask_incarry P Q hidx = zero ->
@@ -471,9 +472,10 @@ Section linux_tnum_addition.
     Lemma tnum_add_optimal : forall [SIZE] P Q i (hidx : i < SIZE),
       tnum.wellformed P -> tnum.wellformed Q ->
       tnum.ith_m (tnum_add P Q) hidx = one ->
-      exists x y m n, ingamma x P /\ ingamma y Q /\
-                        ingamma m P /\ ingamma n Q /\
-                        bvec_ith (bvec_add x y) hidx <> bvec_ith (bvec_add m n) hidx.
+      exists x y m n,
+        ingamma x P /\ ingamma y Q /\
+          ingamma m P /\ ingamma n Q /\
+          bvec_ith (bvec_add x y) hidx <> bvec_ith (bvec_add m n) hidx.
     Proof.
       intros SIZE P Q i hidx wfp wfq sum_mu.
       apply (tnum_add_mu_imp_inputs_mu P Q) in sum_mu.
