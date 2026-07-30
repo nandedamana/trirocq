@@ -57,8 +57,9 @@ the set of all possible well-formed (see
 Definition~\ref{def:wellformed}) tnums in $n$-bit value-mask
 representation.  For a tnum $P$, $\ithv{P}$ represents the $i$-th
 value bit of $P$, and $\ithm{P}$ represents the $i$-th mask bit of $P$
-(Note that unlike in the Rocq proofs, this document uses
-1-indexing). For a bit vector $x$, $\seti{x}$ denotes the same bit
+(like in the Rocq proofs, this document uses lower numbers to
+represent least significant bits, but 1-indexing is used instead of
+0-indexing). For a bit vector $x$, $\seti{x}$ denotes the same bit
 vector with its $i$-ith bit set to $1$.
 
 \section{Background}
@@ -73,7 +74,7 @@ vector it is used with. Details like bounds are omitted for brevity.
 
 \begin{definition}
   \label{def:ingamma} (Membership)
-  $$\forall p \in \{0, 1\}^{n}, P \in \wfdomn : \ingamma{p}{P} \iff \ithm{P} = 0 \implies \ith{p} = \ithv{P}$$
+  $$\forall p \in \{0, 1\}^{n}, P \in \wfdomn : \ingamma{p}{P} \iff (\ithm{P} = 0 \implies \ith{p} = \ithv{P})$$
 \end{definition}
 
 \begin{lemma}
@@ -180,7 +181,7 @@ represented by $P$, for any $P$.
 \section{Optimality of \lstinline{tnum_union}}
 
 The concrete union of two tnums $P$ and $Q$ is $\gamma(P) \cup
-\gamma(Q)$. This can be rewritten like the following:
+\gamma(Q)$. This can be rewritten like in the following:
 
 \begin{definition}
   \[
