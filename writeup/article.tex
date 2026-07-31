@@ -10,7 +10,8 @@
 
 \lstset{basicstyle=\ttfamily}
 
-\newcommand{\case}[2]{\textbf{Case #1:} #2}
+%% \case is already defined in the paper (by lncs?)
+\newcommand{\Case}[2]{\textbf{Case #1:} #2}
 \newcommand{\basecase}[1]{\textbf{Base Case:} #1}
 \newcommand{\inductionStep}{\textbf{Induction Step.}}
 \newcommand{\wfdomn}{\mathbb{V}^{n}}
@@ -139,21 +140,21 @@ Linux kernel is optimal.
     q)} \neq \ith{(p' + q')}$. (Note that either of $p \neq p'$ or $q
   \neq q'$ must hold, but both need not be true.)
 
-  \case{1}{$\ithm{P} = 1$}. Taking $p = \tv{P}$, $p' = \seti{\tv{P}}$,
+  \Case{1}{$\ithm{P} = 1$}. Taking $p = \tv{P}$, $p' = \seti{\tv{P}}$,
   and $q = q' = \tv{Q}$ satisfies our goal. Their membership follows
   from Lemma~\ref{lem:ingamma_value} and
   Lemma~\ref{lem:ingamma_set_at_mask}. We know that $\ithv{P} = 0$
   since {$\ithm{P} = 1$}. Hence $p$ and $p'$ differ at (and only at)
   position $i$, and $\ith{(p + q)} \neq \ith{(p' + q')}$.
 
-  \case{2}{$\ithm{Q} = 1$}. Similar to the previous case, we take $q =
+  \Case{2}{$\ithm{Q} = 1$}. Similar to the previous case, we take $q =
   \tv{Q}$, $q' = \seti{\tv{Q}}$, and $p = p' = \tv{P}$.
 
-  \case{3}{$\ithm{\chi} = 1$}. Recall that $\chi = (\sv{P}{Q} +
+  \Case{3}{$\ithm{\chi} = 1$}. Recall that $\chi = (\sv{P}{Q} +
   \sm{P}{Q}) \oplus \sv{P}{Q}$. Since we know that $\ithm{\chi} = 1$,
   we have two possibilities here:
 
-  \case{3.1}{$\ith{(\sv{P}{Q} + \sm{P}{Q})} = 1, \ithv{P} = \ithm{P} = \ith{\sv{P}{Q}} = 0$}.
+  \Case{3.1}{$\ith{(\sv{P}{Q} + \sm{P}{Q})} = 1, \ithv{P} = \ithm{P} = \ith{\sv{P}{Q}} = 0$}.
 
   After a basic rearranging and application of
   Lemma~\ref{lem:tnum_add_v_m_is_or}, $\ith{(\orvm{P} + \orvm{Q})} =
@@ -169,7 +170,7 @@ Linux kernel is optimal.
     q' &= \orvm{Q}
   \end{align*}
 
-  \case{3.2}{$\ith{\sv{P}{Q}} = 1, \ith{(\sv{P}{Q} + \sm{P}{Q})} =
+  \Case{3.2}{$\ith{\sv{P}{Q}} = 1, \ith{(\sv{P}{Q} + \sm{P}{Q})} =
     \ithv{P} = \ithm{P} = 0$}. Same assignments for $p$, $p'$, $q$ and
   $q'$ work in this case as well.
 \end{proof}
@@ -199,23 +200,23 @@ The concrete union of two tnums $P$ and $Q$ is $\gamma(P) \cup
 \begin{proof}
   The proof progresses on a case analysis of $\ithm{P}$ and $\ithm{Q}$.
 
-  \case{1}{$\ithm{P} = \ithm{Q} = 0$}. Since we know that
+  \Case{1}{$\ithm{P} = \ithm{Q} = 0$}. Since we know that
   $\ithm{\tunion{P}{Q}} = 1$, by the definition of
   \lstinline{tnum_union}, $\ithv{P} \oplus \ithv{Q} = 1$.  This means
   $\ithv{P} \neq \ithv{Q}$, and since $\ingamma{\tv{P}}{P} \land
   \ingamma{\tv{Q}}{Q}$, we pick $x = \tv{P}$ and $y = \tv{Q}$,
   satisfying our goal.
 
-  \case{2}{$\ithm{P} = 0, \ithm{Q} = 1$}. In this case, $\gamma({Q})$
+  \Case{2}{$\ithm{P} = 0, \ithm{Q} = 1$}. In this case, $\gamma({Q})$
   itself has two elements that disagree at the $i$-th bit: $x =
   \tv{Q}$ and $y = \orvm{Q}$ (membership of the latter,
   $\ingamma{y}{Q}$, is shown by
   Lemma~\ref{lem:ingamma_value_bitor_mask}).
 
-  \case{3}{$\ithm{P} = 1, \ithm{Q} = 0$}. Similar to the previous
+  \Case{3}{$\ithm{P} = 1, \ithm{Q} = 0$}. Similar to the previous
   case. We pick $x = \tv{P}$ and $y = \orvm{P}$.
 
-  \case{4}{$\ithm{P} = \ithm{Q} = 1$}. We can reuse the choices for
+  \Case{4}{$\ithm{P} = \ithm{Q} = 1$}. We can reuse the choices for
   $x$ and $y$ from either Case 2 or Case 3 in this case.
 \end{proof}
 
