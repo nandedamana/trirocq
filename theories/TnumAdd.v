@@ -505,10 +505,10 @@ Section linux_tnum_addition.
 
           rewrite tnum_add_sv_sm_as_or.
 
-          exists (tnum.v P). (* x *)
-          exists (tnum.v Q). (* y *)
-          exists (bvec_or (tnum.v P) (tnum.m P)). (* m *)
-          exists (bvec_or (tnum.v Q) (tnum.m Q)). (* n *)
+          exists (tnum.v P). (* p *)
+          exists (tnum.v Q). (* q *)
+          exists (bvec_or (tnum.v P) (tnum.m P)). (* p' *)
+          exists (bvec_or (tnum.v Q) (tnum.m Q)). (* q' *)
 
           repeat split.
           * apply ingamma_value_bitor_mask.
@@ -522,10 +522,10 @@ Section linux_tnum_addition.
 
           rewrite tnum_add_sv_sm_as_or.
 
-          exists (tnum.v P). (* x *)
-          exists (tnum.v Q). (* y *)
-          exists (bvec_or (tnum.v P) (tnum.m P)). (* m *)
-          exists (bvec_or (tnum.v Q) (tnum.m Q)). (* n *)
+          exists (tnum.v P). (* p *)
+          exists (tnum.v Q). (* q *)
+          exists (bvec_or (tnum.v P) (tnum.m P)). (* p' *)
+          exists (bvec_or (tnum.v Q) (tnum.m Q)). (* q' *)
 
           repeat split.
           * apply ingamma_value_bitor_mask.
