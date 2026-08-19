@@ -1,7 +1,9 @@
 From Stdlib Require Import Lia.
 
 Require Import trirocq.Bit.
+Require Import trirocq.BitSub.
 Require Import trirocq.BitVector.
+Require Import trirocq.SigVector.
 Require Import trirocq.Tnum.
 
 (** printing < %\texttt{<}% *)

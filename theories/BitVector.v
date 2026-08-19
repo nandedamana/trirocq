@@ -3,8 +3,6 @@ Require Import trirocq.SigVector.
 
 From Stdlib Require Import Lia.
 
-Lemma ltprv {i} {n} : S i < n -> i < n. lia. Qed.
-
 Definition bvec SIZE := Vector.t bit SIZE.
 
 Definition bvec_ith {n} (v : bvec n) {i} (hi : i < n) := Vector.nth_order v hi.
@@ -434,35 +432,6 @@ Section bvec_addition.
       lia.
   Qed.
 End bvec_addition.
-
-Section bvec_subtraction.
-  (* TODO verify these axioms related to subtraction *)
-
-  Axiom bvec_sub : forall {SIZE}, bvec SIZE -> bvec SIZE -> bvec SIZE.
-
-  Fixpoint bvec_inborrow {SIZE} (x y : bvec SIZE) {i} (hidx : i < SIZE) : bit :=
-    match i return i < SIZE -> bit with
-    | 0 => fun _ => zero
-    | S i' => fun hidx => let a := bvec_ith x (ltprv hidx) in
-                          let b := bvec_ith y (ltprv hidx) in
-                          let bin := bvec_inborrow x y (ltprv hidx) in
-                          bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin)
-    end hidx.
-
-  (* Takes away the convoy pattern, making some upcoming proofs simpler *)
-  Lemma bvec_inborrow_Si {SIZE} (x y : bvec SIZE) {i} (hidx : S i < SIZE) :
-    bvec_inborrow x y hidx = let a := bvec_ith x (ltprv hidx) in
-                             let b := bvec_ith y (ltprv hidx) in
-                             let bin := bvec_inborrow x y (ltprv hidx) in
-                             bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin).
-  Proof.
-    auto.
-  Qed.
-
-  Axiom bvec_fullsub_result : forall {SIZE} x y [i] (hidx : i < SIZE),
-      bvec_ith (bvec_sub x y) hidx =
-        bit_xor (bvec_inborrow x y hidx) (bit_xor (bvec_ith x hidx) (bvec_ith y hidx)).
-End bvec_subtraction.
 
 (* ------------------------------------------------------------------------ *)
 

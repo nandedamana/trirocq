@@ -1,7 +1,13 @@
 Require Import trirocq.Bit.
+Require Import trirocq.BitSub.
 Require Import trirocq.BitVector.
+Require Import trirocq.SigVector.
 Require Import trirocq.Tnum.
 Require Import trirocq.TnumAdd.
+
+From Stdlib Require Import Lia.
+From Stdlib Require Import ZArith.
+From Stdlib Require Import ZArithRing.
 
 Section linux_tnum_subtraction.
   (* Mirrors the Linux kernel definition *)
@@ -63,7 +69,7 @@ Section linux_tnum_subtraction.
     unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfp wfq.
     induction i.
-    - auto.
+    - intros. rewrite bvec_inborrow_0. auto.
     -
       intros hidx.
 
@@ -81,7 +87,7 @@ Section linux_tnum_subtraction.
     tnum.wellformed P -> tnum.wellformed Q ->
     forall [i] (hidx : i < SIZE),
       bvec_inborrow (tnum.v P) (tnum.v Q) hidx = zero ->
-        bvec_incarry (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m P) hidx = zero.
+      bvec_incarry (bvec_sub (tnum.v P) (tnum.v Q)) (tnum.m P) hidx = zero.
   Proof.
     unfold tnum.wellformed. unfold ingamma.
     unfold tnum.ith_m. unfold tnum.ith_v.
@@ -132,8 +138,8 @@ Section linux_tnum_subtraction.
       specialize (IHi (ltprv hidx)).
       specialize_wf_ig (ltprv hidx).
 
-      repeat rewrite bvec_incarry_Si.
-      simpl.
+      repeat rewrite bvec_incarry_Si. simpl.
+      repeat rewrite bvec_inborrow_Si. simpl.
       repeat rewrite bvec_fullsub_result. simpl.
 
       crush_bvec_add.
@@ -151,7 +157,7 @@ Section linux_tnum_subtraction.
     unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfp wfq igP igQ.
     induction i.
-    - unfold bvec_inborrow. auto.
+    - intros. repeat rewrite bvec_inborrow_0. auto.
     -
       intro hidx.
 
@@ -185,7 +191,7 @@ Section linux_tnum_subtraction.
     unfold tnum.ith_m. unfold tnum.ith_v.
     intros wfp wfq igP igQ.
     induction i.
-    - unfold bvec_inborrow. auto.
+    - intros. repeat rewrite bvec_inborrow_0. auto.
     -
       intros hidx.
       unfold tnum_sub.
@@ -265,4 +271,199 @@ Section linux_tnum_subtraction.
     rewrite bit_and_right_one.
     auto.
   Qed.
+
+  Section tnum_sub_optimality.
+    Lemma tnum_sub_mu_imp_inputs_mu {SIZE} P Q :
+      forall [i] (hidx : i < SIZE),
+        tnum.ith_m (tnum_sub P Q) hidx = one ->
+        tnum.ith_m P hidx = one \/ tnum.ith_m Q hidx = one \/
+          tnum_sub_ith_chi P Q hidx = one.
+    Proof.
+      unfold_tnum_goodies.
+      intros i hidx.
+
+      destruct i;
+        unfold tnum_sub;
+        rewrite tnum.ith_m_simplify2;
+        unwrap_bvec_ops; unfold tnum.ith_m;
+        rewrite bvec_fulladd_result;
+        unfold bvec_incarry;
+        repeat destruct (bvec_ith (tnum.m _) hidx); try auto;
+        repeat simplify_bit_ops; try auto.
+    Qed.
+
+    Lemma bvec_ith_set_prv_borrow_intact {SIZE} (x y : bvec SIZE) i (hi : i < SIZE) j (hj : j < SIZE) :
+      j < i ->
+      bvec_inborrow x y hj = bvec_inborrow (BitVector.bvec_set_ith x hi) y hj.
+    Proof.
+      induction j.
+      - repeat rewrite bvec_inborrow_0. auto.
+      - repeat rewrite bvec_inborrow_Si.
+
+        intro sjlti. assert (j < i). lia.
+
+        rewrite bvec_ith_unset_is_id.
+        rewrite IHj.
+        auto. auto. lia.
+    Qed.
+
+    Lemma bvec_ith_set_prv_borrow_intact_rev {SIZE} (x y : bvec SIZE) i (hi : i < SIZE) j (hj : j < SIZE) :
+      j < i ->
+      bvec_inborrow x y hj = bvec_inborrow x (BitVector.bvec_set_ith y hi) hj.
+    Proof.
+      induction j.
+      - repeat rewrite bvec_inborrow_0. auto.
+      - repeat rewrite bvec_inborrow_Si.
+
+        intro sjlti. assert (j < i). lia.
+
+        rewrite bvec_ith_unset_is_id.
+        rewrite IHj.
+        auto. auto. lia.
+    Qed.
+
+    Lemma bvec_ith_set_sets_ith_diff {SIZE} (x y : bvec SIZE) i (hidx : i < SIZE) :
+      bvec_ith x hidx = zero ->
+      bvec_ith (bvec_sub x y) hidx <>
+        bvec_ith (bvec_sub (BitVector.bvec_set_ith x hidx) y) hidx.
+    Proof.
+      repeat rewrite bvec_fullsub_result.
+      destruct i.
+      - repeat rewrite bvec_incarry_0.
+        rewrite bvec_ith_set_is_one.
+        simplify_bit_ops.
+        repeat rewrite bvec_inborrow_0.
+        repeat destruct (bvec_ith _ _); easy.
+      - repeat rewrite bvec_inborrow_Si. simpl.
+        rewrite bvec_ith_unset_is_id; auto.
+        rewrite bvec_ith_set_is_one.
+        rewrite bvec_ith_set_prv_borrow_intact with (hi := hidx); auto.
+
+        repeat destruct (bvec_ith _ _);
+          destruct (bvec_inborrow _ _ _); simplify_bit_ops; discriminate.
+    Qed.
+
+    (* Can't reuse bvec_ith_set_sets_ith_diff unlike in the case of
+     * bvec_add because bvec_sub is not commutative.
+     *)
+    Lemma bvec_ith_set_sets_ith_diff_rev {SIZE} (x y : bvec SIZE) i (hidx : i < SIZE) :
+      bvec_ith y hidx = zero ->
+      bvec_ith (bvec_sub x y) hidx <>
+        bvec_ith (bvec_sub x (BitVector.bvec_set_ith y hidx)) hidx.
+    Proof.
+      repeat rewrite bvec_fullsub_result.
+      destruct i.
+      - repeat rewrite bvec_inborrow_0.
+        rewrite bvec_ith_set_is_one.
+        simplify_bit_ops.
+        repeat destruct (bvec_ith _ _); easy.
+      - repeat rewrite bvec_inborrow_Si. simpl.
+        rewrite bvec_ith_unset_is_id; auto.
+        rewrite bvec_ith_set_is_one.
+        rewrite bvec_ith_set_prv_borrow_intact_rev with (hi := hidx); auto.
+
+        repeat destruct (bvec_ith _ _);
+          destruct (bvec_inborrow _ _ _); simplify_bit_ops; discriminate.
+    Qed.
+
+    (* If the abstract result indicates uncertainty at some bit, there
+     * should be concrete diffs with mismatching bits at that position.
+     * Note: Either p <> p' or q <> q' should hold, but both need not.
+     *)
+    Lemma tnum_sub_optimal : forall [n] P Q i (hidx : i < S n),
+        tnum.wellformed P -> tnum.wellformed Q ->
+        tnum.ith_m (tnum_sub P Q) hidx = one ->
+        exists p q p' q',
+          ingamma p P /\ ingamma q Q /\
+            ingamma p' P /\ ingamma q' Q /\
+            bvec_ith (bvec_sub p q) hidx <> bvec_ith (bvec_sub p' q') hidx.
+    Proof.
+      intros SIZE P Q i hidx wfp wfq sum_mu.
+      apply (tnum_sub_mu_imp_inputs_mu P Q) in sum_mu.
+
+      destruct sum_mu as [ pm | [ qm | chim ] ].
+      - exists (tnum.v P), (tnum.v Q).
+        exists (BitVector.bvec_set_ith (tnum.v P) hidx), (tnum.v Q).
+        repeat split.
+        + apply tnum_ingamma_set_at_mask; auto.
+        + apply bvec_ith_set_sets_ith_diff. auto.
+
+      - exists (tnum.v P), (tnum.v Q).
+        exists (tnum.v P), (BitVector.bvec_set_ith (tnum.v Q) hidx).
+        repeat split.
+        + apply tnum_ingamma_set_at_mask; auto.
+        + apply bvec_ith_set_sets_ith_diff_rev. auto.
+
+      - unfold tnum_sub_ith_chi in chim.
+        revert chim.
+
+        unwrap_bvec_ops.
+
+        Local Open Scope Z_scope.
+        assert (hassoc1Z : forall x y z : Z, (x - y) + z = (x + z) - y). lia.
+
+        assert (hassoc1 : forall n (x y z : bvec (S n)),
+                   bvec_add (bvec_sub x y) z = bvec_sub (bvec_add x z) y).
+        intros n' x y z.
+        apply eqdenote_imp_eqvec.
+        apply Nat2Z.inj.
+        rewrite bvec_add_correct_Z.
+        repeat rewrite bvec_sub_correct_Z.
+        rewrite bvec_add_correct_Z.
+        rewrite Z.add_mod_idemp_l by lia.
+        rewrite Zminus_mod_idemp_l.
+        f_equal. lia.
+        rewrite hassoc1.
+
+        assert (hassoc2 : forall n (x y z : bvec (S n)),
+                   bvec_sub (bvec_sub x y) z = bvec_sub x (bvec_add y z)).
+        intros n' x y z. apply eqdenote_imp_eqvec.
+        apply Nat2Z.inj.
+        repeat rewrite bvec_sub_correct_Z.
+        rewrite bvec_add_correct_Z.
+        rewrite Zminus_mod_idemp_l.
+        rewrite Zminus_mod_idemp_r.
+        f_equal. lia.
+        rewrite hassoc2.
+        Close Scope Z_scope.
+
+        repeat rewrite <- tnum_add_v_m_is_or; auto.
+
+        intro chim.
+        apply bit_xor_one_imp in chim.
+        destruct (bvec_ith (bvec_sub (bvec_or (tnum.v P) (tnum.m P)) (tnum.v Q)) hidx) eqn : hvm;
+          simplify_bit_ops;
+          revert chim; simplify_bit_ops.
+        +
+          (* We have:
+           * 1) bvec_ith (bvec_sub (bvec_or (tnum.v P) (tnum.m P)) (tnum.v Q)) hidx = zero
+           * 2) bvec_ith (bvec_sub (tnum.v P) (bvec_or (tnum.v Q) (tnum.m Q))) hidx = one
+           * i.e., (Pmax - Qmin)[i] = 0 and (Pmin - Qmax)[i] = 1.
+           *)
+
+          exists (bvec_or (tnum.v P) (tnum.m P)). (* p *)
+          exists (tnum.v Q). (* q *)
+          exists (tnum.v P). (* p' *)
+          exists (bvec_or (tnum.v Q) (tnum.m Q)). (* q' *)
+
+          repeat split.
+          * apply ingamma_value_bitor_mask.
+          * apply ingamma_value_bitor_mask.
+          * destruct chim as (h1 & h2).
+            rewrite hvm, h1.
+            discriminate.
+        +
+          exists (bvec_or (tnum.v P) (tnum.m P)). (* p *)
+          exists (tnum.v Q). (* q *)
+          exists (tnum.v P). (* p' *)
+          exists (bvec_or (tnum.v Q) (tnum.m Q)). (* q' *)
+
+          repeat split.
+          * apply ingamma_value_bitor_mask.
+          * apply ingamma_value_bitor_mask.
+          * destruct chim as (h1 & h2).
+            rewrite hvm, h2.
+            discriminate.
+    Qed.
+  End tnum_sub_optimality.
 End linux_tnum_subtraction.

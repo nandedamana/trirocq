@@ -6,7 +6,9 @@ Require Import trirocq.Bit.
 Require Import trirocq.BitVector.
 
 Require Import trirocq.SigVector.
+
 From Stdlib Require Import Lia.
+From Stdlib Require Import ZArith.
 
 Section bvec_subtraction.
   Definition fullsub a b bin :=
@@ -14,6 +16,7 @@ Section bvec_subtraction.
     let borrow := bit_or (bit_or (bit_and (bit_not a) b) (bit_and (bit_not a) bin)) (bit_and b bin) in
     pair diff borrow.
 
+  (* TODO rename vars *)
   Fixpoint bitlist_fullsub_paired_unary (xs : list bit) (cin : bit) :=
     match xs with
       | List.cons hx tx =>
@@ -25,6 +28,7 @@ Section bvec_subtraction.
     end.
 
   (* Element i is (sum[i], incarry[i]) *)
+  (* TODO rename vars *)
   Fixpoint bitlist_fullsub_paired (xs ys : list bit) (cin : bit) :=
     match xs, ys with
     | List.cons hx tx, List.cons hy ty =>
@@ -294,3 +298,177 @@ Section bvec_subtraction.
       lia.
   Qed.
 End bvec_subtraction.
+
+Section bvec_sub_correct.
+  Local Open Scope Z_scope.
+
+  Lemma bitsub_helper_1 a b c :
+    Z.of_nat (bit2nat (fst (fst (fullsub a b c), c))) -
+      Z.double (Z.of_nat (bit2nat (snd (fullsub a b c)))) =
+      Z.of_nat (bit2nat a) - Z.of_nat (bit2nat b) - Z.of_nat (bit2nat c).
+  Proof.
+    destruct a, b, c; simpl; auto.
+  Qed.
+
+  Lemma bitsub_helper_2 : forall b (x : Z) (n : nat),
+      Z.of_nat (bit2nat b) + 2 * (x mod (2 ^ (Z.of_nat n + 2))) =
+        (Z.of_nat (bit2nat b) + 2 * x) mod (2 ^ (Z.of_nat n + 3)).
+  Proof.
+    intros b' x' n'.
+
+    assert (h1 : forall b, Z.of_nat (bit2nat b) = Z.b2z (bit2bool b)).
+    intro b. destruct b; auto.
+
+    repeat rewrite h1.
+    repeat rewrite (Z.add_comm (Z.b2z (bit2bool b')) _).
+
+    apply Z.bits_inj. (* unfold Z.eqf. *) intro i.
+    destruct i eqn : i'.
+    -
+      rewrite Z.mod_pow2_bits_low by lia.
+      repeat rewrite Z.testbit_0_r.
+      reflexivity.
+    -
+      assert (hp : (Z.pos p < Z.of_nat n' + 3) \/ (Z.pos p >= Z.of_nat n' + 3)).
+      lia.
+      destruct hp as [hp1|hp2].
+      +
+        destruct p.
+        * change (Z.pos p~1) with (Z.succ (2 * Z.pos p)). (* p~1 is 2p + 1 *)
+          rewrite Z.testbit_succ_r by lia.
+          rewrite Z.mod_pow2_bits_low by lia.
+          rewrite Z.mod_pow2_bits_low by lia.
+          rewrite Z.testbit_succ_r by lia. reflexivity.
+
+        * change (Z.pos p~0) with (2 * Z.pos p).
+          assert (h2 : 2 * Z.pos p = Z.succ (Z.pos (Pos.pred (p~0)))).
+          destruct p; lia. rewrite h2.
+          rewrite Z.testbit_succ_r by lia.
+          rewrite Z.mod_pow2_bits_low by lia.
+          rewrite Z.mod_pow2_bits_low by lia.
+          rewrite Z.testbit_succ_r by lia. reflexivity.
+
+        * change 1 with (Z.succ 0).
+          rewrite Z.testbit_succ_r by lia.
+          rewrite Z.mod_pow2_bits_low by lia.
+          rewrite Z.mod_pow2_bits_low by lia.
+          rewrite Z.testbit_succ_r by lia. reflexivity.
+      + rewrite Z.mod_pow2_bits_high by lia.
+        destruct p.
+        * change (Z.pos p~1) with (Z.succ (2 * Z.pos p)). (* p~1 is 2p + 1 *)
+          rewrite Z.testbit_succ_r by lia.
+          rewrite Z.mod_pow2_bits_high by lia.
+          reflexivity.
+        * change (Z.pos p~0) with (2 * Z.pos p).
+          assert (h2 : 2 * Z.pos p = Z.succ (Z.pos (Pos.pred (p~0)))).
+          destruct p; lia. rewrite h2.
+          rewrite Z.testbit_succ_r by lia.
+          rewrite Z.mod_pow2_bits_high by lia.
+          reflexivity.
+        * change 1 with (Z.succ 0).
+          rewrite Z.testbit_succ_r by lia.
+          rewrite Z.mod_pow2_bits_high by lia.
+          reflexivity.
+    - easy.
+  Qed.
+
+  (* Two bits in each output lists (one for diff and one for borrows). *)
+  (* Compute (bitlist_fullsub_paired (cons zero nil) (cons one nil) zero). *)
+
+  (* TODO try `n` instead of `S n` and `n + 1` instead of `n + 2`. `destruct n` will have to go then. *)
+  Lemma bitlist_sub_internal_correct_Z : forall (xs ys : list bit) bin n,
+      length xs = S n -> length ys = S n ->
+      Z.of_nat (bitlist_denote (bitlist_sub_internal xs ys bin)) =
+        Z.modulo (Z.of_nat (bitlist_denote xs) - Z.of_nat (bitlist_denote ys) - Z.of_nat (bit2nat bin)) (2 ^ (Z.of_nat n + 2)).
+  Proof.
+    induction xs, ys; try easy.
+    unfold bitlist_sub_internal, bitlist_fullsub_paired.
+    fold bitlist_fullsub_paired.
+    unfold bitlist_sub_internal in IHxs.
+    intros bin n hlenx hleny.
+    rewrite fst_split_cons.
+    unfold bitlist_denote. fold bitlist_denote.
+    rewrite Nat2Z.inj_add.
+    rewrite Nat2Z.inj_double.
+
+    destruct n.
+    - destruct xs, ys; try easy. destruct a, b, bin; compute; reflexivity.
+    -
+      rewrite IHxs with (n := n).
+
+      assert (h1 : Z.of_nat (bit2nat a + Nat.double (bitlist_denote xs)) -
+                     Z.of_nat (bit2nat b + Nat.double (bitlist_denote ys)) -
+                     Z.of_nat (bit2nat bin) =
+                     (Z.of_nat (bit2nat a) - Z.of_nat (bit2nat b) - Z.of_nat (bit2nat bin)) +
+                       Z.of_nat (Nat.double (bitlist_denote xs)) - Z.of_nat (Nat.double (bitlist_denote ys))).
+      repeat rewrite Nat2Z.inj_add.
+      repeat rewrite Z.double_spec.
+      repeat rewrite Nat.double_twice.
+      repeat rewrite Nat2Z.inj_sub.
+      repeat rewrite Nat2Z.inj_mul.
+      lia.
+      rewrite h1.
+
+      rewrite <- bitsub_helper_1.
+
+      assert (h3 : forall (p q m n : Z), p - q + m - n = p + m - n - q). lia.
+      rewrite h3.
+
+      assert (h4 : forall (p q : Z) (m n : nat),
+                 p + Z.of_nat (Nat.double m) - Z.of_nat (Nat.double n) - Z.double q =
+                   p + Z.double (Z.of_nat m - Z.of_nat n - q)).
+      lia.
+      rewrite h4.
+
+      replace (2 ^ (Z.of_nat (S n) + 2)) with (2 ^ (Z.of_nat n + 3)).
+
+      rewrite bitsub_helper_2. auto.
+      replace (Z.of_nat (S n) + 2) with (Z.of_nat n + 3) by lia.
+      repeat rewrite Z.pow_add_r; nia.
+      simpl in hlenx; lia.
+      simpl in hleny; lia.
+  Qed.
+
+  Lemma bitlist_sub_correct_Z : forall n (xs ys : list bit),
+      length xs = S n -> length ys = S n ->
+      Z.of_nat (bitlist_denote (bitlist_sub xs ys)) =
+        Z.modulo (Z.of_nat (bitlist_denote xs) - Z.of_nat (bitlist_denote ys)) (2 ^ (Z.of_nat n + 2)).
+  Proof.
+    unfold bitlist_sub.
+    intros.
+    rewrite bitlist_sub_internal_correct_Z with (n := n); auto.
+    simpl. rewrite Z.sub_0_r. reflexivity.
+  Qed.
+
+  (* Wrap-around semantics of unsigned int *)
+  (* Remember: mod gives non-negative numbers for Z *)
+  Lemma bvec_sub_correct_Z {n} (x y : bvec (S n)) :
+    Z.of_nat (bvec_denote (bvec_sub x y)) =
+      Z.modulo (Z.of_nat (bvec_denote x) - Z.of_nat (bvec_denote y)) (2 ^ (Z.of_nat n + 1)).
+  Proof.
+    destruct x as [xs hlenx]. destruct y as [ys hleny].
+    unfold bvec_denote. simpl.
+    unfold bitlist_sub_noborrow. rewrite bitlist_denote_firstn.
+    rewrite hlenx, hleny. rewrite PeanoNat.Nat.max_id.
+    rewrite Nat2Z.inj_mod.
+    rewrite bitlist_sub_correct_Z with (n := n); auto.
+    replace (Z.of_nat (2 ^ S n)) with (2 ^ (Z.of_nat n + 1)).
+    rewrite Z.mod_mod_divide. reflexivity.
+
+    repeat rewrite Z.pow_add_r.
+    apply Z.mul_divide_mono_l. exists 2.
+    lia. lia. lia. lia. lia.
+
+    rewrite Nat2Z.inj_pow. f_equal. lia.
+  Qed.
+
+  (* TODO move *)
+  Lemma bvec_add_correct_Z {n} (x y : bvec (S n)) :
+    Z.of_nat (bvec_denote (bvec_add x y)) = Z.modulo (Z.of_nat (bvec_denote x) + Z.of_nat (bvec_denote y)) (2 ^ (Z.of_nat n + 1)).
+  Proof.
+    rewrite bvec_add_correct.
+    rewrite Nat2Z.inj_mod.
+    rewrite Nat2Z.inj_add.
+    rewrite Nat2Z.inj_pow. lia.
+  Qed.
+End bvec_sub_correct.
