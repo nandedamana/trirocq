@@ -1,6 +1,6 @@
 # trirocq: tnum Arithmetic Verified in Rocq
 
-[![Docker CI](https://github.com/$USER/$REPO/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/$USER/$REPO/actions/workflows/build.yml)
+[![Docker CI](https://github.com/nandedamana/trirocq/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/nandedamana/trirocq/actions/workflows/build.yml)
 
 This project gives the soundness proof of the tnum multiplication
 algorithm used in the Linux kernel eBPF verifier (specifically, the
