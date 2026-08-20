@@ -1,5 +1,7 @@
 # trirocq: tnum Arithmetic Verified in Rocq
 
+[![Docker CI](https://github.com/$USER/$REPO/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/$USER/$REPO/actions/workflows/build.yml)
+
 This project gives the soundness proof of the tnum multiplication
 algorithm used in the Linux kernel eBPF verifier (specifically, the
 particular version upstreamed by [this
@@ -29,12 +31,10 @@ proven to be sound.
 
 ## Building
 
-We use an opam-based build environment with:
+We use an opam-based build environment. See trirocq.opam for dependencies and
+their versions.
 
-- `rocq-core` (9.1.1)
-- `rocq-runtime` (9.1.1)
-- `rocq-stdlib` (9.0.0)
-- `dune` (3.22.2)
+TODO: move to `dune pkg`, when [the Rocq repositories become supported](https://discuss.ocaml.org/t/rocq-released-repository-with-dune-package-management/18054/2).
 
 Earlier versions of dune do not support the `rocq` language (they
 supports `coq`, but then you'll have to uninstall `rocq-*` packages

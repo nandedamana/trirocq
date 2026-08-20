@@ -1,0 +1,28 @@
+# Template copied from https://github.com/rocq-prover/docker-opam-action
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    branches: [ 'main' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # container actions require GNU/Linux
+    strategy:
+      matrix:
+        coq_version:
+          - '9.1.1' # Keep in sync with trirocq.opam
+          - dev
+        ocaml_version: ['default']
+      fail-fast: false  # don't stop jobs if one fails
+    steps:
+      - uses: actions/checkout@v3
+      - uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'trirocq.opam'
+          coq_version: ${{ matrix.coq_version }}
+          ocaml_version: ${{ matrix.ocaml_version }}
+          # dune pinned to 3.17.2 by default, but I need support for rocq lang
+          before_install: |
+            opam pin remove dune --no-action
