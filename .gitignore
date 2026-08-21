@@ -1,6 +1,9 @@
 .CoqMakefile.d
 .Makefile.d
-.lia.cache
+
+# lia, nia
+*.cache
+
 experi/
 private/
 scrap/
@@ -12,3 +15,6 @@ TODO-private.txt
 *.glob
 *.vo*
 _build
+
+*.bak
+*.tmp
