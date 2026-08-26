@@ -1,10 +1,15 @@
 # Template copied from https://github.com/rocq-prover/docker-opam-action
+# Split to get a separate badge for each Rocq version;
+# see https://github.com/orgs/community/discussions/52616
+
+name: CI
 
 on:
-  push:
-    branches: [ 'main' ]
-  pull_request:
-    branches: [ 'main' ]
+  workflow_call:
+    inputs:
+      coq_version:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -12,8 +17,7 @@ jobs:
     strategy:
       matrix:
         coq_version:
-          - '9.1.1' # Keep in sync with trirocq.opam
-          - dev
+          - ${{ inputs.coq_version }}
         ocaml_version: ['default']
       fail-fast: false  # don't stop jobs if one fails
     steps:

@@ -1,0 +1,15 @@
+# Template copied from https://github.com/rocq-prover/docker-opam-action
+
+name: dev-rocq
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    branches: [ 'main' ]
+
+jobs:
+  stable-rocq-build:
+    uses: ./.github/workflows/build.yml
+    with:
+      coq_version: dev
