@@ -1,11 +1,16 @@
+# Ideally, this file should be auto-generated using dune;
+# maintained manually for the GitHub workflow.
+
 opam-version: "2.0"
 maintainer: "Nandakumar Edamana <nandakumar@nandakumar.co.in>"
 synopsis: "Tnum Arithmetic Verified in Rocq"
 
 # Keep in sync with .github/workflows/build.yml
 depends: [
-	"rocq-core" {>= "9.1.1"}
-	"dune" {>= "3.22.2"}
+  "rocq-core" {>= "9.1.1"}
+  "dune" {>= "3.22.2"}
+  "coq-itree" {>= "5.2.1"}
+  "coq-ext-lib" {>= "0.13.1"}
 ]
 
 build: [
