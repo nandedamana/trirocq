@@ -1157,3 +1157,27 @@ Section poking.
     congruence.
   Qed.
 End poking.
+
+Lemma bvec_ith_map [SIZE] (a : bvec SIZE) f i (hi : i < SIZE) :
+  bvec_ith (SigVector.Vector.map f a) hi = f (bvec_ith a hi).
+Proof.
+  destruct a as [alst alen].
+  unfold bvec_ith, SigVector.Vector.map.
+  unfold SigVector.Vector.nth_order. simpl.
+  repeat SigVector.rewrite_safe_nth_anywhere.
+  apply SigVector.eqxy2Some.
+  rewrite <- hx1. apply List.map_nth_error. assumption.
+Qed.
+
+Lemma bvec_ith_map2 [SIZE] (a b : bvec SIZE) f i (hi : i < SIZE) :
+  bvec_ith (SigVector.Vector.map2 f a b) hi =
+    f (bvec_ith a hi) (bvec_ith b hi).
+Proof.
+  destruct a as [alst alen], b as [blst blen].
+  unfold bvec_ith, SigVector.Vector.map2.
+  unfold SigVector.Vector.nth_order. simpl.
+  repeat SigVector.rewrite_safe_nth_anywhere.
+  rewrite SigVector.nth_error_map2_list in hx1.
+  rewrite hx0 in hx1. rewrite hx2 in hx1.
+  simpl in hx1. congruence.
+Qed.
