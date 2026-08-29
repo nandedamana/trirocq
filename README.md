@@ -20,15 +20,6 @@ This project does not produce any executable component; it consists
 only of proofs, and one could get Rocq to verify the proofs by
 building the project (which invokes Rocq's proof checking mechanism).
 
-## Standalone Nature
-
-The project depends only on the Rocq standard library. No axioms are
-used (you may find one if you perform a search, but that's for an
-experimental proof of tnum subtraction, which does not affect tnum
-multiplication, our primary goal). Even the custom binary (i.e., not
-tristate) arithmetic routines defined as part of the process are
-proven to be sound.
-
 ## Building
 
 We use an opam-based build environment. See trirocq.opam for dependencies and
@@ -41,3 +32,8 @@ supports `coq`, but then you'll have to uninstall `rocq-*` packages
 and install `coq-*` packages). If you are unable to install a recent
 version of dune via opam, you can build it from the
 [source](https://github.com/ocaml/dune).
+
+## Licensing
+
+The file `verification/tnum.c` contains code from the Linux kernel,
+licensed under GNU General Public License v2.0.
