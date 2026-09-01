@@ -1,7 +1,8 @@
 Require Import trirocq.Bit.
 Require Import trirocq.SigVector.
 
-From Stdlib Require Import Lia ZArith.
+From Stdlib Require Import Lia List ZArith.
+Import ListNotations.
 
 Definition bvec SIZE := Vector.t bit SIZE.
 
@@ -597,6 +598,25 @@ Section bvec_denote.
     subst. apply bitlist_denote_bounded.
   Qed.
 End bvec_denote.
+
+Section nat_to_bvec.
+  Variable SIZE : nat.
+
+  Definition nat2bl (n : nat) : list bit :=
+    List.map bool2bit
+      (List.map (fun i => Nat.testbit n i)
+         (List.seq 0 SIZE)).
+
+  Definition nat2bv (x : nat) : bvec SIZE.
+    exists (nat2bl x).
+    unfold nat2bl.
+    rewrite !List.length_map.
+    apply List.length_seq.
+  Defined.
+End nat_to_bvec.
+
+(* Tests *)
+Goal (nat2bl 4 2) = [ zero ; one ; zero ; zero ]. auto. Qed.
 
 Section bvec_lshift1_correct.
   Definition bvec_lshift1_notrunc {n} (v : bvec n) : bvec (S n) :=
