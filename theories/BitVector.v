@@ -614,6 +614,16 @@ Proof.
     + rewrite Nat.testbit_succ_r. auto.
 Qed.
 
+Lemma bvec_ith_as_testbit {SIZE} (v : bvec SIZE) i (hi : i < SIZE) :
+  bvec_ith v hi = bool2bit (Nat.testbit (bvec_denote v) i).
+Proof.
+  destruct v as [xs hlenx].
+  unfold bvec_denote, bvec_ith, Vector.nth_order. simpl.
+  rewrite testbit_bitlist_denote. rewrite_safe_nth_anywhere.
+  rewrite b2t_t2b. apply nth_error_nth with (d := zero) in hx1.
+  auto.
+Qed.
+
 Section nat_to_bvec.
   Variable SIZE : nat.
 
@@ -730,17 +740,6 @@ Section bvec_shift.
     - rewrite Nat.pow_succ_r'.
       replace (bvec_denote v * (2 * 2 ^ n)) with (2 * (bvec_denote v * 2 ^ n)) by lia.
       rewrite Nat.testbit_even_0. auto.
-  Qed.
-
-  (* TODO rename and move *)
-  Lemma bvec_ith_as_testbit (v : bvec SIZE) i (hi : i < SIZE) :
-    bvec_ith v hi = bool2bit (Nat.testbit (bvec_denote v) i).
-  Proof.
-    destruct v as [xs hlenx].
-    unfold bvec_denote, bvec_ith, Vector.nth_order. simpl.
-    rewrite testbit_bitlist_denote. rewrite_safe_nth_anywhere.
-    rewrite b2t_t2b. apply nth_error_nth with (d := zero) in hx1.
-    auto.
   Qed.
 
   Lemma bvec_ith_lshift_as_testbit (v : bvec SIZE) n {i} (hi : i < SIZE) :
