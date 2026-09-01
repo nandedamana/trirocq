@@ -130,39 +130,13 @@ Section tnum_shift.
       auto.
     - rewrite !bvec_ith_lshift_low by assumption. easy.
   Qed.
+End tnum_shift.
 
-  (* TODO rem now that I have tnum_lshift *)
-  Definition tnum_lshift1 {n} (P : tnum.t (S n)) :=
-    tnum.cons _ (bvec_lshift1 (tnum.v P)) (bvec_lshift1 (tnum.m P)).
+Arguments tnum_lshift {SIZE}.
+Arguments tnum_lshift_wellformed {SIZE}.
+Arguments tnum_lshift_sound {SIZE}.
 
-  Lemma tnum_lshift1_wellformed {n} (P : tnum.t (S n)) :
-    tnum.wellformed P -> tnum.wellformed (tnum_lshift1 P).
-  Proof.
-    intro wfp.
-    unfold tnum_lshift1.
-    intros i hidx.
-    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
-    destruct i.
-    - rewrite bvec_lshift1_ith_0. easy.
-    - repeat rewrite bvec_lshift1_ith_S. auto.
-  Qed.
-
-  Lemma tnum_lshift1_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
-    tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_lshift1 P) /\ ingamma (bvec_lshift1 x) (tnum_lshift1 P).
-  Proof.
-    intros wfp igx.
-    split. apply tnum_lshift1_wellformed; auto.
-
-    unfold ingamma.
-    unfold tnum_lshift1.
-    intros i hidx.
-    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
-    destruct i.
-    - repeat rewrite bvec_lshift1_ith_0. auto.
-    - repeat rewrite bvec_lshift1_ith_S. apply igx.
-  Qed.
-
+Section tnum_shift.
   Definition tnum_rshift1_shrink {n} (P : tnum.t (S n)) : tnum.t n :=
     tnum.tl P.
 
