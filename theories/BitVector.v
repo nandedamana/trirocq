@@ -1,7 +1,7 @@
 Require Import trirocq.Bit.
 Require Import trirocq.SigVector.
 
-From Stdlib Require Import Lia.
+From Stdlib Require Import Lia ZArith.
 
 Definition bvec SIZE := Vector.t bit SIZE.
 
@@ -579,6 +579,23 @@ Section bvec_denote.
                                   (Vector.cons _ one _
                                      (Vector.nil _)))).
   Example bvec_test_10 : bvec_denote v10 = 10. auto. Qed.
+
+  Lemma bitlist_denote_bounded xs : bitlist_denote xs < 2 ^ length xs.
+  Proof.
+    induction xs.
+    - auto.
+    - rewrite List.length_cons.
+      unfold bitlist_denote. fold bitlist_denote.
+      rewrite Nat.pow_succ_r'.
+      destruct a; simpl; lia.
+  Qed.
+
+  Lemma bvec_denote_bounded {SIZE} (x : bvec SIZE) : bvec_denote x < 2 ^ SIZE.
+  Proof.
+    destruct x as [xs lenxs].
+    unfold bvec_denote. simpl.
+    subst. apply bitlist_denote_bounded.
+  Qed.
 End bvec_denote.
 
 Section bvec_lshift1_correct.
