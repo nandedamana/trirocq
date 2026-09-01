@@ -1,7 +1,8 @@
 Require Import trirocq.Bit.
 Require Import trirocq.SigVector.
 
-From Stdlib Require Import Lia.
+From Stdlib Require Import Lia List ZArith.
+Import ListNotations.
 
 Definition bvec SIZE := Vector.t bit SIZE.
 
@@ -579,7 +580,128 @@ Section bvec_denote.
                                   (Vector.cons _ one _
                                      (Vector.nil _)))).
   Example bvec_test_10 : bvec_denote v10 = 10. auto. Qed.
+
+  Lemma bitlist_denote_bounded xs : bitlist_denote xs < 2 ^ length xs.
+  Proof.
+    induction xs.
+    - auto.
+    - rewrite List.length_cons.
+      unfold bitlist_denote. fold bitlist_denote.
+      rewrite Nat.pow_succ_r'.
+      destruct a; simpl; lia.
+  Qed.
+
+  Lemma bvec_denote_bounded {SIZE} (x : bvec SIZE) : bvec_denote x < 2 ^ SIZE.
+  Proof.
+    destruct x as [xs lenxs].
+    unfold bvec_denote. simpl.
+    subst. apply bitlist_denote_bounded.
+  Qed.
+
+  Coercion bvec_denote : bvec >-> nat.
 End bvec_denote.
+
+Section nat_to_bvec.
+  Variable SIZE : nat.
+
+  Definition nat2bl (n : nat) : list bit :=
+    List.map bool2bit
+      (List.map (fun i => Nat.testbit n i)
+         (List.seq 0 SIZE)).
+
+  Definition nat2bv (x : nat) : bvec SIZE.
+    exists (nat2bl x).
+    unfold nat2bl.
+    rewrite !List.length_map.
+    apply List.length_seq.
+  Defined.
+
+  Coercion nat2bv : nat >-> bvec.
+
+  Lemma length_nat2bl (n : nat) : length (nat2bl n) = SIZE.
+  Proof.
+    unfold nat2bl. rewrite !length_map. rewrite length_seq.
+    reflexivity.
+  Qed.
+
+  Lemma nth_nat2bl_id (n : nat) i :
+    i < SIZE -> nth i (nat2bl n) zero = bool2bit (Nat.testbit n i).
+  Proof.
+    intro hi.
+    unfold nat2bl. rewrite map_map.
+
+    (* To match the type of map_nth *)
+    set (f := fun x : nat => bool2bit (Nat.testbit n x)).
+
+    replace zero with (f (Nat.log2 n + 1)).
+    rewrite map_nth.
+    rewrite seq_nth by auto. auto.
+    unfold f.
+    rewrite Nat.bits_above_log2 by lia. auto.
+  Qed.
+End nat_to_bvec.
+
+Lemma testbit_bitlist_denote xs : forall i,
+    Nat.testbit (bitlist_denote xs) i = bit2bool (List.nth i xs zero).
+Proof.
+  induction xs.
+  - destruct i. auto. simpl. rewrite Nat.bits_0. reflexivity.
+  - unfold bitlist_denote. fold bitlist_denote.
+    rewrite Nat.double_twice, Nat.add_comm.
+    replace (bit2nat a) with (Nat.b2n (bit2bool a)) by (destruct a; auto).
+    destruct i.
+    + rewrite Nat.testbit_0_r. auto.
+    + rewrite Nat.testbit_succ_r. auto.
+Qed.
+
+Lemma bvec_denote_nat2bv : forall n x, bvec_denote (nat2bv n x) = x mod 2 ^ n.
+Proof.
+  Set Printing Coercions.
+  intros n x.
+  unfold bvec_denote. simpl.
+  apply Nat.bits_inj. unfold Nat.eqf. intro i.
+  rewrite testbit_bitlist_denote.
+
+  assert (hi : i < n \/ i >= n) by lia.
+  destruct hi as [h1 | h2].
+  - rewrite nth_nat2bl_id by assumption.
+    rewrite Nat.mod_pow2_bits_low by assumption.
+    assert (H : forall b, bit2bool (bool2bit b) = b) by (destruct b; auto).
+    rewrite H. reflexivity.
+  - rewrite Nat.mod_pow2_bits_high by assumption.
+    rewrite nth_overflow. auto.
+    rewrite length_nat2bl. lia.
+Qed.
+
+(* Tests *)
+Goal (nat2bl 4 2) = [ zero ; one ; zero ; zero ]. auto. Qed.
+
+Section bvec_shift.
+  Variable SIZE : nat.
+
+  Definition bvec_lshift (x : bvec SIZE) (n : nat) : bvec SIZE :=
+    (Nat.shiftl (bvec_denote x) n) mod (2 ^ SIZE).
+
+  (* denoted(shifted v) = shifted(denoted v) mod 2^SIZE *)
+  Lemma bvec_lshift_correct (x : bvec SIZE) n :
+    bvec_lshift x n = (Nat.shiftl x n) mod (2 ^ SIZE).
+  Proof.
+    auto.
+  Qed.
+
+  Definition bvec_rshift (x : bvec SIZE) (n : nat) : bvec SIZE :=
+    Nat.shiftr (bvec_denote x) n.
+
+  (* denoted(shifted v) = shifted(denoted v) *)
+  Lemma bvec_rshift_correct (x : bvec SIZE) n :
+    bvec_rshift x n = Nat.shiftr x n.
+  Proof.
+    auto.
+  Qed.
+End bvec_shift.
+
+Arguments bvec_lshift {SIZE}.
+Arguments bvec_rshift {SIZE}.
 
 Section bvec_lshift1_correct.
   Definition bvec_lshift1_notrunc {n} (v : bvec n) : bvec (S n) :=
@@ -751,6 +873,76 @@ Section bvec_rshift1_correct.
   Qed.
 End bvec_rshift1_correct.
 
+Lemma eqdenote_imp_eqlist : forall (x y : list bit),
+    length x = length y ->
+    bitlist_denote x = bitlist_denote y ->
+    x = y.
+Proof.
+  intros x y.
+  induction x as [|xh] in y |- *.
+  - destruct y; easy.
+  - destruct y as [|yh]; try easy.
+    simpl.
+    intro hlen. apply eq_add_S in hlen.
+    specialize (IHx y hlen).
+
+    assert (Hem : bitlist_denote x = bitlist_denote y \/ bitlist_denote x <> bitlist_denote y). lia.
+    destruct Hem as [Heml | Hemr].
+    + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
+        try easy;
+        simpl;
+        rewrite IHx; try rewrite Heml; try lia; try auto.
+    + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
+        try easy; simpl; try lia.
+Qed.
+
+Lemma eqdenote_imp_eqvec : forall {SIZE} (x y : bvec SIZE),
+    bvec_denote x = bvec_denote y -> x = y.
+Proof.
+  intros SIZE x y heq.
+  apply SigVector.Vector.eqlist_imp_eqvec.
+  revert heq.
+  unfold bvec_denote. simpl.
+  intro eqlist. apply eqdenote_imp_eqlist in eqlist.
+  auto.
+
+  destruct x as [x xlen], y as [y ylen]. subst. auto.
+Qed.
+
+(* TODO rewrite bvec_lshift1 and bvec_rshift1 as wrappers to
+ * the new nat-based bvec_lshift and bvec_rshift. Then so many
+ * things can be simplified.
+ *)
+Section bvec_shift1_rewritten.
+  Variable SIZE : nat.
+
+  (* Because the definition of bvec_lshift1 is list-based *)
+  Lemma bvec_lshift1_as_bvec_lshift n (x : bvec (S n)) :
+    SIZE = S n -> bvec_lshift1 x = bvec_lshift x 1.
+  Proof.
+    intro hsz.
+    apply eqdenote_imp_eqvec.
+    rewrite bvec_lshift1_correct.
+    rewrite bvec_lshift_correct.
+    rewrite bvec_denote_nat2bv.
+    rewrite Nat.Div0.mod_mod. reflexivity.
+  Qed.
+
+  Lemma bvec_rshift1_as_bvec_rshift n (x : bvec (S n)) :
+    SIZE = S n -> bvec_rshift1 x = bvec_rshift x 1.
+  Proof.
+    intro hsz.
+    apply eqdenote_imp_eqvec.
+    rewrite bvec_rshift1_correct.
+    rewrite bvec_rshift_correct.
+    rewrite bvec_denote_nat2bv.
+    assert (H := bvec_denote_bounded x).
+    rewrite Nat.mod_small. reflexivity.
+    assert (H2 := Nat.shiftr_upper_bound (bvec_denote x) 1).
+    lia.
+  Qed.
+End bvec_shift1_rewritten.
+
 Section bvec_add_correct.
   Lemma fst_split_cons : forall A B x (xs : list (prod A B)),
       fst (List.split (List.cons x xs)) =
@@ -880,42 +1072,6 @@ Section bvec_add_correct.
   Qed.
 End bvec_add_correct.
 
-Lemma eqdenote_imp_eqlist : forall (x y : list bit),
-    length x = length y ->
-    bitlist_denote x = bitlist_denote y ->
-    x = y.
-Proof.
-  intros x y.
-  induction x as [|xh] in y |- *.
-  - destruct y; easy.
-  - destruct y as [|yh]; try easy.
-    simpl.
-    intro hlen. apply eq_add_S in hlen.
-    specialize (IHx y hlen).
-
-    assert (Hem : bitlist_denote x = bitlist_denote y \/ bitlist_denote x <> bitlist_denote y). lia.
-    destruct Hem as [Heml | Hemr].
-    + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
-        try easy;
-        simpl;
-        rewrite IHx; try rewrite Heml; try lia; try auto.
-    + destruct xh, yh, (bitlist_denote x), (bitlist_denote y);
-        try easy; simpl; try lia.
-Qed.
-
-Lemma eqdenote_imp_eqvec : forall {SIZE} (x y : bvec SIZE),
-    bvec_denote x = bvec_denote y -> x = y.
-Proof.
-  intros SIZE x y heq.
-  apply SigVector.Vector.eqlist_imp_eqvec.
-  revert heq.
-  unfold bvec_denote. simpl.
-  intro eqlist. apply eqdenote_imp_eqlist in eqlist.
-  auto.
-
-  destruct x as [x xlen], y as [y ylen]. subst. auto.
-Qed.
-
 Section poking.
   Fixpoint list_set_ith A (x : list A) i value :=
     match x, i with
@@ -1001,3 +1157,27 @@ Section poking.
     congruence.
   Qed.
 End poking.
+
+Lemma bvec_ith_map [SIZE] (a : bvec SIZE) f i (hi : i < SIZE) :
+  bvec_ith (SigVector.Vector.map f a) hi = f (bvec_ith a hi).
+Proof.
+  destruct a as [alst alen].
+  unfold bvec_ith, SigVector.Vector.map.
+  unfold SigVector.Vector.nth_order. simpl.
+  repeat SigVector.rewrite_safe_nth_anywhere.
+  apply SigVector.eqxy2Some.
+  rewrite <- hx1. apply List.map_nth_error. assumption.
+Qed.
+
+Lemma bvec_ith_map2 [SIZE] (a b : bvec SIZE) f i (hi : i < SIZE) :
+  bvec_ith (SigVector.Vector.map2 f a b) hi =
+    f (bvec_ith a hi) (bvec_ith b hi).
+Proof.
+  destruct a as [alst alen], b as [blst blen].
+  unfold bvec_ith, SigVector.Vector.map2.
+  unfold SigVector.Vector.nth_order. simpl.
+  repeat SigVector.rewrite_safe_nth_anywhere.
+  rewrite SigVector.nth_error_map2_list in hx1.
+  rewrite hx0 in hx1. rewrite hx2 in hx1.
+  simpl in hx1. congruence.
+Qed.
