@@ -601,6 +601,19 @@ Section bvec_denote.
   Coercion bvec_denote : bvec >-> nat.
 End bvec_denote.
 
+Lemma testbit_bitlist_denote xs : forall i,
+    Nat.testbit (bitlist_denote xs) i = bit2bool (List.nth i xs zero).
+Proof.
+  induction xs.
+  - destruct i. auto. simpl. rewrite Nat.bits_0. reflexivity.
+  - unfold bitlist_denote. fold bitlist_denote.
+    rewrite Nat.double_twice, Nat.add_comm.
+    replace (bit2nat a) with (Nat.b2n (bit2bool a)) by (destruct a; auto).
+    destruct i.
+    + rewrite Nat.testbit_0_r. auto.
+    + rewrite Nat.testbit_succ_r. auto.
+Qed.
+
 Section nat_to_bvec.
   Variable SIZE : nat.
 
@@ -639,39 +652,58 @@ Section nat_to_bvec.
     unfold f.
     rewrite Nat.bits_above_log2 by lia. auto.
   Qed.
+
+  Lemma bvec_ith_nat2bv (n : nat) i (hi : i < SIZE) :
+    bvec_ith (nat2bv n) hi = bool2bit (Nat.testbit n i).
+  Proof.
+    unfold nat2bv, bvec_denote.
+    unfold bvec_ith, Vector.nth_order. simpl.
+    rewrite_safe_nth_anywhere.
+    apply nth_error_nth with (d := zero) in hx1.
+    rewrite <- hx1. apply nth_nat2bl_id. assumption.
+  Qed.
+
+  Lemma bvec_denote_nat2bv : forall x, bvec_denote (nat2bv x) = x mod 2 ^ SIZE.
+  Proof.
+    Set Printing Coercions.
+    intros x.
+    unfold bvec_denote. simpl.
+    apply Nat.bits_inj. unfold Nat.eqf. intro i.
+    rewrite testbit_bitlist_denote.
+
+    assert (hi : i < SIZE \/ i >= SIZE) by lia.
+    destruct hi as [h1 | h2].
+    - rewrite nth_nat2bl_id by assumption.
+      rewrite Nat.mod_pow2_bits_low by assumption.
+      rewrite t2b_b2t. reflexivity.
+    - rewrite Nat.mod_pow2_bits_high by assumption.
+      rewrite nth_overflow. auto.
+      rewrite length_nat2bl. lia.
+  Qed.
+
+  Lemma nat2bl_bitlist_denote (x : list bit) (hlenx : length x = SIZE) :
+    nat2bl (bitlist_denote x) = x.
+  Proof.
+    apply nth_ext with (d := zero) (d' := zero).
+    rewrite length_nat2bl. auto.
+
+    intro i. rewrite length_nat2bl. intro hi.
+    rewrite nth_nat2bl_id by assumption.
+
+    rewrite testbit_bitlist_denote.
+    destruct (nth i x zero); auto.
+  Qed.
+
+  Lemma nat2bv_bvec_denote (x : bvec SIZE) :
+    nat2bv (bvec_denote x) = x.
+  Proof.
+    apply Vector.eqlist_imp_eqvec.
+    Set Printing Coercions.
+    destruct x as [xs hlenx].
+    unfold bvec_denote. simpl.
+    apply nat2bl_bitlist_denote. assumption.
+  Qed.
 End nat_to_bvec.
-
-Lemma testbit_bitlist_denote xs : forall i,
-    Nat.testbit (bitlist_denote xs) i = bit2bool (List.nth i xs zero).
-Proof.
-  induction xs.
-  - destruct i. auto. simpl. rewrite Nat.bits_0. reflexivity.
-  - unfold bitlist_denote. fold bitlist_denote.
-    rewrite Nat.double_twice, Nat.add_comm.
-    replace (bit2nat a) with (Nat.b2n (bit2bool a)) by (destruct a; auto).
-    destruct i.
-    + rewrite Nat.testbit_0_r. auto.
-    + rewrite Nat.testbit_succ_r. auto.
-Qed.
-
-Lemma bvec_denote_nat2bv : forall n x, bvec_denote (nat2bv n x) = x mod 2 ^ n.
-Proof.
-  Set Printing Coercions.
-  intros n x.
-  unfold bvec_denote. simpl.
-  apply Nat.bits_inj. unfold Nat.eqf. intro i.
-  rewrite testbit_bitlist_denote.
-
-  assert (hi : i < n \/ i >= n) by lia.
-  destruct hi as [h1 | h2].
-  - rewrite nth_nat2bl_id by assumption.
-    rewrite Nat.mod_pow2_bits_low by assumption.
-    assert (H : forall b, bit2bool (bool2bit b) = b) by (destruct b; auto).
-    rewrite H. reflexivity.
-  - rewrite Nat.mod_pow2_bits_high by assumption.
-    rewrite nth_overflow. auto.
-    rewrite length_nat2bl. lia.
-Qed.
 
 (* Tests *)
 Goal (nat2bl 4 2) = [ zero ; one ; zero ; zero ]. auto. Qed.
@@ -682,22 +714,101 @@ Section bvec_shift.
   Definition bvec_lshift (x : bvec SIZE) (n : nat) : bvec SIZE :=
     (Nat.shiftl (bvec_denote x) n) mod (2 ^ SIZE).
 
-  (* denoted(shifted v) = shifted(denoted v) mod 2^SIZE *)
-  Lemma bvec_lshift_correct (x : bvec SIZE) n :
-    bvec_lshift x n = (Nat.shiftl x n) mod (2 ^ SIZE).
-  Proof.
-    auto.
-  Qed.
-
   Definition bvec_rshift (x : bvec SIZE) (n : nat) : bvec SIZE :=
     Nat.shiftr (bvec_denote x) n.
 
-  (* denoted(shifted v) = shifted(denoted v) *)
-  Lemma bvec_rshift_correct (x : bvec SIZE) n :
-    bvec_rshift x n = Nat.shiftr x n.
+  (* TODO rem if unused *)
+  Lemma bvec_lshift_ith_0 (v : bvec SIZE) n (hi : 0 < SIZE) :
+    n > 0 -> bvec_ith (bvec_lshift v n) hi = zero.
   Proof.
+    intro hn.
+    unfold bvec_lshift. rewrite bvec_ith_nat2bv.
+    rewrite Nat.mod_pow2_bits_low by assumption.
+    rewrite Nat.shiftl_mul_pow2.
+    destruct n.
+    - easy.
+    - rewrite Nat.pow_succ_r'.
+      replace (bvec_denote v * (2 * 2 ^ n)) with (2 * (bvec_denote v * 2 ^ n)) by lia.
+      rewrite Nat.testbit_even_0. auto.
+  Qed.
+
+  (* TODO rename and move *)
+  Lemma bvec_ith_as_testbit (v : bvec SIZE) i (hi : i < SIZE) :
+    bvec_ith v hi = bool2bit (Nat.testbit (bvec_denote v) i).
+  Proof.
+    destruct v as [xs hlenx].
+    unfold bvec_denote, bvec_ith, Vector.nth_order. simpl.
+    rewrite testbit_bitlist_denote. rewrite_safe_nth_anywhere.
+    rewrite b2t_t2b. apply nth_error_nth with (d := zero) in hx1.
     auto.
   Qed.
+
+  Lemma bvec_ith_lshift_as_testbit (v : bvec SIZE) n {i} (hi : i < SIZE) :
+    bvec_ith (bvec_lshift v n) hi = bool2bit (Nat.testbit ((Nat.shiftl (bvec_denote v) n) mod 2 ^ SIZE) i).
+  Proof.
+    unfold bvec_lshift.
+    rewrite bvec_ith_nat2bv.
+    reflexivity.
+  Qed.
+
+  Lemma bvec_ith_lshift_low (v : bvec SIZE) n {i} (hi : i < SIZE) :
+    i < n ->
+    bvec_ith (bvec_lshift v n) hi = zero.
+  Proof.
+    rewrite bvec_ith_lshift_as_testbit.
+    rewrite PeanoNat.Nat.mod_pow2_bits_low by lia.
+    intro hin. rewrite !PeanoNat.Nat.shiftl_spec_low by lia.
+    auto.
+  Qed.
+
+  (* TODO rem? *)
+  (* TODO synth hj here itself since `i = j + n` is given? *)
+  Lemma bvec_ith_lshift_high (v : bvec SIZE) n {i} (hi : i < SIZE) {j} (hj : j < SIZE) :
+    i = j + n ->
+    bvec_ith (bvec_lshift v n) hi = bvec_ith v hj.
+  Proof.
+    intro hij.
+    rewrite bvec_ith_lshift_as_testbit.
+    rewrite bvec_ith_as_testbit. f_equal.
+    rewrite Nat.mod_pow2_bits_low by assumption.
+    rewrite hij. rewrite Nat.shiftl_spec_alt. reflexivity.
+  Qed.
+
+(* TODO
+  Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
+
+  Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
+    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+  Proof.
+    destruct v as [xs hlen].
+    unfold bvec_rshift1. unfold bvec_ith.
+    unfold Vector.nth_order.
+    destruct xs.
+    - destruct i; easy.
+    - rewrite_safe_nth_auto.
+      rewrite_eqxy2Some.
+      simpl. rewrite List.nth_error_app1. reflexivity.
+      assert (hlen2 := List.length_cons xs b). rewrite hlen in hlen2.
+      assert (hlen3 : n = length xs). lia.
+      assert (hlen4 : i < n). lia. rewrite hlen3 in hlen4. assumption.
+  Qed.
+
+  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n):
+    Vector.nth_order (Vector.shiftin a v) hi = a.
+  Proof.
+    destruct v as [xs hlen].
+    unfold Vector.nth_order. rewrite_safe_nth_anywhere.
+    revert hx1. simpl. rewrite List.nth_error_app2.
+    rewrite hlen. rewrite PeanoNat.Nat.sub_diag. simpl.
+    congruence. lia.
+  Qed.
+
+  Lemma bvec_rshift1_ith_n {n} (v : bvec (S n)) (hi : n < S n) :
+    bvec_ith (bvec_rshift1 v) hi = zero.
+  Proof.
+    apply nth_shiftin_last.
+  Qed.
+*)
 End bvec_shift.
 
 Arguments bvec_lshift {SIZE}.
@@ -922,8 +1033,7 @@ Section bvec_shift1_rewritten.
   Proof.
     intro hsz.
     apply eqdenote_imp_eqvec.
-    rewrite bvec_lshift1_correct.
-    rewrite bvec_lshift_correct.
+    rewrite bvec_lshift1_correct. unfold bvec_lshift.
     rewrite bvec_denote_nat2bv.
     rewrite Nat.Div0.mod_mod. reflexivity.
   Qed.
@@ -933,8 +1043,7 @@ Section bvec_shift1_rewritten.
   Proof.
     intro hsz.
     apply eqdenote_imp_eqvec.
-    rewrite bvec_rshift1_correct.
-    rewrite bvec_rshift_correct.
+    rewrite bvec_rshift1_correct. unfold bvec_rshift.
     rewrite bvec_denote_nat2bv.
     assert (H := bvec_denote_bounded x).
     rewrite Nat.mod_small. reflexivity.

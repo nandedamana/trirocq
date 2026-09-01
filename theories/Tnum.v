@@ -86,6 +86,52 @@ Definition optimal2 SIZE (f : bvec SIZE -> bvec SIZE -> bvec SIZE) F :=
                tnum.wellformed P -> tnum.wellformed Q -> subset (F P Q) (F' P Q).
 
 Section tnum_shift.
+  Variable SIZE : nat.
+
+  Definition tnum_lshift (P : tnum.t SIZE) n :=
+    tnum.cons _ (bvec_lshift (tnum.v P) n) (bvec_lshift (tnum.m P) n).
+
+  Lemma tnum_lshift_wellformed (P : tnum.t SIZE) n :
+    tnum.wellformed P -> tnum.wellformed (tnum_lshift P n).
+  Proof.
+    intro wfp.
+    unfold tnum_lshift.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
+
+    assert (hin : i >= n \/ i < n) by lia.
+    destruct hin as [hin1 | hin2].
+    - assert (hj : exists j, i = j + n). exists (i - n). lia.
+      destruct hj as [j hj].
+      assert (hj' : j < SIZE) by lia.
+      rewrite !bvec_ith_lshift_high with (hj := hj') by auto.
+      auto.
+    - rewrite !bvec_ith_lshift_low by assumption. easy.
+  Qed.
+
+  Lemma tnum_lshift_sound (x : bvec SIZE) (P : tnum.t SIZE) n :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_lshift P n) /\ ingamma (bvec_lshift x n) (tnum_lshift P n).
+  Proof.
+    intros wfp igx.
+    split. apply tnum_lshift_wellformed; auto.
+
+    unfold ingamma.
+    unfold tnum_lshift.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+
+    assert (hin : i >= n \/ i < n) by lia.
+    destruct hin as [hin1 | hin2].
+    - assert (hj : exists j, i = j + n). exists (i - n). lia.
+      destruct hj as [j hj].
+      assert (hj' : j < SIZE) by lia.
+      rewrite !bvec_ith_lshift_high with (hj := hj') by auto.
+      auto.
+    - rewrite !bvec_ith_lshift_low by assumption. easy.
+  Qed.
+
+  (* TODO rem now that I have tnum_lshift *)
   Definition tnum_lshift1 {n} (P : tnum.t (S n)) :=
     tnum.cons _ (bvec_lshift1 (tnum.v P)) (bvec_lshift1 (tnum.m P)).
 
