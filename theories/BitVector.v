@@ -760,7 +760,6 @@ Section bvec_shift.
     auto.
   Qed.
 
-  (* TODO rem? *)
   (* TODO synth hj here itself since `i = j + n` is given? *)
   Lemma bvec_ith_lshift_high (v : bvec SIZE) n {i} (hi : i < SIZE) {j} (hj : j < SIZE) :
     i = j + n ->
@@ -773,41 +772,36 @@ Section bvec_shift.
     rewrite hij. rewrite Nat.shiftl_spec_alt. reflexivity.
   Qed.
 
-(* TODO
-  Lemma suclt {i} {n} : i < S n -> i <> n -> S i < S n. lia. Qed.
-
-  Lemma bvec_rshift1_ith_ltn {n} (v : bvec (S n)) {i} (hi : i < S n) (hi2 : i <> n) :
-    bvec_ith (bvec_rshift1 v) hi = bvec_ith v (suclt hi hi2).
+  Lemma bvec_ith_rshift_as_testbit (v : bvec SIZE) n {i} (hi : i < SIZE) :
+    bvec_ith (bvec_rshift v n) hi = bool2bit (Nat.testbit (Nat.shiftr (bvec_denote v) n) i).
   Proof.
-    destruct v as [xs hlen].
-    unfold bvec_rshift1. unfold bvec_ith.
-    unfold Vector.nth_order.
-    destruct xs.
-    - destruct i; easy.
-    - rewrite_safe_nth_auto.
-      rewrite_eqxy2Some.
-      simpl. rewrite List.nth_error_app1. reflexivity.
-      assert (hlen2 := List.length_cons xs b). rewrite hlen in hlen2.
-      assert (hlen3 : n = length xs). lia.
-      assert (hlen4 : i < n). lia. rewrite hlen3 in hlen4. assumption.
+    unfold bvec_rshift. rewrite bvec_ith_nat2bv. reflexivity.
   Qed.
 
-  Lemma nth_shiftin_last {A} (a : A) {n} (v : Vector.t A n) (hi : n < S n):
-    Vector.nth_order (Vector.shiftin a v) hi = a.
+  Lemma bvec_ith_rshift_low (v : bvec SIZE) n {i} (hi : i < SIZE) (hin : i + n < SIZE) :
+    bvec_ith (bvec_rshift v n) hi = bvec_ith v hin.
   Proof.
-    destruct v as [xs hlen].
-    unfold Vector.nth_order. rewrite_safe_nth_anywhere.
-    revert hx1. simpl. rewrite List.nth_error_app2.
-    rewrite hlen. rewrite PeanoNat.Nat.sub_diag. simpl.
-    congruence. lia.
+    rewrite bvec_ith_rshift_as_testbit.
+    rewrite Nat.shiftr_spec. rewrite bvec_ith_as_testbit.
+    reflexivity. lia.
   Qed.
 
-  Lemma bvec_rshift1_ith_n {n} (v : bvec (S n)) (hi : n < S n) :
-    bvec_ith (bvec_rshift1 v) hi = zero.
+  Lemma bvec_ith_rshift_high (v : bvec SIZE) n {i} (hi : i < SIZE) :
+    i + n >= SIZE ->
+    bvec_ith (bvec_rshift v n) hi = zero.
   Proof.
-    apply nth_shiftin_last.
+    intro hin. rewrite bvec_ith_rshift_as_testbit.
+    rewrite Nat.shiftr_spec by lia.
+
+    assert (h1 := bvec_denote_bounded v).
+    change zero with (bool2bit (false)). f_equal.
+
+    apply Nat.testbit_false.
+    rewrite Nat.div_small. auto.
+    eapply Nat.lt_le_trans.
+    - apply h1.
+    - apply Nat.pow_le_mono_r. auto. lia.
   Qed.
-*)
 End bvec_shift.
 
 Arguments bvec_lshift {SIZE}.
