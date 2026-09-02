@@ -199,7 +199,7 @@ Section bvec_mul.
         | 0 => acc
         | _ =>
             let nxta := Vector.tl a in
-            let nxtb := bvec_lshift1 b in
+            let nxtb := bvec_lshift b 1 in
             match (bvec_lsb a) with
             | zero => bvec_mul_loop _ nxta _ nxtb acc
             | one => bvec_mul_loop _ nxta _ nxtb (bvec_add acc b)
@@ -273,6 +273,7 @@ Section bvec_mul.
           repeat rewrite bvec_denote_to_bitlist_denote.
           rewrite bitlist_mul_trunc_correct.
           rewrite bitlist_mul_correct.
+          rewrite <- bvec_lshift1_as_bvec_lshift with (SIZE := S n) by reflexivity.
           destruct zs. auto.
           assert (h1 : ListDef.firstn n zs = zs). crush_firstn_all.
           rewrite h1.
@@ -284,6 +285,7 @@ Section bvec_mul.
           repeat rewrite bvec_denote_to_bitlist_denote.
           rewrite bitlist_mul_trunc_correct.
           rewrite bitlist_mul_correct.
+          rewrite <- bvec_lshift1_as_bvec_lshift with (SIZE := S n) by reflexivity.
 
           unfold bitlist_sum_nocarry.
           unfold bvec_lshift1. unfold bvec_denote. simpl.

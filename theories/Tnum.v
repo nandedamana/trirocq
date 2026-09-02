@@ -86,37 +86,102 @@ Definition optimal2 SIZE (f : bvec SIZE -> bvec SIZE -> bvec SIZE) F :=
                tnum.wellformed P -> tnum.wellformed Q -> subset (F P Q) (F' P Q).
 
 Section tnum_shift.
-  Definition tnum_lshift1 {n} (P : tnum.t (S n)) :=
-    tnum.cons _ (bvec_lshift1 (tnum.v P)) (bvec_lshift1 (tnum.m P)).
+  Variable SIZE : nat.
 
-  Lemma tnum_lshift1_wellformed {n} (P : tnum.t (S n)) :
-    tnum.wellformed P -> tnum.wellformed (tnum_lshift1 P).
+  Definition tnum_lshift (P : tnum.t SIZE) n :=
+    tnum.cons _ (bvec_lshift (tnum.v P) n) (bvec_lshift (tnum.m P) n).
+
+  Lemma tnum_lshift_wellformed (P : tnum.t SIZE) n :
+    tnum.wellformed P -> tnum.wellformed (tnum_lshift P n).
   Proof.
-    intro wfp.
-    unfold tnum_lshift1.
-    intros i hidx.
+    intros wfp i hidx.
+    unfold tnum_lshift.
     rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
-    destruct i.
-    - rewrite bvec_lshift1_ith_0. easy.
-    - repeat rewrite bvec_lshift1_ith_S. auto.
+
+    assert (hin : i >= n \/ i < n) by lia.
+    destruct hin as [hin1 | hin2].
+    - assert (hj : exists j, i = j + n). exists (i - n). lia.
+      destruct hj as [j hj].
+      assert (hj' : j < SIZE) by lia.
+      rewrite !bvec_ith_lshift_high with (hj := hj') by auto.
+      auto.
+    - rewrite !bvec_ith_lshift_low by assumption. easy.
   Qed.
 
-  Lemma tnum_lshift1_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
+  Lemma tnum_lshift_sound (x : bvec SIZE) (P : tnum.t SIZE) n :
     tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_lshift1 P) /\ ingamma (bvec_lshift1 x) (tnum_lshift1 P).
+    tnum.wellformed (tnum_lshift P n) /\ ingamma (bvec_lshift x n) (tnum_lshift P n).
   Proof.
     intros wfp igx.
-    split. apply tnum_lshift1_wellformed; auto.
+    split. apply tnum_lshift_wellformed; auto.
 
     unfold ingamma.
-    unfold tnum_lshift1.
+    unfold tnum_lshift.
     intros i hidx.
     rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
-    destruct i.
-    - repeat rewrite bvec_lshift1_ith_0. auto.
-    - repeat rewrite bvec_lshift1_ith_S. apply igx.
+
+    assert (hin : i >= n \/ i < n) by lia.
+    destruct hin as [hin1 | hin2].
+    - assert (hj : exists j, i = j + n). exists (i - n). lia.
+      destruct hj as [j hj].
+      assert (hj' : j < SIZE) by lia.
+      rewrite !bvec_ith_lshift_high with (hj := hj') by auto.
+      auto.
+    - rewrite !bvec_ith_lshift_low by assumption. easy.
   Qed.
 
+  Definition tnum_rshift (P : tnum.t SIZE) n :=
+    tnum.cons _ (bvec_rshift (tnum.v P) n) (bvec_rshift (tnum.m P) n).
+
+  Lemma tnum_rshift_wellformed (P : tnum.t SIZE) n :
+    tnum.wellformed P -> tnum.wellformed (tnum_rshift P n).
+  Proof.
+    intros wfp i hidx.
+    unfold tnum_rshift.
+    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
+
+    assert (hin : i + n < SIZE \/ i + n >= SIZE) by lia.
+    destruct hin as [hin1 | hin2].
+    - rewrite !bvec_ith_rshift_low with (hin := hin1). apply wfp.
+    - rewrite !bvec_ith_rshift_high by auto. easy.
+  Qed.
+
+  Lemma tnum_rshift_sound (x : bvec SIZE) (P : tnum.t SIZE) n :
+    tnum.wellformed P -> ingamma x P ->
+    tnum.wellformed (tnum_rshift P n) /\ ingamma (bvec_rshift x n) (tnum_rshift P n).
+  Proof.
+    intros wfp igx.
+    split. apply tnum_rshift_wellformed; auto.
+
+    unfold ingamma.
+    unfold tnum_rshift.
+    intros i hidx.
+    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
+
+    assert (hin : i + n < SIZE \/ i + n >= SIZE) by lia.
+    destruct hin as [hin1 | hin2].
+    - rewrite !bvec_ith_rshift_low with (hin := hin1). auto.
+    - rewrite !bvec_ith_rshift_high by auto. easy.
+  Qed.
+
+(* TODO merge wellformed and soundness proofs?
+ * Not so easy. Well, converting the goal `wellformed T /\ ingamma x T`
+ * to `forall i, (wellformed_ith T /\ ingamma_ith x T)` is easy
+ * (after which the same steps in tnum_*shift_sound proves the
+ * wellformedness as well), but the issue is that, `wellformed T`
+ * alone cannot be derived from it without giving some x.
+ *)
+End tnum_shift.
+
+Arguments tnum_lshift {SIZE}.
+Arguments tnum_lshift_wellformed {SIZE}.
+Arguments tnum_lshift_sound {SIZE}.
+
+Arguments tnum_rshift {SIZE}.
+Arguments tnum_rshift_wellformed {SIZE}.
+Arguments tnum_rshift_sound {SIZE}.
+
+Section tnum_shift.
   Definition tnum_rshift1_shrink {n} (P : tnum.t (S n)) : tnum.t n :=
     tnum.tl P.
 
@@ -153,39 +218,6 @@ Section tnum_shift.
 
     unfold tnum_rshift1_shrink.
     apply tnum_tl_ingamma; auto.
-  Qed.
-
-  Definition tnum_rshift1 {n} (P : tnum.t (S n)) :=
-    tnum.cons _ (bvec_rshift1 (tnum.v P)) (bvec_rshift1 (tnum.m P)).
-
-  Lemma tnum_rshift1_wellformed {n} (P : tnum.t (S n)) :
-    tnum.wellformed P -> tnum.wellformed (tnum_rshift1 P).
-  Proof.
-    unfold tnum.wellformed.
-    intro wfp.
-    unfold tnum_rshift1.
-    intros i hidx.
-    rewrite tnum.ith_m_simplify2. rewrite tnum.ith_v_simplify2.
-    assert (H : i = n \/ i <> n). lia.
-    destruct H as [hien|hinn].
-    - subst i. rewrite bvec_rshift1_ith_n. easy.
-    - repeat rewrite bvec_rshift1_ith_ltn with (hi2 := hinn). auto.
-  Qed.
-
-  Lemma tnum_rshift1_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
-    tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_rshift1 P) /\ ingamma (bvec_rshift1 x) (tnum_rshift1 P).
-  Proof.
-    intros wfp igx.
-    split. apply tnum_rshift1_wellformed; auto.
-
-    unfold tnum_rshift1.
-    intros i hidx.
-    rewrite tnum.ith_m_simplify. rewrite tnum.ith_v_simplify.
-    assert (H : i = n \/ i <> n). lia.
-    destruct H as [hien|hinn].
-    - subst i. repeat rewrite bvec_rshift1_ith_n. auto.
-    - repeat rewrite bvec_rshift1_ith_ltn with (hi2 := hinn). apply igx.
   Qed.
 End tnum_shift.
 

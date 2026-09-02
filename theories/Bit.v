@@ -9,6 +9,9 @@ Definition bool2bit l := match l with
                          | true => one
                          end.
 
+Lemma b2t_t2b b : bool2bit (bit2bool b) = b. destruct b; auto. Qed.
+Lemma t2b_b2t b : bit2bool (bool2bit b) = b. destruct b; auto. Qed.
+
 Definition bit_not (x   : bit) := bool2bit (negb (bit2bool x)).
 
 Definition bit_and (x y : bit) := bool2bit (andb (bit2bool x) (bit2bool y)).

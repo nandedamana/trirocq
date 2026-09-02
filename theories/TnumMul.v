@@ -48,7 +48,7 @@ Section linux_tnum_multiplication.
                                      end
                            end in
             let nxt_a := tnum_rshift1_shrink a in
-            let nxt_b := tnum_lshift1 b in
+            let nxt_b := tnum_lshift b 1 in
             tnum_mul_loop _ nxt_a _ nxt_b nxt_acc
         end
     end a.
@@ -61,7 +61,7 @@ Section linux_tnum_multiplication.
     try apply tnum_add_wellformed; auto;
     try apply tnum_union_wellformed; auto;
     try apply tnum_rshift1_shrink_wellformed; auto;
-    try apply tnum_lshift1_wellformed; auto;
+    try apply tnum_lshift_wellformed; auto;
     try match goal with
     | [ IH : forall _ _ _ _,
           _ -> _ -> _ ->
@@ -208,12 +208,12 @@ Section linux_tnum_multiplication.
       fold (tnum.tl A).
       apply tnum_tl_ingamma; auto.
 
-      assert (hig_lsh :  ingamma (bvec_lshift1 b) (tnum_lshift1 B)).
-      apply tnum_lshift1_sound; auto.
+      assert (hig_lsh :  ingamma (bvec_lshift b 1) (tnum_lshift B 1)).
+      apply tnum_lshift_sound; auto.
 
       assert (hbmul0 :
                bvec_denote a = 0 ->
-               c = bvec_mul_loop m (Vector.tl a) n (bvec_lshift1 b) c).
+               c = bvec_mul_loop m (Vector.tl a) n (bvec_lshift b 1) c).
       intro h.
       unfold bvec_mul_loop.
       destruct m. reflexivity.
@@ -225,7 +225,7 @@ Section linux_tnum_multiplication.
 
       (* So that `auto` can pick it (needed in several cases) *)
       pose (tnum_rshift1_shrink_wellformed A).
-      pose (tnum_lshift1_wellformed B).
+      pose (tnum_lshift_wellformed B).
 
       destruct (bvec_denote (tnum.v A));
         destruct (bvec_denote (tnum.m A));
