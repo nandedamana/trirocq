@@ -164,7 +164,13 @@ Section tnum_shift.
     - rewrite !bvec_ith_rshift_high by auto. easy.
   Qed.
 
-  (* TODO merge wellformed and soundness proofs? same code. *)
+(* TODO merge wellformed and soundness proofs?
+ * Not so easy. Well, converting the goal `wellformed T /\ ingamma x T`
+ * to `forall i, (wellformed_ith T /\ ingamma_ith x T)` is easy
+ * (after which the same steps in tnum_*shift_sound proves the
+ * wellformedness as well), but the issue is that, `wellformed T`
+ * alone cannot be derived from it without giving some x.
+ *)
 End tnum_shift.
 
 Arguments tnum_lshift {SIZE}.
