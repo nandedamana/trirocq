@@ -1,32 +1,27 @@
-# Template copied from https://github.com/rocq-prover/docker-opam-action
-# Split to get a separate badge for each Rocq version;
-# see https://github.com/orgs/community/discussions/52616
+# Stopped using https://github.com/rocq-prover/docker-opam-action
+# because it provides an outdated dune (that doesn't support rocq
+# lang), requiring workarounds.
 
 name: CI
 
 on:
-  workflow_call:
-    inputs:
-      coq_version:
-        required: true
-        type: string
+  push:
+    branches: [ 'main', 'dev' ]
+  pull_request:
+    branches: [ 'main' ]
 
 jobs:
-  build:
+  stable-rocq-build:
     runs-on: ubuntu-latest  # container actions require GNU/Linux
-    strategy:
-      matrix:
-        coq_version:
-          - ${{ inputs.coq_version }}
-        ocaml_version: ['default']
-      fail-fast: false  # don't stop jobs if one fails
+    container:
+      image: rocq/rocq-prover:9.2
+      options: --user root # otherwise checkout fails
     steps:
-      - uses: actions/checkout@v3
-      - uses: coq-community/docker-coq-action@v1
-        with:
-          opam_file: 'trirocq.opam'
-          coq_version: ${{ matrix.coq_version }}
-          ocaml_version: ${{ matrix.ocaml_version }}
-          # dune pinned to 3.17.2 by default, but I need support for rocq lang
-          before_install: |
-            opam pin remove dune --no-action
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dune build
+        #shell: bash --login {0} # without ~/.profile, `dune` is not found
+        # Even with the above, I have incorrect $PATH. So pasting the
+        # $PATH found inside `docker run -it rocq/rocq-prover:9.2`
+        run: PATH=/home/rocq/.opam/4.14.2+flambda/bin:/home/rocq/.local/bin:/home/rocq/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games dune build
