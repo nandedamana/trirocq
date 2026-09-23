@@ -21,7 +21,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Dune build
-        #shell: bash --login {0} # without ~/.profile, `dune` is not found
-        # Even with the above, I have incorrect $PATH. So pasting the
-        # $PATH found inside `docker run -it rocq/rocq-prover:9.2`
-        run: PATH=/home/rocq/.opam/4.14.2+flambda/bin:/home/rocq/.local/bin:/home/rocq/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games dune build
+        run: |
+          whoami
+          pwd
+          chown -R rocq:rocq .
+          su -s /bin/bash rocq -c 'whoami; pwd; source ~/.profile && cd /__w/trirocq/trirocq && opam install . --deps-only && dune build'
