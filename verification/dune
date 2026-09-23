@@ -6,7 +6,7 @@
 
 (rocq.theory
  (name trirocq.Verification)
- (theories trirocq VST Flocq)
+ (theories trirocq VST Flocq Ltac2)
  ; putting compcert above along VST doesn't work
  ; for the coq-compcert opam package; layout issue?
  (flags -Q %{env:OPAM_SWITCH_PREFIX=}/lib/coq/user-contrib/compcert compcert)
