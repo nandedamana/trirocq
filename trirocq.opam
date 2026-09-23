@@ -6,7 +6,7 @@ maintainer: "Nandakumar Edamana <nandakumar@nandakumar.co.in>"
 synopsis: "Tnum Arithmetic Verified in Rocq"
 
 depends: [
-	"rocq-core" {>= "9.1.1"}
+	"rocq-core" {>= "9.1"}
 	"dune" {>= "3.21"}
 	"coq-compcert" {>= "3.17"}
 	"coq-vst" {>= "2.16"}

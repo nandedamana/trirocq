@@ -14,7 +14,7 @@ jobs:
   stable-rocq-build:
     runs-on: ubuntu-latest  # container actions require GNU/Linux
     container:
-      image: rocq/rocq-prover:9.2
+      image: rocq/rocq-prover:9.1
       options: --user root # otherwise checkout fails
     steps:
       - name: Checkout code
@@ -25,4 +25,4 @@ jobs:
           whoami
           pwd
           chown -R rocq:rocq .
-          su -s /bin/bash rocq -c 'whoami; pwd; source ~/.profile && cd /__w/trirocq/trirocq && opam install . --deps-only && dune build'
+          su -s /bin/bash rocq -c 'whoami; pwd; source ~/.profile && cd /__w/trirocq/trirocq && opam install . --deps-only -y && dune build'
