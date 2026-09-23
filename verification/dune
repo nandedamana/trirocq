@@ -1,3 +1,9 @@
+(rule
+ (targets tnumSplitDotC.v)
+ (deps tnum-split.c Makefile)
+ (action (run make tnumSplitDotC.v))
+)
+
 (rocq.theory
  (name trirocq.Verification)
  (theories trirocq VST Flocq)
