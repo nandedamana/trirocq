@@ -1,7 +1,10 @@
 (rule
  (targets tnumSplitDotC.v)
- (deps tnum-split.c Makefile)
- (action (run make tnumSplitDotC.v))
+ (deps tnum-split.c c2v-by-dune.mk)
+ ; The makefile is intentionally not named Makefile to avoid
+ ; giving away an impression that this project uses a hybrid
+ ; build system.
+ (action (run make -f c2v-by-dune.mk tnumSplitDotC.v))
 )
 
 (rocq.theory
