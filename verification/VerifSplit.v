@@ -5,13 +5,29 @@ Require Import trirocq.Verification.tnumSplitDotC.
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
+Module Ztnum.
+  (**
+   * Avoiding modulo for simplicity; operations and proofs
+   * will have to enforce it.
+   *)
+  Record t := new { value : Z; mask : Z }.
+
+  Definition add (a b : t) : t :=
+    let av := value a in
+    let am := mask a in
+    let bv := value b in
+    let bm := mask b in
+
+    let sm := (am + bm) mod Int64.modulus in
+    let sv := (av + bv) mod Int64.modulus in
+    let sigma := (sm + sv) mod Int64.modulus in
+    let chi := Z.lxor sigma sv in
+    let mu := Z.lor (Z.lor chi am) bm in
+    new (Z.land sv (Z.lnot mu)) mu.
+End Ztnum.
+
 Definition tnum_add_split_m_Z (av am bv bm : Z) : Z :=
-  let sm := (am + bm) mod Int64.modulus in
-  let sv := (av + bv) mod Int64.modulus in
-  let sigma := (sm + sv) mod Int64.modulus in
-  let chi := Z.lxor sigma sv in
-  let mu := Z.lor (Z.lor chi am) bm in
-  mu.
+  Ztnum.mask (Ztnum.add (Ztnum.new av am) (Ztnum.new bv bm)).
 
 (* TODO no Uint64, Vulong, etc. Make sure this is okay. *)
 Definition tnum_add_m_spec : ident * funspec :=
@@ -46,7 +62,7 @@ Proof.
   repeat forward.
   Exists (tnum_add_split_m_Z av am bv bm).
   entailer!.
-  unfold tnum_add_split_m_Z.
+  unfold tnum_add_split_m_Z. simpl.
 
   repeat rewrite <- or64_repr.
   unfold Int64.xor.
