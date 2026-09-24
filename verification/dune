@@ -1,0 +1,16 @@
+(rule
+ (targets tnumSplitDotC.v)
+ (deps tnum-split.c c2v-by-dune.mk)
+ ; The makefile is intentionally not named Makefile to avoid
+ ; giving away an impression that this project uses a hybrid
+ ; build system.
+ (action (run make -f c2v-by-dune.mk tnumSplitDotC.v))
+)
+
+(rocq.theory
+ (name trirocq.Verification)
+ (theories trirocq VST Flocq Ltac2)
+ ; putting compcert above along VST doesn't work
+ ; for the coq-compcert opam package; layout issue?
+ (flags -Q %{env:OPAM_SWITCH_PREFIX=}/lib/coq/user-contrib/compcert compcert)
+)
