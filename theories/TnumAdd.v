@@ -42,18 +42,18 @@ Section linux_tnum_addition.
   (* Mirrors the Linux kernel definition *)
 
   Definition tnum_ith_chi {SIZE} P Q [i] (hidx : i < SIZE) :=
-    let sv := bvec_add (tnum.v P) (tnum.v Q) in
     let sm := bvec_add (tnum.m P) (tnum.m Q) in
+    let sv := bvec_add (tnum.v P) (tnum.v Q) in
     let sig := bvec_add sv sm in
     let chi := bvec_xor sig sv in
     bvec_ith chi hidx.
 
   Definition tnum_add {SIZE} P Q :=
-    let sv := bvec_add (tnum.v P) (tnum.v Q) in
     let sm := bvec_add (tnum.m P) (tnum.m Q) in
+    let sv := bvec_add (tnum.v P) (tnum.v Q) in
     let sig := bvec_add sv sm in
     let chi := bvec_xor sig sv in
-    let eta := bvec_or chi (bvec_or (tnum.m P) (tnum.m Q)) in
+    let eta := bvec_or (bvec_or chi (tnum.m P)) (tnum.m Q) in
     tnum.cons SIZE (bvec_and sv (bvec_neg eta)) eta.
 
   Definition value_sum {SIZE} (P Q : tnum.t SIZE) :=
@@ -231,10 +231,11 @@ Section linux_tnum_addition.
         repeat simplify_bit_ops; try easy.
 
       apply bit_or_zero_zero in H as (H1 & H2).
-      apply bit_xor_x_y_zero in H1.
-      apply bit_xor_x_y_z_y in H1.
+      apply bit_or_zero_zero in H1 as (H11 & H12).
+      apply bit_xor_x_y_zero in H11.
+      apply bit_xor_x_y_z_y in H11.
 
-      revert H1. rewrite hmp. rewrite hmq. repeat simplify_bit_ops.
+      revert H11. rewrite hmp. rewrite hmq. repeat simplify_bit_ops.
 
       pose (h63 := hlp_tnum_add_incarry_exmv2 P Q wfp wfq hidx).
       destruct h63 as (h1 & h2). intro h3.
@@ -281,10 +282,9 @@ Section linux_tnum_addition.
 
     unfold tnum_add. simpl.
 
-    rewrite bvec_and_rel. rewrite bvec_neg_rel. rewrite bvec_or_rel.
+    rewrite bvec_and_rel. rewrite bvec_neg_rel. rewrite !bvec_or_rel.
     rewrite hchimi.
 
-    rewrite bvec_or_rel.
     rewrite hpmi, hqmi.
     simplify_bit_ops.
 
