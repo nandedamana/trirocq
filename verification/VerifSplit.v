@@ -5,6 +5,11 @@ Require Import trirocq.Verification.tnumSplitDotC.
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
+From trirocq Require Import
+  BitVector
+  Tnum
+  TnumAdd.
+
 Module Ztnum.
   (**
    * Avoiding modulo for simplicity; operations and proofs
@@ -24,6 +29,48 @@ Module Ztnum.
     let chi := Z.lxor sigma sv in
     let mu := Z.lor (Z.lor chi am) bm in
     new (Z.land sv (Z.lnot mu)) mu.
+
+  Coercion bvec_denote : bvec >-> nat.
+
+  Definition of_tnum {SIZE} (a : tnum.t SIZE) :=
+    new (Z.of_nat (tnum.v a)) (Z.of_nat (tnum.v a)).
+
+  Coercion of_tnum : tnum.t >-> t.
+
+  Lemma modulus_matches : Int64.modulus = 2 ^ 64. auto. Qed.
+
+  (* TODO Prove inside theories/BitVector.v;
+   * rebase on top of dev and remove these stubs.
+   *)
+  Section bvec_stubs.
+    Context {SIZE : nat}.
+
+    Lemma bvec_denote_bvec_and (a b : bvec SIZE) :
+      bvec_denote (bvec_and a b) = Nat.land (bvec_denote a) (bvec_denote b).
+    Admitted.
+
+    Lemma bvec_denote_bvec_neg (a : bvec SIZE) :
+      bvec_denote (bvec_neg a) = Nat.lnot (bvec_denote a) SIZE.
+    Admitted.
+  End bvec_stubs.
+
+  Lemma add_correct (a b : Ztnum.t) (p q : tnum.t 64) :
+    Ztnum.value a = Z.of_nat (bvec_denote (tnum.v p)) ->
+    Ztnum.mask a  = Z.of_nat (bvec_denote (tnum.m p)) ->
+    Ztnum.value b = Z.of_nat (bvec_denote (tnum.v q)) ->
+    Ztnum.mask b  = Z.of_nat (bvec_denote (tnum.m q)) ->
+    add a b = tnum_add p q. (* TODO mod *)
+  Proof.
+    intros ave ame bve bme.
+    unfold add, tnum_add.
+    Set Printing Coercions.
+    unfold of_tnum.
+
+    (* TODO distribute Z.of_nat in the RHS and rewrite using ave, ame, etc. *)
+    simpl.
+    assert (bvec_denote_bvec_and : forall SIZE (a b : bvec SIZE), bvec_denote (bvec_and a b) = Nat.land a b). admit.
+    rewrite bvec_denote_bvec_and.
+    Search (Z.of_nat (Nat.land _ _)).
 End Ztnum.
 
 Definition tnum_add_split_m_Z (av am bv bm : Z) : Z :=
