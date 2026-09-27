@@ -1,6 +1,9 @@
 # trirocq: tnum Arithmetic Verified in Rocq
 
-[![Rocq stable](https://github.com/nandedamana/trirocq/actions/workflows/build-stable-rocq.yml/badge.svg?branch=main)](https://github.com/nandedamana/trirocq/actions/workflows/build-stable-rocq.yml)
+[![Rocq stable, free](https://github.com/nandedamana/trirocq/actions/workflows/build-stable-rocq.yml/badge.svg?branch=main)](https://github.com/nandedamana/trirocq/actions/workflows/build-rocq-stable-free.yml)
+[![Rocq stable, nonfree CompCert](https://github.com/nandedamana/trirocq/actions/workflows/build-stable-rocq.yml/badge.svg?branch=main)](https://github.com/nandedamana/trirocq/actions/workflows/build-rocq-stable-nonfree-compcert.yml)
+
+
 
 This project gives the soundness proof of the tnum multiplication
 algorithm used in the Linux kernel eBPF verifier (specifically, the
@@ -28,6 +31,11 @@ experimental proof of tnum subtraction, which does not affect tnum
 multiplication, our primary goal). Even the custom binary (i.e., not
 tristate) arithmetic routines defined as part of the process are
 proven to be sound.
+
+NOTE: There is work in progress to verify the C code using CompCert/VST.
+This requires nonfree CompCert, which is disabled in the build
+scripts/metadata by default. Algorithm verification can still be done
+without CompCert.
 
 ## Building
 
