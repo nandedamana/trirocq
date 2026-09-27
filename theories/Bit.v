@@ -67,7 +67,7 @@ Section bitops_simplification.
     intros. destruct x; destruct y; auto.
   Qed.
 
-  Lemma bit_xor_x_y_z_y x y z : bit_xor x (bit_xor y z) = y -> bit_xor x z = zero.
+  Lemma bit_xor_x_y_z_eq_z x y z : bit_xor x (bit_xor y z) = z -> bit_xor x y = zero.
     intros. destruct x; destruct y; destruct z; easy.
   Qed.
 
