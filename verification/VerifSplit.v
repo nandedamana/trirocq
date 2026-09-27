@@ -7,6 +7,7 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
 From trirocq Require Import
   BitVector
+  BitSub
   Tnum
   TnumAdd.
 
@@ -63,14 +64,28 @@ Module Ztnum.
   Proof.
     intros ave ame bve bme.
     unfold add, tnum_add.
+
     Set Printing Coercions.
     unfold of_tnum.
 
     (* TODO distribute Z.of_nat in the RHS and rewrite using ave, ame, etc. *)
     simpl.
-    assert (bvec_denote_bvec_and : forall SIZE (a b : bvec SIZE), bvec_denote (bvec_and a b) = Nat.land a b). admit.
+    assert (bvec_denote_bvec_and :
+             forall SIZE (a b : bvec SIZE), bvec_denote (bvec_and a b) = Nat.land a b). admit.
+
+
     rewrite bvec_denote_bvec_and.
-    Search (Z.of_nat (Nat.land _ _)).
+
+    assert (Nat2Z_land : forall x y,
+               Z.of_nat (Nat.land x y) = Z.land (Z.of_nat x) (Z.of_nat y)).
+    admit.
+
+    rewrite !Nat2Z_land.
+    rewrite !bvec_add_correct_Z.
+    rewrite <- ave, <- bve.
+
+
+
 End Ztnum.
 
 Definition tnum_add_split_m_Z (av am bv bm : Z) : Z :=
