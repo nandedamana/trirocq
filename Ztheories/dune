@@ -1,0 +1,4 @@
+(rocq.theory
+ (name trirocqZ)
+ (package trirocq)
+ (theories Stdlib))
