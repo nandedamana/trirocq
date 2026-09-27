@@ -1,7 +1,7 @@
 # trirocq: tnum Arithmetic Verified in Rocq
 
-[![Rocq stable, free](https://github.com/nandedamana/trirocq/actions/workflows/build-stable-rocq.yml/badge.svg?branch=main)](https://github.com/nandedamana/trirocq/actions/workflows/build-rocq-stable-free.yml)
-[![Rocq stable, nonfree CompCert](https://github.com/nandedamana/trirocq/actions/workflows/build-stable-rocq.yml/badge.svg?branch=main)](https://github.com/nandedamana/trirocq/actions/workflows/build-rocq-stable-nonfree-compcert.yml)
+![Rocq stable, free](https://github.com/nandedamana/trirocq/actions/workflows/build-free.yml/badge.svg?branch=main)
+![Rocq stable, nonfree CompCert](https://github.com/nandedamana/trirocq/actions/workflows/build-compcert-nonfree.yml/badge.svg?branch=main)
 
 
 
