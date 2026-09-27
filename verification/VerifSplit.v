@@ -5,6 +5,10 @@ Require Import trirocq.Verification.tnumSplitDotC.
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
+From Stdlib Require Import
+  Arith
+  ZArith.
+
 From trirocq Require Import
   BitVector
   BitSub
@@ -18,6 +22,10 @@ Module Ztnum.
    *)
   Record t := new { value : Z; mask : Z }.
 
+  Lemma eq_by_v_m (a b : t) : value a = value b -> mask a = mask b -> a = b.
+    destruct a, b. cbn. intros. subst. reflexivity.
+  Qed.
+
   Definition add (a b : t) : t :=
     let av := value a in
     let am := mask a in
@@ -29,9 +37,7 @@ Module Ztnum.
     let sigma := (sm + sv) mod Int64.modulus in
     let chi := Z.lxor sigma sv in
     let mu := Z.lor (Z.lor chi am) bm in
-    new (Z.land sv (Z.lnot mu)) mu.
-
-  Coercion bvec_denote : bvec >-> nat.
+    new (Z.land sv ((Z.lnot mu) mod Int64.modulus)) mu.
 
   Definition of_tnum {SIZE} (a : tnum.t SIZE) :=
     new (Z.of_nat (tnum.v a)) (Z.of_nat (tnum.v a)).
@@ -83,6 +89,70 @@ Module Ztnum.
     rewrite !Nat2Z_land.
     rewrite !bvec_add_correct_Z.
     rewrite <- ave, <- bve.
+    change (2 ^ (Z.of_nat 63 + 1)) with Int64.modulus.
+
+    apply eq_by_v_m; cbn.
+    -
+      assert (TODO99 : forall a x y, x = y -> Z.land a x = Z.land a y).
+      admit.
+
+      match goal with
+      | [ |- Z.land ?a ?x = Z.land ?a ?y ] => apply (TODO99 a x y)
+      end.
+
+      rewrite bvec_denote_bvec_neg.
+
+      assert (bvec_denote_bvec_or : forall SIZE (a b : bvec SIZE),
+                 bvec_denote (bvec_or a b) = Nat.lor (bvec_denote a) (bvec_denote b)).
+      admit.
+
+      assert (bvec_denote_bvec_xor : forall SIZE (a b : bvec SIZE),
+                 bvec_denote (bvec_xor a b) = Nat.lxor (bvec_denote a) (bvec_denote b)).
+      admit.
+
+      rewrite !bvec_denote_bvec_or.
+      rewrite bvec_denote_bvec_xor.
+      rewrite !bvec_add_correct.
+
+      Search (Nat.lnot _ _).
+      rewrite Nat.lnot_sub_low.
+
+      (* TOD OREM *)
+      (*      unfold Nat.lnot. *)
+      rewrite Z.lnot_eq_pred_opp.
+      Search (Z.of_nat (Z.ones _)).
+      rewrite Nat2Z.inj_sub.
+
+      assert (Nat2Z_lxor : forall x y,
+                 Z.of_nat (Nat.lxor x y) = Z.lxor (Z.of_nat x) (Z.of_nat y)).
+      admit.
+
+      assert (Nat2Z_lor : forall x y,
+                 Z.of_nat (Nat.lor x y) = Z.lor (Z.of_nat x) (Z.of_nat y)).
+      admit.
+
+      rewrite !Nat2Z_lor.
+      rewrite Nat2Z_lxor.
+      rewrite Nat2Z.inj_mod.
+      rewrite Nat2Z.inj_add.
+      rewrite !Nat2Z.inj_mod.
+      rewrite !Nat2Z.inj_add.
+      repeat rewrite <- ave, <- bve.
+      repeat rewrite <- ame, <- bme.
+
+      replace (Z.of_nat (2 ^ 64)) with Int64.modulus.
+
+
+
+
+
+
+
+      rewrite Nat.add_mod. (* TODO use Div0.add_mod *)
+      Search ((_ mod _ + _ mod _) mod _).
+
+      rewrite !Nat2Z.inj_mod.
+      rewrite !Nat2Z.inj_add.
 
 
 
