@@ -140,21 +140,22 @@ Module Ztnum.
       repeat rewrite <- ave, <- bve.
       repeat rewrite <- ame, <- bme.
 
-      replace (Z.of_nat (2 ^ 64)) with Int64.modulus.
-
-
-
-
-
-
+(*
 
       rewrite Nat.add_mod. (* TODO use Div0.add_mod *)
       Search ((_ mod _ + _ mod _) mod _).
 
       rewrite !Nat2Z.inj_mod.
       rewrite !Nat2Z.inj_add.
+ *)
+
+      assert (TODO91 : forall x : Z, (-x - 1) mod Int64.modulus = Z.of_nat (Nat.ones 64) - x).
+      admit.
+      rewrite TODO91.
+      replace Int64.modulus with (2 ^ 64).
 
 
+Check Z.ones_equiv.
 
 End Ztnum.
 
