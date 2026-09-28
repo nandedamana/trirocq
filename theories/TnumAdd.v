@@ -44,14 +44,14 @@ Section linux_tnum_addition.
   Definition tnum_ith_chi {SIZE} P Q [i] (hidx : i < SIZE) :=
     let sm := bvec_add (tnum.m P) (tnum.m Q) in
     let sv := bvec_add (tnum.v P) (tnum.v Q) in
-    let sig := bvec_add sv sm in
+    let sig := bvec_add sm sv in
     let chi := bvec_xor sig sv in
     bvec_ith chi hidx.
 
   Definition tnum_add {SIZE} P Q :=
     let sm := bvec_add (tnum.m P) (tnum.m Q) in
     let sv := bvec_add (tnum.v P) (tnum.v Q) in
-    let sig := bvec_add sv sm in
+    let sig := bvec_add sm sv in
     let chi := bvec_xor sig sv in
     let eta := bvec_or (bvec_or chi (tnum.m P)) (tnum.m Q) in
     tnum.cons SIZE (bvec_and sv (bvec_neg eta)) eta.
@@ -69,7 +69,7 @@ Section linux_tnum_addition.
     bvec_incarry (tnum.v P) (tnum.v Q) hidx.
 
   Definition ith_value_mask_incarry {SIZE} P Q {i} (hidx : i < SIZE) :=
-    bvec_incarry (value_sum P Q) (mask_sum P Q) hidx.
+    bvec_incarry (mask_sum P Q) (value_sum P Q) hidx.
 
   Ltac unfold_tnum_goodies :=
     unfold tnum.wellformed; unfold ingamma;
@@ -233,12 +233,13 @@ Section linux_tnum_addition.
       apply bit_or_zero_zero in H as (H1 & H2).
       apply bit_or_zero_zero in H1 as (H11 & H12).
       apply bit_xor_x_y_zero in H11.
-      apply bit_xor_x_y_z_y in H11.
+      apply bit_xor_x_y_z_eq_z in H11.
 
       revert H11. rewrite hmp. rewrite hmq. repeat simplify_bit_ops.
 
       pose (h63 := hlp_tnum_add_incarry_exmv2 P Q wfp wfq hidx).
       destruct h63 as (h1 & h2). intro h3.
+
       pose (h82 := bit_xor_and_and_imp h3 h1). destruct h82.
       apply hlp_xy_incarry_eq_minsum_incarry_internal; auto.
   Qed.
@@ -386,17 +387,18 @@ Section linux_tnum_addition.
       lia. lia.
     Qed.
 
-    Lemma tnum_add_sv_sm_as_or {SIZE} P Q i (hidx : i < SIZE) :
+    Lemma tnum_add_sm_sv_as_or {SIZE} P Q i (hidx : i < SIZE) :
       tnum.wellformed P -> tnum.wellformed Q ->
       bvec_ith
-        (bvec_add (bvec_add (tnum.v P) (tnum.v Q))
-           (bvec_add (tnum.m P) (tnum.m Q)))
+        (bvec_add (bvec_add (tnum.m P) (tnum.m Q))
+           (bvec_add (tnum.v P) (tnum.v Q)))
         hidx =
         bvec_ith (bvec_add (bvec_or (tnum.v P) (tnum.m P))
                     (bvec_or (tnum.v Q) (tnum.m Q)))
           hidx.
     Proof.
       rewrite bvec_add_regroup.
+      rewrite !(bvec_add_commutative (tnum.m _)).
       intros.
       repeat rewrite tnum_add_v_m_is_or; auto.
     Qed.
@@ -505,7 +507,7 @@ Section linux_tnum_addition.
           revert chim; simplify_bit_ops.
         + (* Pm[i] = Qm[i] = sv[i] = 0; (sv + sm)[i] = 1 *)
 
-          rewrite tnum_add_sv_sm_as_or.
+          rewrite tnum_add_sm_sv_as_or.
 
           exists (tnum.v P). (* p *)
           exists (tnum.v Q). (* q *)
@@ -522,7 +524,7 @@ Section linux_tnum_addition.
           * assumption.
         + (* Pm[i] = Qm[i] = 0; sv[i] = 1; (sv + sm)[i] = 0 *)
 
-          rewrite tnum_add_sv_sm_as_or.
+          rewrite tnum_add_sm_sv_as_or.
 
           exists (tnum.v P). (* p *)
           exists (tnum.v Q). (* q *)
