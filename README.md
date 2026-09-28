@@ -1,4 +1,4 @@
-# trirocq: tnum Arithmetic Verified in Rocq
+# trirocq: Tristate Arithmetic Verified in Rocq
 
 ![Rocq stable, free](https://github.com/nandedamana/trirocq/actions/workflows/build-free.yml/badge.svg?branch=main)
 ![Rocq stable, nonfree CompCert](https://github.com/nandedamana/trirocq/actions/workflows/build-compcert-nonfree.yml/badge.svg?branch=main)
