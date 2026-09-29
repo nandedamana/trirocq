@@ -6,6 +6,7 @@
 
 From Stdlib Require Import
   Lia
+  Program (* For ProofIrrelevance *)
   ZArith.
 
 From trirocq.Z Require Import Bit.
@@ -326,3 +327,30 @@ Arguments bvec_or {SIZE} _ _.
 Arguments bvec_xor {SIZE} _ _.
 Arguments bvec_lshift {SIZE} _ _.
 Arguments bvec_rshift {SIZE} _ _.
+
+Lemma eq_by_POS_imp_eq_by_Z x y :
+  (forall i : POS, Z.testbit x (Z.of_nat i) = Z.testbit y (Z.of_nat i)) ->
+    (forall i : Z, Z.testbit x i = Z.testbit y i).
+Proof.
+  intros H i.
+  destruct i as [i0 | pi | ni] eqn : hi.
+  - specialize (H 0%nat). auto.
+  - specialize (H (Z.to_nat i)).
+    rewrite Z2Nat.id in H by lia.
+    rewrite <- hi. assumption.
+  - rewrite !Z.testbit_neg_r by lia. reflexivity.
+Qed.
+
+Lemma bvec_eq_by_ith : forall {SIZE} (x y : bvec SIZE),
+    (forall i, (bvec_ith x i) = (bvec_ith y i)) -> x = y.
+Proof.
+  destruct x as [x hx], y as [y hy].
+  unfold bvec_ith. cbn.
+  intro H. assert (H' := Z.bits_inj x y).
+  Set Printing Coercions.
+  unfold Z.eqf in H'.
+  assert (hnat := eq_by_POS_imp_eq_by_Z x y H).
+  apply H' in hnat.
+  apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+  assumption.
+Qed.
