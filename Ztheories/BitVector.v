@@ -333,7 +333,7 @@ Lemma eq_by_POS_imp_eq_by_Z x y :
     (forall i : Z, Z.testbit x i = Z.testbit y i).
 Proof.
   intros H i.
-  destruct i as [i0 | pi | ni] eqn : hi.
+  destruct i eqn : hi.
   - specialize (H 0%nat). auto.
   - specialize (H (Z.to_nat i)).
     rewrite Z2Nat.id in H by lia.
@@ -341,18 +341,45 @@ Proof.
   - rewrite !Z.testbit_neg_r by lia. reflexivity.
 Qed.
 
+(* Many proofs will be range-bound, unable to show bitwise equality
+ * for the whole range. This lemma helps them establish numerical
+ * equality without passing in proof of unbounded bitwise equality.
+ *)
 Lemma bvec_eq_by_ith : forall {SIZE} (x y : bvec SIZE),
-    (forall i, (bvec_ith x i) = (bvec_ith y i)) -> x = y.
+    (forall i, (i < SIZE)%nat -> (bvec_ith x i) = (bvec_ith y i)) -> x = y.
 Proof.
   destruct x as [x hx], y as [y hy].
   unfold bvec_ith. cbn.
   intro H. assert (H' := Z.bits_inj x y).
   Set Printing Coercions.
   unfold Z.eqf in H'.
-  assert (hnat := eq_by_POS_imp_eq_by_Z x y H).
-  apply H' in hnat.
-  apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
-  assumption.
+
+  assert (H'' : forall i : nat, Z.testbit x (POS2Z i) = Z.testbit y (POS2Z i)).
+  intro i.
+  assert (hi : (i < SIZE)%nat \/ (i >= SIZE)%nat) by lia.
+  destruct hi as [hi1 | hi2].
+  - exact (H i hi1).
+  -
+    replace x with (Z.land x (Z.ones (Z.of_nat SIZE))).
+    replace y with (Z.land y (Z.ones (Z.of_nat SIZE))).
+    rewrite !Z.land_spec.
+    rewrite !Z.ones_spec_high.
+    rewrite !Bool.andb_false_r. reflexivity.
+
+    unfold POS2Z. lia.
+
+    assert (hy' : y < 2 ^ Z.of_nat SIZE). unfold modulus in hy. lia.
+    rewrite Z.land_ones.
+    apply Z.mod_small. lia. lia.
+
+    assert (hx' : x < 2 ^ Z.of_nat SIZE). unfold modulus in hx. lia.
+    rewrite Z.land_ones.
+    apply Z.mod_small. lia. lia.
+  -
+    assert (hnat := eq_by_POS_imp_eq_by_Z x y H'').
+    apply H' in hnat.
+    apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+    assumption.
 Qed.
 
 Section bvec_addition.
@@ -472,3 +499,39 @@ Section bvec_addition.
         reflexivity.
   Qed.
 End bvec_addition.
+
+Section poking.
+  Definition bvec_set_ith {SIZE} (x : bvec SIZE) (i : POS) : bvec SIZE.
+    destruct x as [xs hlen].
+    exists ((Z.setbit xs i) mod (2 ^ Z.of_nat SIZE)).
+    unfold modulus. unfold modulus in hlen.
+    apply Z.mod_pos_bound. lia.
+  Defined.
+
+  Lemma bvec_ith_set_is_one {SIZE} (x : bvec SIZE) (i : POS) (hi : (i < SIZE)%nat) :
+    bvec_ith (bvec_set_ith x i) i = one.
+  Proof.
+    destruct x as [x hx].
+    unfold bvec_set_ith, bvec_ith. cbn.
+    unfold one.
+    rewrite <- Z.setbit_eq with (a := x) (n := Z.of_nat i).
+    rewrite Z.mod_pow2_bits_low. unfold POS2Z. reflexivity.
+
+    unfold POS2Z. lia.
+    lia.
+  Qed.
+
+  Lemma bvec_ith_unset_is_id {SIZE} (x : bvec SIZE)
+    i (hi : (i < SIZE)%nat) j (hj : (j < SIZE)%nat) :
+    j <> i ->
+    bvec_ith (bvec_set_ith x i) j = bvec_ith x j.
+  Proof.
+    destruct x as [x hx].
+    unfold bvec_ith, bvec_set_ith. cbn.
+    intro hij.
+
+    rewrite Z.mod_pow2_bits_low. unfold POS2Z.
+    rewrite Z.setbit_neq. reflexivity.
+    lia. lia. unfold POS2Z. lia.
+  Qed.
+End poking.
