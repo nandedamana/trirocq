@@ -1,4 +1,4 @@
-# trirocq: tnum Arithmetic Verified in Rocq
+# trirocq: Tristate Arithmetic Verified in Rocq
 
 ![Rocq stable, free](https://github.com/nandedamana/trirocq/actions/workflows/build-free.yml/badge.svg?branch=main)
 ![Rocq stable, nonfree CompCert](https://github.com/nandedamana/trirocq/actions/workflows/build-compcert-nonfree.yml/badge.svg?branch=main)
@@ -36,6 +36,18 @@ NOTE: There is work in progress to verify the C code using CompCert/VST.
 This requires nonfree CompCert, which is disabled in the build
 scripts/metadata by default. Algorithm verification can still be done
 without CompCert.
+
+## Directory Structure
+
+- `theories/` -- modeling of bit vector (`bvec`, bounded list of `bit`s) and
+  tnum (value word and mask word); Rocq encodings of tnum arithmetic operations
+  and their soundness/optimality proofs.
+
+- `writeup/` -- pen-and-paper-style proof description; no familiarity with Rocq
+  assumed.
+
+- `Ztheories/` -- experimental development of `bvec` based on `Z` (modulo `2 ^
+  BITWIDTH`).
 
 ## Building
 
