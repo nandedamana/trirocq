@@ -354,3 +354,121 @@ Proof.
   apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
   assumption.
 Qed.
+
+Section bvec_addition.
+  Context {SIZE : nat}.
+
+  Lemma bvec_add_pf (x y : Z) :
+    0 <= x < modulus SIZE ->
+    0 <= y < modulus SIZE ->
+    0 <= (x + y) mod (modulus SIZE) < modulus SIZE.
+  Proof.
+    intros.
+    apply Z.mod_pos_bound. lia.
+  Qed.
+
+  Definition bvec_add (x y : bvec SIZE) : bvec SIZE.
+    destruct x as [x hx], y as [y hy].
+    exists ((x + y) mod (modulus SIZE)).
+    apply bvec_add_pf; lia.
+  Defined.
+
+  Lemma bvec_add_commutative (x y : bvec SIZE) :
+    bvec_add x y = bvec_add y x.
+  Proof.
+    (* Don't unfold and read the goal first; it's too cluttered. *)
+    assert (hcomm : (x + y) mod (modulus SIZE) = (x + y) mod (modulus SIZE)) by lia.
+    unfold bvec_add.
+    destruct x as [x hx], y as [y hy].
+    apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+    replace (x + y) with (y + x) by lia.
+    reflexivity.
+  Qed.
+
+  (* TODO rename as bvec_ith_incarry *)
+  Definition bvec_incarry (x y : bvec SIZE) (i : POS) :=
+    Z.testbit (Z.addcarries x y) i.
+
+  Lemma bvec_incarry_0_addcarries (x y : bvec SIZE) :
+    bvec_incarry x y 0%nat = Z.testbit (Z.addcarries x y) 0.
+  Proof.
+    destruct x, y; auto.
+  Qed.
+
+  (* Originally specialized to take away the convoy pattern, back when
+   * I was using Vector.t from Stdlib.
+   *)
+  Lemma bvec_incarry_Si_addcarries (x y : bvec SIZE) (i : POS) :
+    bvec_incarry x y (S i) = Z.testbit (Z.addcarries x y) (i + 1).
+  Proof.
+    destruct x, y.
+    unfold bvec_incarry.
+    replace (POS2Z (S i)) with (POS2Z i + 1) by (unfold POS2Z; lia).
+    reflexivity.
+  Qed.
+
+  Lemma bvec_incarry_0 (x y : bvec SIZE) :
+    bvec_incarry x y 0%nat = false.
+  Proof.
+    rewrite bvec_incarry_0_addcarries.
+    apply Z.testbit_addcarries_0.
+  Qed.
+
+  (* Originally specialized to take away the convoy pattern, back when
+   * I was using Vector.t from Stdlib.
+   *)
+  Lemma bvec_incarry_Si (x y : bvec SIZE) (i : POS) :
+    bvec_incarry x y (S i) = let a := bvec_ith x i in
+                         let b := bvec_ith y i in
+                         let cin := bvec_incarry x y i in
+                         orb (orb (andb a b) (andb a cin)) (andb b cin).
+  Proof.
+    unfold bvec_incarry.
+    rewrite Z.testbit_addcarries_pos.
+
+    destruct x, y. unfold bvec_ith. simpl bvec2Z.
+    replace (POS2Z (S i) - 1) with (POS2Z i).
+    repeat destruct (Z.testbit _ _); auto.
+
+    unfold POS2Z. lia.
+    unfold POS2Z. lia.
+  Qed.
+
+  Lemma bvec_fulladd_result : forall x y (i : POS),
+      (i < SIZE)%nat ->
+      bvec_ith (bvec_add x y) i =
+        xorb (bvec_incarry x y i) (xorb (bvec_ith x i) (bvec_ith y i)).
+  Proof.
+    intros x y i hi.
+    unfold bvec_add, bvec_ith.
+    destruct x as [x hx], y as [y hy]. simpl.
+
+      unfold modulus.
+      rewrite Z.testbit_mod_pow2 by lia.
+
+      replace (POS2Z i <? Z.of_nat SIZE) with true by (unfold POS2Z; lia).
+      simpl.
+
+      assert (hsum : forall x y, x + y = Z.lxor (Z.addcarries x y) (Z.lxor x y)).
+      unfold Z.addcarries.
+      intros x' y'.
+      rewrite Z.lxor_assoc.
+      rewrite Z.lxor_nilpotent.
+      rewrite Z.lxor_0_r. reflexivity.
+
+      rewrite hsum.
+      rewrite Z.lxor_spec.
+
+      destruct i.
+      - replace (POS2Z 0%nat) with 0 by (unfold POS2Z; lia).
+        rewrite bvec_incarry_0_addcarries.
+        rewrite !Z.testbit_addcarries_0.
+        rewrite Z.lxor_spec.
+        auto.
+      - replace (POS2Z (S i)) with (POS2Z i + 1) by (unfold POS2Z; lia).
+        rewrite bvec_incarry_Si_addcarries.
+        unfold bvec2Z. simpl.
+        rewrite Z.lxor_spec.
+        reflexivity.
+  Qed.
+End bvec_addition.
