@@ -115,13 +115,24 @@ Module Ztnum.
       rewrite !bvec_add_correct.
 
       Search (Nat.lnot _ _).
-      rewrite Nat.lnot_sub_low.
+      (* TODO REM UNUSED *)
+      (* rewrite Nat.lnot_sub_low. *)
+      unfold Nat.lnot.
 
-      (* TOD OREM *)
-      (*      unfold Nat.lnot. *)
+      (*
+      assert (TODO91 : forall x : Z,
+                 0 <= x < Int64.modulus ->
+                 Z.lnot x mod Int64.modulus =
+                   Z.of_nat (Nat.lxor (Z.of_nat x) (Nat.ones 64))).
+
+      (-x - 1) mod Int64.modulus = (Z.of_nat (Nat.ones 64) - x) mod Int64.modulus).
+
+
+
       rewrite Z.lnot_eq_pred_opp.
       Search (Z.of_nat (Z.ones _)).
       rewrite Nat2Z.inj_sub.
+       *)
 
       assert (Nat2Z_lxor : forall x y,
                  Z.of_nat (Nat.lxor x y) = Z.lxor (Z.of_nat x) (Z.of_nat y)).
@@ -131,6 +142,7 @@ Module Ztnum.
                  Z.of_nat (Nat.lor x y) = Z.lor (Z.of_nat x) (Z.of_nat y)).
       admit.
 
+      rewrite Nat2Z_lxor.
       rewrite !Nat2Z_lor.
       rewrite Nat2Z_lxor.
       rewrite Nat2Z.inj_mod.
@@ -139,6 +151,17 @@ Module Ztnum.
       rewrite !Nat2Z.inj_add.
       repeat rewrite <- ave, <- bve.
       repeat rewrite <- ame, <- bme.
+
+      assert (TODO91 : forall x y : Z,
+                 0 <= x < Int64.modulus ->
+                 0 <= y < Int64.modulus ->
+                 x = y ->
+                 Z.lnot x mod Int64.modulus =
+                   Z.lxor y (Z.of_nat (Nat.ones 64))).
+      admit.
+      apply TODO91.
+
+      change Int64.modulus with (2 ^ 64).
 
 (*
 
@@ -149,10 +172,26 @@ Module Ztnum.
       rewrite !Nat2Z.inj_add.
  *)
 
-      assert (TODO91 : forall x : Z, (-x - 1) mod Int64.modulus = Z.of_nat (Nat.ones 64) - x).
+      assert (TODO91 : forall x : Z,
+                 0 <= x < Int64.modulus ->
+                 (-x - 1) mod Int64.modulus = (Z.of_nat (Nat.ones 64) - x) mod Int64.modulus).
+
+      change Int64.modulus with (2 ^ 64).
+      intros.
+      replace ((-x - 1) mod (2 ^ 64)) with (((2 ^ 64) - x) mod (2 ^ 64)).
+
+      Check Z.mod_add.
+      Search (_ - _ = _).
+
+
       admit.
       rewrite TODO91.
-      replace Int64.modulus with (2 ^ 64).
+      change Int64.modulus with (2 ^ 64).
+      replace (Z.of_nat (2 ^ 64)) with (2 ^ 64).
+      reflexivity.
+
+      rewrite Nat2Z.inj_pow. lia.
+
 
 
 Check Z.ones_equiv.
