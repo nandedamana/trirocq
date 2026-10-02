@@ -22,6 +22,12 @@ Section bvec.
   Definition bvec2Z (a : bvec) := proj1_sig a.
   Coercion bvec2Z : bvec >-> Z.
 
+  Definition Z2bvec (n : Z) : bvec.
+    exists (n mod modulus).
+    apply Z.mod_pos_bound.
+    unfold modulus. lia.
+  Qed.
+
   (** Using nat instead of Z for backward compatibility *)
   Definition POS := nat.
   Definition POS2Z (n : POS) := Z.of_nat n.
@@ -318,15 +324,59 @@ Section bvec.
     unfold bvec_ith, zerovec. simpl.
     apply Z.bits_0.
   Qed.
+
+  Definition bvec_lsb (x : bvec) :=
+    bvec_ith x 0%nat.
 End bvec.
 
+(* TODO use bvec_denote instead of bvec2Z in all files
+ * to be compatible with the list-based theories.
+ *)
+Definition bvec_denote {SIZE} (a : bvec SIZE) :=
+  bvec2Z _ a.
+
+(* TODO bvec_lsb *)
 Arguments bvec_ith {SIZE} _ _.
+Arguments bvec_lsb {SIZE} _.
 Arguments bvec_and {SIZE} _ _.
 Arguments bvec_neg {SIZE} _.
 Arguments bvec_or {SIZE} _ _.
 Arguments bvec_xor {SIZE} _ _.
 Arguments bvec_lshift {SIZE} _ _.
 Arguments bvec_rshift {SIZE} _ _.
+
+Section bvec_rshift1_shrink.
+  Variable m : nat.
+
+  Lemma bvec_rshift1_shrink_pf (a : bvec (S m)) :
+    0 <= Z.shiftr a 1 < modulus m.
+  Proof.
+    rewrite Z.shiftr_div_pow2 by lia.
+    destruct a as [a ha].
+    cbn.
+
+    assert (H : forall n, 0 <= n -> 0 <= n / 2).
+    intros.
+    apply Z.div_pos. lia. lia.
+    specialize (H a).
+
+    split.
+    - apply H. lia.
+    - replace (modulus (S m)) with (2 * modulus m) in ha.
+      apply Z.div_lt_upper_bound. lia. lia.
+      unfold modulus.
+      replace (Z.of_nat (S m)) with (Z.of_nat m + 1) by lia.
+      rewrite Z.pow_add_r by lia.
+      lia.
+  Qed.
+
+  Definition bvec_rshift1_shrink (a : bvec (S m)) : bvec m.
+    exists (Z.shiftr a 1).
+    apply bvec_rshift1_shrink_pf.
+  Defined.
+End bvec_rshift1_shrink.
+
+Arguments bvec_rshift1_shrink {m} _.
 
 Lemma eq_by_POS_imp_eq_by_Z x y :
   (forall i : POS, Z.testbit x (Z.of_nat i) = Z.testbit y (Z.of_nat i)) ->
