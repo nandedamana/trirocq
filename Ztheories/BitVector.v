@@ -345,42 +345,27 @@ Arguments bvec_xor {SIZE} _ _.
 Arguments bvec_lshift {SIZE} _ _.
 Arguments bvec_rshift {SIZE} _ _.
 
+Section bvec_trunc.
+  Definition bvec_trunc {n} (p : bvec n) {m} (hm : (m <= n)%nat) : bvec m.
+    destruct p as [p hp].
+    exists (p mod modulus m).
+    apply Z.mod_pos_bound.
+    unfold modulus. lia.
+  Defined.
+End bvec_trunc.
+
 Section bvec_rshift1_shrink.
   Variable m : nat.
 
-  Lemma bvec_rshift1_shrink_pf (a : bvec (S m)) :
-    0 <= Z.shiftr a 1 < modulus m.
-  Proof.
-    rewrite Z.shiftr_div_pow2 by lia.
-    destruct a as [a ha].
-    cbn.
-
-    assert (H : forall n, 0 <= n -> 0 <= n / 2).
-    intros.
-    apply Z.div_pos. lia. lia.
-    specialize (H a).
-
-    split.
-    - apply H. lia.
-    - replace (modulus (S m)) with (2 * modulus m) in ha.
-      apply Z.div_lt_upper_bound. lia. lia.
-      unfold modulus.
-      replace (Z.of_nat (S m)) with (Z.of_nat m + 1) by lia.
-      rewrite Z.pow_add_r by lia.
-      lia.
-  Qed.
-
-  Definition bvec_rshift1_shrink (a : bvec (S m)) : bvec m.
-    exists (Z.shiftr a 1).
-    apply bvec_rshift1_shrink_pf.
-  Defined.
+  Definition bvec_rshift1_shrink (a : bvec (S m)) : bvec m :=
+    bvec_trunc (bvec_rshift a 1%nat) (Nat.le_succ_diag_r m).
 End bvec_rshift1_shrink.
 
 Arguments bvec_rshift1_shrink {m} _.
 
 Lemma eq_by_POS_imp_eq_by_Z x y :
   (forall i : POS, Z.testbit x (Z.of_nat i) = Z.testbit y (Z.of_nat i)) ->
-    (forall i : Z, Z.testbit x i = Z.testbit y i).
+  (forall i : Z, Z.testbit x i = Z.testbit y i).
 Proof.
   intros H i.
   destruct i eqn : hi.
@@ -496,9 +481,9 @@ Section bvec_addition.
    *)
   Lemma bvec_incarry_Si (x y : bvec SIZE) (i : POS) :
     bvec_incarry x y (S i) = let a := bvec_ith x i in
-                         let b := bvec_ith y i in
-                         let cin := bvec_incarry x y i in
-                         orb (orb (andb a b) (andb a cin)) (andb b cin).
+                             let b := bvec_ith y i in
+                             let cin := bvec_incarry x y i in
+                             orb (orb (andb a b) (andb a cin)) (andb b cin).
   Proof.
     unfold bvec_incarry.
     rewrite Z.testbit_addcarries_pos.
@@ -520,33 +505,33 @@ Section bvec_addition.
     unfold bvec_add, bvec_ith.
     destruct x as [x hx], y as [y hy]. simpl.
 
-      unfold modulus.
-      rewrite Z.testbit_mod_pow2 by lia.
+    unfold modulus.
+    rewrite Z.testbit_mod_pow2 by lia.
 
-      replace (POS2Z i <? Z.of_nat SIZE) with true by (unfold POS2Z; lia).
-      simpl.
+    replace (POS2Z i <? Z.of_nat SIZE) with true by (unfold POS2Z; lia).
+    simpl.
 
-      assert (hsum : forall x y, x + y = Z.lxor (Z.addcarries x y) (Z.lxor x y)).
-      unfold Z.addcarries.
-      intros x' y'.
-      rewrite Z.lxor_assoc.
-      rewrite Z.lxor_nilpotent.
-      rewrite Z.lxor_0_r. reflexivity.
+    assert (hsum : forall x y, x + y = Z.lxor (Z.addcarries x y) (Z.lxor x y)).
+    unfold Z.addcarries.
+    intros x' y'.
+    rewrite Z.lxor_assoc.
+    rewrite Z.lxor_nilpotent.
+    rewrite Z.lxor_0_r. reflexivity.
 
-      rewrite hsum.
+    rewrite hsum.
+    rewrite Z.lxor_spec.
+
+    destruct i.
+    - replace (POS2Z 0%nat) with 0 by (unfold POS2Z; lia).
+      rewrite bvec_incarry_0_addcarries.
+      rewrite !Z.testbit_addcarries_0.
       rewrite Z.lxor_spec.
-
-      destruct i.
-      - replace (POS2Z 0%nat) with 0 by (unfold POS2Z; lia).
-        rewrite bvec_incarry_0_addcarries.
-        rewrite !Z.testbit_addcarries_0.
-        rewrite Z.lxor_spec.
-        auto.
-      - replace (POS2Z (S i)) with (POS2Z i + 1) by (unfold POS2Z; lia).
-        rewrite bvec_incarry_Si_addcarries.
-        unfold bvec2Z. simpl.
-        rewrite Z.lxor_spec.
-        reflexivity.
+      auto.
+    - replace (POS2Z (S i)) with (POS2Z i + 1) by (unfold POS2Z; lia).
+      rewrite bvec_incarry_Si_addcarries.
+      unfold bvec2Z. simpl.
+      rewrite Z.lxor_spec.
+      reflexivity.
   Qed.
 End bvec_addition.
 
