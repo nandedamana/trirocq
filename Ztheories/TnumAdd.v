@@ -24,15 +24,6 @@ Ltac specialize_wf_ig j :=
    *)
   end.
 
-(* TODO dedup with TnumUnion.v *)
-Ltac bool_imp_easy :=
-  match goal with
-  | [ H : true = true -> true = false |- _ ] => specialize (H eq_refl); discriminate H
-  | [ H : true = true -> false = true |- _ ] => specialize (H eq_refl); discriminate H
-  | [ H : false = false -> true = false |- _ ] => specialize (H eq_refl); discriminate H
-  | [ H : false = false -> false = true |- _ ] => specialize (H eq_refl); discriminate H
-  end.
-
 Ltac dismiss_absurd :=
   try match goal with
     | [ H : ?x = ?x -> zero = one |- _ ] =>

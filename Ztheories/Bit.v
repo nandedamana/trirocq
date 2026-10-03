@@ -80,3 +80,9 @@ Ltac simplify_bit_ops_ex_not :=
 Ltac simplify_bit_ops :=
   unfold bit_not;
   simplify_bit_ops_ex_not.
+
+Ltac bool_imp_easy :=
+  match goal with
+  | [ H : ?x = ?x -> true = false |- _ ] => specialize (H eq_refl); discriminate H
+  | [ H : ?x = ?y -> false = true |- _ ] => specialize (H eq_refl); discriminate H
+  end.
