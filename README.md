@@ -46,8 +46,8 @@ without CompCert.
 - `writeup/` -- pen-and-paper-style proof description; no familiarity with Rocq
   assumed.
 
-- `Ztheories/` -- experimental development of `bvec` based on `Z` (modulo `2 ^
-  BITWIDTH`).
+- `Ztheories/` -- uses a new version of `bvec` based on `Z` (modulo `2 ^ BITWIDTH`).
+  Everything from `theories/` already ported, except `tnum_sub`.
 
 ## Building
 
