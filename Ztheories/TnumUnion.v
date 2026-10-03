@@ -1,4 +1,5 @@
 From trirocq.Z Require Import
+  Bit
   BitVector
   Tnum.
 
@@ -22,14 +23,6 @@ Section tnum_union.
     repeat destruct (bvec_ith _ _); easy.
     assumption.
   Qed.
-
-  Ltac bool_imp_easy :=
-    match goal with
-    | [ H : true = true -> true = false |- _ ] => specialize (H eq_refl); discriminate H
-    | [ H : true = true -> false = true |- _ ] => specialize (H eq_refl); discriminate H
-    | [ H : false = false -> true = false |- _ ] => specialize (H eq_refl); discriminate H
-    | [ H : false = false -> false = true |- _ ] => specialize (H eq_refl); discriminate H
-    end.
 
   Lemma tnum_union_sound {SIZE} (P Q : tnum.t SIZE) :
     tnum.wellformed P -> tnum.wellformed Q ->
