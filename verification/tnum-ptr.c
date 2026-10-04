@@ -19,30 +19,6 @@ struct tnum {
 	u64 mask;
 };
 
-u64 tnum_add_v(u64 av, u64 am, u64 bv, u64 bm)
-{
-	u64 sm, sv, sigma, chi, mu;
-
-	sm = am + bm;
-	sv = av + bv;
-	sigma = sm + sv;
-	chi = sigma ^ sv;
-	mu = chi | am | bm;
-	return sv & ~mu;
-}
-
-u64 tnum_add_m(u64 av, u64 am, u64 bv, u64 bm)
-{
-	u64 sm, sv, sigma, chi, mu;
-
-	sm = am + bm;
-	sv = av + bv;
-	sigma = sm + sv;
-	chi = sigma ^ sv;
-	mu = chi | am | bm;
-	return mu;
-}
-
 void tnum_add(struct tnum *a, struct tnum *b, struct tnum *r)
 {
 	u64 av = a->value;
