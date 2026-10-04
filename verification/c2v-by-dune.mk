@@ -1,4 +1,4 @@
-tnumSplitDotC.v: tnum-split.c
+tnumPtrDotC.v: tnum-ptr.c
 	clightgen -o "$@" -normalize -fstruct-passing "$<"
 	echo '(* Generated using clightgen; see Makefile *)' > "$@".tmp
 	echo '' >> "$@".tmp

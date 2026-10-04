@@ -40,4 +40,4 @@ jobs:
 
       - name: Make sure CompCert-related parts are built
         run: |
-          test -f /__w/trirocq/trirocq/_build/default/verification/VerifSplit.vo
+          test -f /__w/trirocq/trirocq/_build/default/verification/VerifAdd.vo

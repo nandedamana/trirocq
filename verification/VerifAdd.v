@@ -1,6 +1,6 @@
 (* Boilerplate copied from Software Foundations Verifiable C *)
 Require Import VST.floyd.proofauto.
-Require Import trirocq.Verification.tnumSplitDotC.
+Require Import trirocq.Verification.tnumPtrDotC.
 
 #[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
