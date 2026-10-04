@@ -14,6 +14,11 @@
 typedef uint8_t u8;
 typedef uint64_t u64;
 
+struct tnum {
+	u64 value;
+	u64 mask;
+};
+
 u64 tnum_add_v(u64 av, u64 am, u64 bv, u64 bm)
 {
 	u64 sm, sv, sigma, chi, mu;
@@ -36,4 +41,23 @@ u64 tnum_add_m(u64 av, u64 am, u64 bv, u64 bm)
 	chi = sigma ^ sv;
 	mu = chi | am | bm;
 	return mu;
+}
+
+void tnum_add(struct tnum *a, struct tnum *b, struct tnum *r)
+{
+	u64 av = a->value;
+	u64 am = a->mask;
+	u64 bv = b->value;
+	u64 bm = b->mask;
+
+	u64 sm, sv, sigma, chi, mu;
+
+	sm = am + bm;
+	sv = av + bv;
+	sigma = sm + sv;
+	chi = sigma ^ sv;
+	mu = chi | am | bm;
+
+	r->value = sv & ~mu;
+	r->mask = mu;
 }
