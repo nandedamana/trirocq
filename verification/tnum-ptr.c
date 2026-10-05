@@ -57,3 +57,9 @@ void tnum_lshift(struct tnum *a, u8 shift, struct tnum *r)
 	r->value = a->value << shift;
 	r->mask = a->mask << shift;
 }
+
+void tnum_rshift(struct tnum *a, u8 shift, struct tnum *r)
+{
+	r->value = a->value >> shift;
+	r->mask = a->mask >> shift;
+}
