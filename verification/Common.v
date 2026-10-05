@@ -84,6 +84,44 @@ Module Int64.
       rewrite !Z.mod_small by lia. reflexivity.
       compute. reflexivity.
     Qed.
+
+    Lemma lshift_reprbvec {ssz} (shift : bvec ssz) :
+      (ssz < 64)%nat ->
+      Int64.shl (Int64.repr (bvec2Z _ x)) (Int64.repr (bvec2Z _ shift)) =
+        Int64.repr (bvec_lshift x (Z.to_nat shift)).
+    Proof.
+      intro hssz.
+      destruct x, y, shift. cbn.
+      unfold Int64.shl.
+      apply Int64.eqm_samerepr.
+      apply Int64.eqm_same_bits.
+      intros i hi.
+
+      replace 18446744073709551616 with (2 ^ 64) by lia.
+      rewrite Z.mod_pow2_bits_low.
+
+      rewrite !Int64.unsigned_repr.
+      unfold POS2Z.
+      rewrite Z2Nat.id. reflexivity.
+
+      lia.
+
+      assert (x2 < modulus 64).
+      assert (modulus ssz < modulus 64).
+      unfold modulus in *.
+      apply Z.pow_lt_mono_r; try lia.
+      lia.
+
+      unfold Int64.max_unsigned.
+      replace Int64.modulus with (modulus 64) by (compute; lia).
+      split; try lia.
+
+      unfold Int64.max_unsigned.
+      replace Int64.modulus with (modulus 64) by (compute; lia).
+      split; try lia.
+
+      revert hi. compute. destruct i; try easy.
+    Qed.
   End Int64bin.
 End Int64.
 

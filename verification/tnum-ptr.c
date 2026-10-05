@@ -51,3 +51,9 @@ void tnum_union(struct tnum *a, struct tnum *b, struct tnum *r)
 	r->value = v & ~mu;
 	r->mask = mu;
 }
+
+void tnum_lshift(struct tnum *a, u8 shift, struct tnum *r)
+{
+	r->value = a->value << shift;
+	r->mask = a->mask << shift;
+}
