@@ -37,3 +37,17 @@ void tnum_add(struct tnum *a, struct tnum *b, struct tnum *r)
 	r->value = sv & ~mu;
 	r->mask = mu;
 }
+
+/* Returns a tnum with the uncertainty from both a and b, and in addition, new
+ * uncertainty at any position that a and b disagree. This represents a
+ * superset of the union of the concrete sets of both a and b. Despite the
+ * overapproximation, it is optimal.
+ */
+void tnum_union(struct tnum *a, struct tnum *b, struct tnum *r)
+{
+	u64 v = a->value & b->value;
+	u64 mu = (a->value ^ b->value) | a->mask | b->mask;
+
+	r->value = v & ~mu;
+	r->mask = mu;
+}
