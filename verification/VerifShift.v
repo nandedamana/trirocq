@@ -18,6 +18,12 @@ From trirocq.Verification Require Import
 
 Definition u8 := bvec 8.
 
+(* TODO Try `Byte.int` or `byte` instead of `Vint` for u8;
+ * see: https://softwarefoundations.cis.upenn.edu/vc-current/Verif_strlib.html
+ * (already fine since bounds are explicitly specified).
+ * TODO looks like there is Int8 (see https://vst.cs.princeton.edu/download/VC.pdf *)
+ *)
+
 (* Assuming shift is less than the word size. Without this,
  * 1) It is undefined behavior
  * 2) The proof gets stuck at `shift < Int.unsigned Int64.iwordsize'`
