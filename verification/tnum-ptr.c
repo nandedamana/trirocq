@@ -63,3 +63,73 @@ void tnum_rshift(struct tnum *a, u8 shift, struct tnum *r)
 	r->value = a->value >> shift;
 	r->mask = a->mask >> shift;
 }
+
+// Recursive function that implements the loop in the new algorithm
+void tnum_mul_loop(u64 m, struct tnum *a, struct tnum *b, struct tnum *r)
+{
+	if (m != 0) {
+		// kernel code uses `||`, but that will result in a nested if.
+		// The equivalence has been shown in Rocq.
+		if (a->value | a->mask) {
+			struct tnum ap, bp; /* a', b' */
+			ap.value = a->value;
+			ap.mask = a->mask;
+			bp.value = b->value;
+			bp.mask = b->mask;
+
+			/* LSB of tnum a is a certain 1 */
+			if (ap.value & 1) {
+				struct tnum sum;
+				tnum_add(r, &bp, &sum);
+
+				r->value = sum.value;
+				r->mask = sum.mask;
+
+				// BEGIN duplicate (code duplicated in both branches;
+				// if there is code following an `if`, VST will make
+				// us give the postcondition explicitly).
+				struct tnum apsh, bpsh;
+				tnum_rshift(&ap, 1, &apsh);
+				tnum_lshift(&bp, 1, &bpsh);
+				tnum_mul_loop(m - 1, &apsh, &bpsh, r);
+				// END duplicate
+
+			}
+			/* LSB of tnum a is uncertain */
+			else if (ap.mask & 1) {
+				/* acc = tnum_union(acc_0, acc_1), where acc_0 and
+				 * acc_1 are partial accumulators for cases
+				 * LSB(a) = certain 0 and LSB(a) = certain 1.
+				 * acc_0 = acc + 0 * b = acc.
+				 * acc_1 = acc + 1 * b = tnum_add(acc, b).
+				 */
+
+				struct tnum sum, joined;
+				tnum_add(r, &bp, &sum);
+				tnum_union(r, &sum, &joined);
+
+				r->value = joined.value;
+				r->mask = joined.mask;
+
+				// BEGIN duplicate (code duplicated in both branches;
+				// if there is code following an `if`, VST will make
+				// us give the postcondition explicitly).
+				struct tnum apsh, bpsh;
+				tnum_rshift(&ap, 1, &apsh);
+				tnum_lshift(&bp, 1, &bpsh);
+				tnum_mul_loop(m - 1, &apsh, &bpsh, r);
+				// END duplicate
+			}
+			else {
+				// BEGIN duplicate (code duplicated in both branches;
+				// if there is code following an `if`, VST will make
+				// us give the postcondition explicitly).
+				struct tnum apsh, bpsh;
+				tnum_rshift(&ap, 1, &apsh);
+				tnum_lshift(&bp, 1, &bpsh);
+				tnum_mul_loop(m - 1, &apsh, &bpsh, r);
+				// END duplicate
+			}
+		}
+	}
+}
