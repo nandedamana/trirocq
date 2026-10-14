@@ -21,7 +21,7 @@ Definition u8 := bvec 8.
 (* TODO Try `Byte.int` or `byte` instead of `Vint` for u8;
  * see: https://softwarefoundations.cis.upenn.edu/vc-current/Verif_strlib.html
  * (already fine since bounds are explicitly specified).
- * TODO looks like there is Int8 (see https://vst.cs.princeton.edu/download/VC.pdf *)
+ * TODO looks like there is Int8 (see https://vst.cs.princeton.edu/download/VC.pdf)
  *)
 
 (* Assuming shift is less than the word size. Without this,
@@ -33,15 +33,14 @@ Definition tnum_lshift_spec : ident * funspec :=
     WITH a : val, sha : share,
          shift : u8,
          r : val, shr : share,
-         av : u64, am : u64, rv : u64, rm : u64
+         av : u64, am : u64
     PRE [ tptr(Tstruct _tnum noattr), tuchar, tptr(Tstruct _tnum noattr) ]
     PROP ( readable_share sha; writable_share shr; bvec2Z _ shift < 64 )
     PARAMS (a; Vint (Int.repr (bvec2Z _ shift)); r)
     GLOBALS ()
     SEP ( data_at sha (Tstruct _tnum noattr)
             (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
-          data_at shr (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ rv)), Vlong (Int64.repr (bvec2Z _ rm))) r
+          data_at_ shr (Tstruct _tnum noattr) r
     )
     POST [ tvoid ]
     EX (sum : tnum.t 64), PROP (sum = tnum_lshift (tnum.cons _ av am) (Z.to_nat (bvec2Z _ shift)))
@@ -57,15 +56,14 @@ Definition tnum_rshift_spec : ident * funspec :=
     WITH a : val, sha : share,
          shift : u8,
          r : val, shr : share,
-         av : u64, am : u64, rv : u64, rm : u64
+         av : u64, am : u64
     PRE [ tptr(Tstruct _tnum noattr), tuchar, tptr(Tstruct _tnum noattr) ]
     PROP ( readable_share sha; writable_share shr; bvec2Z _ shift < 64 )
     PARAMS (a; Vint (Int.repr (bvec2Z _ shift)); r)
     GLOBALS ()
     SEP ( data_at sha (Tstruct _tnum noattr)
             (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
-          data_at shr (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ rv)), Vlong (Int64.repr (bvec2Z _ rm))) r
+          data_at_ shr (Tstruct _tnum noattr) r
     )
     POST [ tvoid ]
     EX (sum : tnum.t 64), PROP (sum = tnum_rshift (tnum.cons _ av am) (Z.to_nat (bvec2Z _ shift)))

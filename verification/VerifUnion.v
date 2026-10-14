@@ -22,7 +22,7 @@ Definition tnum_union_spec : ident * funspec :=
     WITH a : val, sha : share,
          b : val, shb : share,
          r : val, shr : share,
-         av : u64, am : u64, bv : u64, bm : u64, rv : u64, rm : u64
+         av : u64, am : u64, bv : u64, bm : u64
     PRE [ tptr(Tstruct _tnum noattr), tptr(Tstruct _tnum noattr), tptr(Tstruct _tnum noattr) ]
     PROP ( readable_share sha; readable_share shb; writable_share shr )
     PARAMS (a; b; r)
@@ -31,8 +31,7 @@ Definition tnum_union_spec : ident * funspec :=
             (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
           data_at shb (Tstruct _tnum noattr)
             (Vlong (Int64.repr (bvec2Z _ bv)), Vlong (Int64.repr (bvec2Z _ bm))) b;
-          data_at shr (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ rv)), Vlong (Int64.repr (bvec2Z _ rm))) r
+          data_at_ shr (Tstruct _tnum noattr) r
     )
     POST [ tvoid ]
     EX (sum : tnum.t 64), PROP (sum = tnum_union (tnum.cons _ av am) (tnum.cons _ bv bm))
