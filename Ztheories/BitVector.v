@@ -26,7 +26,7 @@ Section bvec.
     exists (n mod modulus).
     apply Z.mod_pos_bound.
     unfold modulus. lia.
-  Qed.
+  Defined.
 
   (** Using nat instead of Z for backward compatibility *)
   Definition POS := nat.
