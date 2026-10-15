@@ -29,20 +29,20 @@ Definition tnum_add_spec : ident * funspec :=
     PARAMS (a; b; r)
     GLOBALS ()
     SEP ( data_at sha (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
+            (Vlong (Int64.repr (uint2Z _ av)), Vlong (Int64.repr (uint2Z _ am))) a;
           data_at shb (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ bv)), Vlong (Int64.repr (bvec2Z _ bm))) b;
+            (Vlong (Int64.repr (uint2Z _ bv)), Vlong (Int64.repr (uint2Z _ bm))) b;
           data_at_ shr (Tstruct _tnum noattr) r
     )
     POST [ tvoid ]
     EX (sum : tnum.t 64), PROP (sum = tnum_add (tnum.cons _ av am) (tnum.cons _ bv bm))
     RETURN ()
     SEP ( data_at sha (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
+            (Vlong (Int64.repr (uint2Z _ av)), Vlong (Int64.repr (uint2Z _ am))) a;
           data_at shb (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ bv)), Vlong (Int64.repr (bvec2Z _ bm))) b;
+            (Vlong (Int64.repr (uint2Z _ bv)), Vlong (Int64.repr (uint2Z _ bm))) b;
           data_at shr (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ (tnum.v sum))), Vlong (Int64.repr (bvec2Z _ (tnum.m sum)))) r
+            (Vlong (Int64.repr (uint2Z _ (tnum.v sum))), Vlong (Int64.repr (uint2Z _ (tnum.m sum)))) r
     ).
 
 Definition Gprog := [ tnum_add_spec ].
@@ -74,7 +74,7 @@ Proof.
   repeat rewrite <- or64_repr.
   repeat rewrite <- and64_repr.
 
-  rewrite bvec64_not_repr.
+  rewrite uint64_not_repr.
 
   repeat rewrite <- or64_repr.
   unfold Int64.xor.
@@ -83,7 +83,7 @@ Proof.
 
   rewrite !Int64.unsigned_repr_eq.
   Set Printing Coercions.
-  unfold bvec2Z.
+  unfold uint2Z.
   destruct am, av, bm, bv. cbn.
   repeat rewrite <- Z.add_mod.
   replace 18446744073709551616 with Int64.modulus.

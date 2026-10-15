@@ -17,7 +17,7 @@ Module tnum.
   (* Type tnum reflects the Kernel tnum, which is a record consisting of
    * v, the value bits, and m, the mask bits (Greek mu).
    *)
-  Variant t SIZE := cons (v : bvec SIZE) (m : bvec SIZE).
+  Variant t SIZE := cons (v : uint SIZE) (m : uint SIZE).
 
   Section tnum_helpers.
     Context [SIZE : nat].
@@ -25,38 +25,38 @@ Module tnum.
     Definition v (P : t SIZE) := match P with cons _ v _ => v end.
     Definition m (P : t SIZE) := match P with cons _ _ m => m end.
 
-    Definition ith_v (tn : t SIZE) i := bvec_ith (v tn) i.
-    Definition ith_m (tn : t SIZE) i := bvec_ith (m tn) i.
+    Definition ith_v (tn : t SIZE) i := uint_ith (v tn) i.
+    Definition ith_m (tn : t SIZE) i := uint_ith (m tn) i.
 
     (**
      * Reasoning about the ith bit when [i >= SIZE] is not only
-     * meaningless, but impossible in the presence of bvec_neg
-     * (bvec_neg_rel requires i < SIZE).
+     * meaningless, but impossible in the presence of uint_neg
+     * (uint_neg_rel requires i < SIZE).
      *)
     Definition wellformed (tn : t SIZE) :=
       forall i, i < SIZE ->
-                bvec_ith (m tn) i = one -> bvec_ith (v tn) i = zero.
+                uint_ith (m tn) i = one -> uint_ith (v tn) i = zero.
 
     Lemma ith_m_simplify n1 n2 i :
-      ith_m (cons SIZE n1 n2) i = bvec_ith n2 i.
+      ith_m (cons SIZE n1 n2) i = uint_ith n2 i.
     Proof.
       unfold ith_m. simpl. reflexivity.
     Qed.
 
     Lemma ith_m_simplify2 n1 n2 i :
-      bvec_ith (m (cons SIZE n1 n2)) i = bvec_ith n2 i.
+      uint_ith (m (cons SIZE n1 n2)) i = uint_ith n2 i.
     Proof.
       simpl. reflexivity.
     Qed.
 
     Lemma ith_v_simplify n1 n2 i :
-      ith_v (cons SIZE n1 n2) i = bvec_ith n1 i.
+      ith_v (cons SIZE n1 n2) i = uint_ith n1 i.
     Proof.
       unfold ith_v. simpl. reflexivity.
     Qed.
 
     Lemma ith_v_simplify2 n1 n2 i :
-      bvec_ith (v (cons SIZE n1 n2)) i = bvec_ith n1 i.
+      uint_ith (v (cons SIZE n1 n2)) i = uint_ith n1 i.
     Proof.
       simpl. reflexivity.
     Qed.
@@ -73,18 +73,18 @@ Module tnum.
   End tnum_helpers.
 End tnum.
 
-Definition ingamma {SIZE} (x : bvec SIZE) (T : tnum.t SIZE) :=
+Definition ingamma {SIZE} (x : uint SIZE) (T : tnum.t SIZE) :=
   forall i, i < SIZE ->
-            tnum.ith_m T i = false -> bvec_ith x i = tnum.ith_v T i.
+            tnum.ith_m T i = false -> uint_ith x i = tnum.ith_v T i.
 
 (**
- * 2-ary function F on tnum is a sound abstraction of f on bvec.
+ * 2-ary function F on tnum is a sound abstraction of f on uint.
  * `sound f F` instead of `sound F f` in order to be consistent with `ingamma`.
  *)
 Definition sound2 SIZE
-  (f : bvec SIZE -> bvec SIZE -> bvec SIZE)
+  (f : uint SIZE -> uint SIZE -> uint SIZE)
   (F : tnum.t SIZE -> tnum.t SIZE -> tnum.t SIZE) :=
-  forall (p q : bvec SIZE) P Q,
+  forall (p q : uint SIZE) P Q,
     tnum.wellformed P -> tnum.wellformed Q ->
     ingamma p P -> ingamma q Q ->
     tnum.wellformed (F P Q) /\ ingamma (f p q) (F P Q).
@@ -96,7 +96,7 @@ Definition subset {SIZE} (P Q : tnum.t SIZE) :=
  * If F is an optimal approximation of f, that means F(P, Q) is
  * a subset of F'(P, Q), for any sound approximation F' of f.
  *)
-Definition optimal2 SIZE (f : bvec SIZE -> bvec SIZE -> bvec SIZE) F :=
+Definition optimal2 SIZE (f : uint SIZE -> uint SIZE -> uint SIZE) F :=
   sound2 SIZE f F ->
   forall F', sound2 SIZE f F' ->
              forall (P Q : tnum.t SIZE),
@@ -106,19 +106,19 @@ Section tnum_shift.
   Variable SIZE : nat.
 
   Definition tnum_lshift (P : tnum.t SIZE) (n : POS) : tnum.t SIZE :=
-    tnum.cons _ (bvec_lshift (tnum.v P) n) (bvec_lshift (tnum.m P) n).
+    tnum.cons _ (uint_lshift (tnum.v P) n) (uint_lshift (tnum.m P) n).
 
   Lemma tnum_lshift_wellformed (P : tnum.t SIZE) (n : POS) :
     tnum.wellformed P -> tnum.wellformed (tnum_lshift P n).
   Proof.
     unfold tnum.wellformed.
     intros wfp i hi.
-    unfold tnum_lshift, bvec_ith, bvec_lshift. cbn.
+    unfold tnum_lshift, uint_ith, uint_lshift. cbn.
 
     assert (hin : (n <= i)%nat \/ (i < n)%nat) by lia.
     destruct hin as [hin1 | hin2].
     -
-      pose (h := Z.shiftl_spec_high (bvec2Z SIZE (tnum.m P)) (POS2Z n)).
+      pose (h := Z.shiftl_spec_high (uint2Z SIZE (tnum.m P)) (POS2Z n)).
       unfold modulus, POS2Z.
       rewrite !Z.mod_pow2_bits_low by lia.
       rewrite h by (unfold POS2Z; lia).
@@ -126,7 +126,7 @@ Section tnum_shift.
       unfold POS2Z.
       assert (hsub : i - n < SIZE) by lia.
       specialize (wfp (i - n) hsub).
-      unfold bvec_ith in wfp.
+      unfold uint_ith in wfp.
       rewrite Nat2Z.inj_sub in wfp by lia.
       auto.
     -
@@ -135,12 +135,12 @@ Section tnum_shift.
       rewrite Z.shiftl_spec_low by lia. easy.
   Qed.
 
-  Lemma tnum_lshift_sound (x : bvec SIZE) (P : tnum.t SIZE) (n : POS) :
+  Lemma tnum_lshift_sound (x : uint SIZE) (P : tnum.t SIZE) (n : POS) :
     tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_lshift P n) /\ ingamma (bvec_lshift x n) (tnum_lshift P n).
+    tnum.wellformed (tnum_lshift P n) /\ ingamma (uint_lshift x n) (tnum_lshift P n).
   Proof.
     unfold tnum.wellformed, ingamma.
-    unfold tnum.ith_m, tnum.ith_v, bvec_ith.
+    unfold tnum.ith_m, tnum.ith_v, uint_ith.
     cbn.
     intros wfp igx.
     split.
@@ -178,10 +178,10 @@ Section tnum_shift.
   Definition tnum_rshift (P : tnum.t SIZE) (n : POS) : tnum.t SIZE.
   Proof.
     exists.
-    - exists (bvec_rshift (tnum.v P) n).
-      apply bvec_rshift_pf.
-    - exists (bvec_rshift (tnum.m P) n).
-      apply bvec_rshift_pf.
+    - exists (uint_rshift (tnum.v P) n).
+      apply uint_rshift_pf.
+    - exists (uint_rshift (tnum.m P) n).
+      apply uint_rshift_pf.
   Defined.
 
   Lemma highbits_pos_bound_Z x :
@@ -213,9 +213,9 @@ Section tnum_shift.
   Proof.
     unfold tnum.wellformed.
     intros wfp i hi.
-    unfold tnum_rshift, bvec_ith, bvec_rshift. cbn.
+    unfold tnum_rshift, uint_ith, uint_rshift. cbn.
 
-    pose (h := Z.shiftr_spec (bvec2Z SIZE (tnum.m P)) (POS2Z n)).
+    pose (h := Z.shiftr_spec (uint2Z SIZE (tnum.m P)) (POS2Z n)).
     unfold modulus, POS2Z.
     rewrite h by (unfold POS2Z; lia).
     rewrite Z.shiftr_spec by lia.
@@ -233,12 +233,12 @@ Section tnum_shift.
       lia.
   Qed.
 
-  Lemma tnum_rshift_sound (x : bvec SIZE) (P : tnum.t SIZE) (n : POS) :
+  Lemma tnum_rshift_sound (x : uint SIZE) (P : tnum.t SIZE) (n : POS) :
     tnum.wellformed P -> ingamma x P ->
-    tnum.wellformed (tnum_rshift P n) /\ ingamma (bvec_rshift x n) (tnum_rshift P n).
+    tnum.wellformed (tnum_rshift P n) /\ ingamma (uint_rshift x n) (tnum_rshift P n).
   Proof.
     unfold tnum.wellformed, ingamma.
-    unfold tnum.ith_m, tnum.ith_v, bvec_ith.
+    unfold tnum.ith_m, tnum.ith_v, uint_ith.
     cbn.
     intros wfp igx.
     split.
@@ -307,7 +307,7 @@ Section tnum_shift.
   Proof.
     destruct P as [pv pm].
     destruct pv as [pv hpv], pm as [pm hpm].
-    unfold tnum.wellformed, bvec_ith, tnum.v, tnum.m. cbn.
+    unfold tnum.wellformed, uint_ith, tnum.v, tnum.m. cbn.
     intros wfp i him.
     unfold modulus.
     rewrite !Z.mod_pow2_bits_low. apply wfp.
@@ -316,10 +316,10 @@ Section tnum_shift.
     unfold POS2Z. lia.
   Qed.
 
-  Lemma tnum_trunc_sound {n} (x : bvec n) (P : tnum.t n) {m} (hm : (m <= n)%nat) :
+  Lemma tnum_trunc_sound {n} (x : uint n) (P : tnum.t n) {m} (hm : (m <= n)%nat) :
     tnum.wellformed P -> ingamma x P ->
     tnum.wellformed (tnum_trunc P hm) /\
-      ingamma (bvec_trunc x hm) (tnum_trunc P hm).
+      ingamma (uint_trunc x hm) (tnum_trunc P hm).
   Proof.
     intros wfp igx.
     split.
@@ -330,8 +330,8 @@ Section tnum_shift.
       destruct pv as [pv hpv], pm as [pm hpm].
       destruct x as [x hx].
       unfold tnum.v, tnum.m.
-      unfold tnum.ith_m, tnum.ith_v, bvec_ith. cbn.
-      unfold bvec_trunc.
+      unfold tnum.ith_m, tnum.ith_v, uint_ith. cbn.
+      unfold uint_trunc.
 
       intros wfp igx i hi.
       unfold modulus.
@@ -353,17 +353,17 @@ Section tnum_shift.
     assumption.
   Qed.
 
-  Lemma tnum_rshift1_shrink_sound {n} (x : bvec (S n)) (P : tnum.t (S n)) :
+  Lemma tnum_rshift1_shrink_sound {n} (x : uint (S n)) (P : tnum.t (S n)) :
     tnum.wellformed P -> ingamma x P ->
     tnum.wellformed (tnum_rshift1_shrink P) /\
-      ingamma (bvec_rshift1_shrink x) (tnum_rshift1_shrink P).
+      ingamma (uint_rshift1_shrink x) (tnum_rshift1_shrink P).
   Proof.
     intros wfp igx.
 
     split.
     - apply tnum_rshift1_shrink_wellformed; auto.
     -
-      unfold tnum_rshift1_shrink, bvec_rshift1_shrink.
+      unfold tnum_rshift1_shrink, uint_rshift1_shrink.
       apply tnum_trunc_sound.
       apply tnum_rshift_wellformed. assumption.
       apply tnum_rshift_sound; auto.
@@ -385,19 +385,19 @@ Qed.
 
 Lemma ingamma_value_bitor_mask :
   forall {SIZE} (P : tnum.t SIZE),
-    ingamma (bvec_or (tnum.v P) (tnum.m P)) P.
+    ingamma (uint_or (tnum.v P) (tnum.m P)) P.
 Proof.
   intros SIZE P.
   unfold ingamma, tnum.ith_m, tnum.ith_v.
   intros i.
-  rewrite bvec_or_rel.
-  repeat destruct (bvec_ith (_ P) i);
+  rewrite uint_or_rel.
+  repeat destruct (uint_ith (_ P) i);
     auto.
 Qed.
 
-Ltac unwrap_bvec_ops := match goal with
-                          _ => repeat rewrite bvec_and_rel;
-                               repeat rewrite bvec_neg_rel;
-                               repeat rewrite bvec_or_rel;
-                               repeat rewrite bvec_xor_rel
+Ltac unwrap_uint_ops := match goal with
+                          _ => repeat rewrite uint_and_rel;
+                               repeat rewrite uint_neg_rel;
+                               repeat rewrite uint_or_rel;
+                               repeat rewrite uint_xor_rel
                         end.

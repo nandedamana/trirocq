@@ -9,9 +9,9 @@ Require Import VST.floyd.proofauto.
 
 Local Open Scope Z_scope.
 
-Definition u64 := bvec 64.
+Definition u64 := uint 64.
 
-Lemma bvec64_not_repr :
+Lemma uint64_not_repr :
   forall x,
     Int64.repr ((Z.lnot x) mod modulus 64) = Int64.not (Int64.repr x).
 Proof.
@@ -48,22 +48,22 @@ Proof.
 Qed.
 
 Module Int64.
-  Lemma not_to_bvec_neg :
-    forall (x : bvec 64),
-      Int64.not (Int64.repr (bvec2Z 64 x)) = Int64.repr (bvec2Z 64 (bvec_neg x)).
+  Lemma not_to_uint_neg :
+    forall (x : uint 64),
+      Int64.not (Int64.repr (uint2Z 64 x)) = Int64.repr (uint2Z 64 (uint_neg x)).
   Proof.
     destruct x as [x hx].
-    unfold bvec_neg. cbn.
-    rewrite bvec64_not_repr.
+    unfold uint_neg. cbn.
+    rewrite uint64_not_repr.
     reflexivity.
   Qed.
 
   Section Int64bin.
-    Variable x y : bvec 64.
+    Variable x y : uint 64.
 
-    Lemma or_reprbvec :
-        Int64.or (Int64.repr (bvec2Z _ x)) (Int64.repr (bvec2Z _ y)) =
-          Int64.repr (bvec_or x y).
+    Lemma or_repruint :
+        Int64.or (Int64.repr (uint2Z _ x)) (Int64.repr (uint2Z _ y)) =
+          Int64.repr (uint_or x y).
     Proof.
       destruct x, y. cbn.
       unfold Int64.or.
@@ -73,9 +73,9 @@ Module Int64.
       compute. reflexivity.
     Qed.
 
-    Lemma and_reprbvec :
-      Int64.and (Int64.repr (bvec2Z _ x)) (Int64.repr (bvec2Z _ y)) =
-        Int64.repr (bvec_and x y).
+    Lemma and_repruint :
+      Int64.and (Int64.repr (uint2Z _ x)) (Int64.repr (uint2Z _ y)) =
+        Int64.repr (uint_and x y).
     Proof.
       destruct x, y. cbn.
       unfold Int64.and.
@@ -85,10 +85,10 @@ Module Int64.
       compute. reflexivity.
     Qed.
 
-    Lemma lshift_reprbvec {ssz} (shift : bvec ssz) :
+    Lemma lshift_repruint {ssz} (shift : uint ssz) :
       (ssz < 64)%nat ->
-      Int64.shl (Int64.repr (bvec2Z _ x)) (Int64.repr (bvec2Z _ shift)) =
-        Int64.repr (bvec_lshift x (Z.to_nat shift)).
+      Int64.shl (Int64.repr (uint2Z _ x)) (Int64.repr (uint2Z _ shift)) =
+        Int64.repr (uint_lshift x (Z.to_nat shift)).
     Proof.
       intro hssz.
       destruct x, y, shift. cbn.
@@ -123,10 +123,10 @@ Module Int64.
       revert hi. compute. destruct i; try easy.
     Qed.
 
-    Lemma rshift_reprbvec {ssz} (shift : bvec ssz) :
+    Lemma rshift_repruint {ssz} (shift : uint ssz) :
       (ssz < 64)%nat ->
-      Int64.shru (Int64.repr (bvec2Z _ x)) (Int64.repr (bvec2Z _ shift)) =
-        Int64.repr (bvec_rshift x (Z.to_nat shift)).
+      Int64.shru (Int64.repr (uint2Z _ x)) (Int64.repr (uint2Z _ shift)) =
+        Int64.repr (uint_rshift x (Z.to_nat shift)).
     Proof.
       intro hssz.
       destruct x, y, shift. cbn.
@@ -161,23 +161,23 @@ End Int64.
 Module Z.
   Section Zbin.
     Variable SIZE : nat.
-    Variable av bv : bvec SIZE.
+    Variable av bv : uint SIZE.
 
-    Lemma land_bvec :
-      Z.land (bvec2Z _ av) (bvec2Z _ bv) = bvec2Z _ (bvec_and av bv).
+    Lemma land_uint :
+      Z.land (uint2Z _ av) (uint2Z _ bv) = uint2Z _ (uint_and av bv).
     Proof.
       destruct av, bv. cbn. reflexivity.
     Qed.
 
-    Lemma lxor_bvec :
-      Z.lxor (bvec2Z _ av) (bvec2Z _ bv) = bvec2Z _ (bvec_xor av bv).
+    Lemma lxor_uint :
+      Z.lxor (uint2Z _ av) (uint2Z _ bv) = uint2Z _ (uint_xor av bv).
     Proof.
       destruct av, bv. cbn. reflexivity.
     Qed.
   End Zbin.
 End Z.
 
-Lemma mod_bvec2Z x : bvec2Z 64 x mod Int64.modulus = bvec2Z 64 x.
+Lemma mod_uint2Z x : uint2Z 64 x mod Int64.modulus = uint2Z 64 x.
   destruct x as [x hx]. cbn.
   replace Int64.modulus with (modulus 64).
   rewrite !Z.mod_small by lia. reflexivity.

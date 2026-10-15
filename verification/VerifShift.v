@@ -16,7 +16,7 @@ From trirocq.Z Require Import
 From trirocq.Verification Require Import
   Common.
 
-Definition u8 := bvec 8.
+Definition u8 := uint 8.
 
 (* TODO Try `Byte.int` or `byte` instead of `Vint` for u8;
  * see: https://softwarefoundations.cis.upenn.edu/vc-current/Verif_strlib.html
@@ -35,20 +35,20 @@ Definition tnum_lshift_spec : ident * funspec :=
          r : val, shr : share,
          av : u64, am : u64
     PRE [ tptr(Tstruct _tnum noattr), tuchar, tptr(Tstruct _tnum noattr) ]
-    PROP ( readable_share sha; writable_share shr; bvec2Z _ shift < 64 )
-    PARAMS (a; Vint (Int.repr (bvec2Z _ shift)); r)
+    PROP ( readable_share sha; writable_share shr; uint2Z _ shift < 64 )
+    PARAMS (a; Vint (Int.repr (uint2Z _ shift)); r)
     GLOBALS ()
     SEP ( data_at sha (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
+            (Vlong (Int64.repr (uint2Z _ av)), Vlong (Int64.repr (uint2Z _ am))) a;
           data_at_ shr (Tstruct _tnum noattr) r
     )
     POST [ tvoid ]
-    EX (sum : tnum.t 64), PROP (sum = tnum_lshift (tnum.cons _ av am) (Z.to_nat (bvec2Z _ shift)))
+    EX (sum : tnum.t 64), PROP (sum = tnum_lshift (tnum.cons _ av am) (Z.to_nat (uint2Z _ shift)))
     RETURN ()
     SEP ( data_at sha (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
+            (Vlong (Int64.repr (uint2Z _ av)), Vlong (Int64.repr (uint2Z _ am))) a;
           data_at shr (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ (tnum.v sum))), Vlong (Int64.repr (bvec2Z _ (tnum.m sum)))) r
+            (Vlong (Int64.repr (uint2Z _ (tnum.v sum))), Vlong (Int64.repr (uint2Z _ (tnum.m sum)))) r
     ).
 
 Definition tnum_rshift_spec : ident * funspec :=
@@ -58,20 +58,20 @@ Definition tnum_rshift_spec : ident * funspec :=
          r : val, shr : share,
          av : u64, am : u64
     PRE [ tptr(Tstruct _tnum noattr), tuchar, tptr(Tstruct _tnum noattr) ]
-    PROP ( readable_share sha; writable_share shr; bvec2Z _ shift < 64 )
-    PARAMS (a; Vint (Int.repr (bvec2Z _ shift)); r)
+    PROP ( readable_share sha; writable_share shr; uint2Z _ shift < 64 )
+    PARAMS (a; Vint (Int.repr (uint2Z _ shift)); r)
     GLOBALS ()
     SEP ( data_at sha (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
+            (Vlong (Int64.repr (uint2Z _ av)), Vlong (Int64.repr (uint2Z _ am))) a;
           data_at_ shr (Tstruct _tnum noattr) r
     )
     POST [ tvoid ]
-    EX (sum : tnum.t 64), PROP (sum = tnum_rshift (tnum.cons _ av am) (Z.to_nat (bvec2Z _ shift)))
+    EX (sum : tnum.t 64), PROP (sum = tnum_rshift (tnum.cons _ av am) (Z.to_nat (uint2Z _ shift)))
     RETURN ()
     SEP ( data_at sha (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ av)), Vlong (Int64.repr (bvec2Z _ am))) a;
+            (Vlong (Int64.repr (uint2Z _ av)), Vlong (Int64.repr (uint2Z _ am))) a;
           data_at shr (Tstruct _tnum noattr)
-            (Vlong (Int64.repr (bvec2Z _ (tnum.v sum))), Vlong (Int64.repr (bvec2Z _ (tnum.m sum)))) r
+            (Vlong (Int64.repr (uint2Z _ (tnum.v sum))), Vlong (Int64.repr (uint2Z _ (tnum.m sum)))) r
     ).
 
 Definition Gprog := [ tnum_lshift_spec; tnum_rshift_spec ].
@@ -100,14 +100,14 @@ Proof.
   assert (modulus 8 < Int.modulus). compute. reflexivity.
   lia.
 
-  Exists (tnum_lshift (tnum.cons _ av am) (Z.to_nat (bvec2Z _ shift))).
+  Exists (tnum_lshift (tnum.cons _ av am) (Z.to_nat (uint2Z _ shift))).
   repeat forward.
 
   unfold tnum_lshift. cbn [tnum.v tnum.m].
   rewrite !Int.unsigned_repr_eq.
 
-  replace ((bvec2Z _ shift) mod Int.modulus) with (bvec2Z _ shift).
-  rewrite !Int64.lshift_reprbvec.
+  replace ((uint2Z _ shift) mod Int.modulus) with (uint2Z _ shift).
+  rewrite !Int64.lshift_repruint.
   apply derives_refl.
   auto. auto. lia. auto. lia.
 
@@ -141,14 +141,14 @@ Proof.
   assert (modulus 8 < Int.modulus). compute. reflexivity.
   lia.
 
-  Exists (tnum_rshift (tnum.cons _ av am) (Z.to_nat (bvec2Z _ shift))).
+  Exists (tnum_rshift (tnum.cons _ av am) (Z.to_nat (uint2Z _ shift))).
   repeat forward.
 
   unfold tnum_rshift. cbn [tnum.v tnum.m].
   rewrite !Int.unsigned_repr_eq.
 
-  replace ((bvec2Z _ shift) mod Int.modulus) with (bvec2Z _ shift).
-  rewrite !Int64.rshift_reprbvec.
+  replace ((uint2Z _ shift) mod Int.modulus) with (uint2Z _ shift).
+  rewrite !Int64.rshift_repruint.
   apply derives_refl.
   auto. auto. lia. auto. lia.
 
