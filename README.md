@@ -61,3 +61,8 @@ supports `coq`, but then you'll have to uninstall `rocq-*` packages
 and install `coq-*` packages). If you are unable to install a recent
 version of dune via opam, you can build it from the
 [source](https://github.com/ocaml/dune).
+
+## Licensing
+
+The file `verification/tnum.c` contains code from the Linux kernel,
+licensed under GNU General Public License v2.0.

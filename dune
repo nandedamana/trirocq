@@ -1,0 +1,5 @@
+; The only purpose of this file is to disable components
+; that have nonfree dependencies. Keep in sync with the
+; CI workflow files.
+
+(dirs (:standard \ verification))
