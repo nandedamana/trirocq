@@ -4,6 +4,8 @@
  * based on size-limited list.
  *)
 
+(** printing < %\texttt{<}% *)
+
 From Stdlib Require Import
   Lia
   Program (* For ProofIrrelevance *)
