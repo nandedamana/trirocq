@@ -262,3 +262,46 @@ Section linux_tnum_multiplication.
       unfold ingamma. auto.
   Qed.
 End linux_tnum_multiplication.
+
+Section tnum_mul_less_branch.
+  (* Use `a.value | a.mask` instead of `a.value || a.mask`
+   * (the latter results in an additional branch due to the short-circuit
+   * semantics of C, making verification harder).
+   *)
+  Fixpoint tnum_mul_loop_less_branch m (a : tnum.t m) :=
+    match m return tnum.t m -> forall n, tnum.t (S n) -> tnum.t (S n) -> tnum.t (S n) with
+    | 0%nat => fun (a : tnum.t 0) n (b acc : tnum.t (S n)) => acc
+    | S mp => fun (a : tnum.t (S mp)) n (b acc : tnum.t (S n)) =>
+                match (Z.lor (uint_denote (tnum.v a)) (uint_denote (tnum.m a))) return (tnum.t (S n)) with
+                | 0 => acc
+                | _ =>
+                    let nxt_acc := match uint_lsb (tnum.v a) with
+                                   | true => tnum_add acc b
+                                   | false => match uint_lsb (tnum.m a) with
+                                              | true => tnum_union acc (tnum_add acc b)
+                                              | false => acc
+                                              end
+                                   end in
+                    let nxt_a := tnum_rshift1_shrink a in
+                    let nxt_b := tnum_lshift b 1%nat in
+                    tnum_mul_loop_less_branch _ nxt_a _ nxt_b nxt_acc
+                end
+    end a.
+
+  Lemma tnum_mul_loop_less_branchify : forall m (a : tnum.t m),
+    tnum_mul_loop _ a = tnum_mul_loop_less_branch _ a.
+  Proof.
+    induction m; auto.
+
+    intro a.
+    unfold tnum_mul_loop, tnum_mul_loop_less_branch.
+
+    rewrite IHm.
+
+    destruct (uint_denote (tnum.v a));
+      destruct (uint_denote (tnum.m a));
+      try rewrite Z.lor_0_l;
+      try rewrite Z.lor_0_r;
+      auto.
+  Qed.
+End tnum_mul_less_branch.
