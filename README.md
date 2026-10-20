@@ -10,32 +10,44 @@ algorithm used in the Linux kernel eBPF verifier (specifically, the
 particular version upstreamed by [this
 patch](https://patchwork.kernel.org/project/netdevbpf/patch/20250826034524.2159515-1-nandakumar@nandakumar.co.in/)).
 Proofs for the soundness and optimality of tnum addition are also
-given, since multiplication depends on addition.
+given, since multiplication depends on addition.  The same algorithms
+are re-implemented in C with minor differences, which are then
+end-to-end verified using the [Verified Software
+Toolchain](https://vst.cs.princeton.edu/).
 
 ## Verification Process
 
-The algorithms used in the kernel are manually encoded in Rocq, and
-then they are verified against the specification of soundness (and
-optimality in the case of addition). Encoding being manual is
-considered non-problematic since the code being verified is small.
+1. The algorithms behind the tnum arithmetic operations from Linux are
+   manually encoded in Rocq, after which their relevant properties are
+   proven (like soundness and optimality).
 
-This project does not produce any executable component; it consists
-only of proofs, and one could get Rocq to verify the proofs by
-building the project (which invokes Rocq's proof checking mechanism).
+2. Since the Linux tnum arithmetic implementation employs struct
+   copying, a feature [not supported by
+   VST](https://stackoverflow.com/questions/60710135/coq-vst-internal-structure-copying),
+   this project provides alternative hand-written implementation that
+   is verified using VST. (End-to-end verification of `tnum_sub` is
+   pending, which is irrelevant as far as `tnum_mul` is concerned.)
 
-## Standalone Nature
+No axioms are added by this project. One could get Rocq to (re-)verify
+the proofs by building the project (which invokes Rocq's proof
+checking mechanism).
 
-The project depends only on the Rocq standard library. No axioms are
-used (you may find one if you perform a search, but that's for an
-experimental proof of tnum subtraction, which does not affect tnum
-multiplication, our primary goal). Even the custom binary (i.e., not
-tristate) arithmetic routines defined as part of the process are
-proven to be sound.
+## Nonfree Dependency and the Standalone Part
 
-NOTE: There is work in progress to verify the C code using CompCert/VST.
-This requires nonfree CompCert, which is disabled in the build
-scripts/metadata by default. Algorithm verification can still be done
-without CompCert.
+The VST-based verification part of this project depends on CompCert,
+which is
+[nonfree](https://en.wikipedia.org/wiki/Proprietary_software). However,
+the algorithm verification part has no dependencies except on Rocq and
+the Rocq standard library, which are fully
+[free](https://www.gnu.org/philosophy/free-sw.html). Building this
+project with the default parameters will ignore the VST part. To
+enable it, remove the `dune` file from the project root and uncomment
+the relevant lines in `trirocq.opam` (please see the GitHub CI file
+that depends on nonfree components).
+
+Please note that built either way, both the C files and the Rocq files
+from this project fall under the licensing terms of this project, not
+that of CompCert or VST.
 
 ## Directory Structure
 
@@ -49,7 +61,11 @@ without CompCert.
 - `Ztheories/` -- uses a new version of `bvec` based on `Z` (modulo `2 ^ BITWIDTH`).
   Everything from `theories/` already ported, except `tnum_sub`.
 
+- `verification/` -- End-to-end verification using VST.
+
 ## Building
+
+(First, please read the section on the optional nonfree dependencies above.)
 
 We use an opam-based build environment. See trirocq.opam for dependencies and
 their versions.
@@ -66,3 +82,5 @@ version of dune via opam, you can build it from the
 
 The file `verification/tnum.c` contains code from the Linux kernel,
 licensed under GNU General Public License v2.0.
+
+Files from this project: TODO.
