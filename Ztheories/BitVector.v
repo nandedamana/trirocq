@@ -130,6 +130,64 @@ Section uint.
     lia. lia.
   Qed.
 
+  Lemma Z_land_bounded (a b : Z) (ha : 0 <= a < modulus) (hb : 0 <= b < modulus) :
+    0 <= Z.land a b < modulus.
+  Proof.
+    split.
+    - apply Z.land_nonneg. constructor; lia.
+    -
+      (* Many lemmas used here from the stdlib require
+       * this due to how log2 works.
+       *)
+      assert (hsiz : (SIZE <= 1)%nat \/ (SIZE > 1)%nat). lia.
+      destruct hsiz.
+      + assert (hsiz' : (SIZE = 0)%nat \/ (SIZE = 1)%nat). lia.
+        destruct hsiz' as [hsiz'1 | hsiz'2].
+        * revert ha hb.
+          unfold modulus. subst.
+          intros.
+          assert (a = 0). lia. assert (b = 0). lia.
+          destruct a, b; try easy; compute.
+        * revert ha hb.
+          unfold modulus. subst.
+          intros.
+          assert (ha' : a = 0 \/ a = 1). lia. assert (hb' : b = 0 \/ b = 1). lia.
+          destruct ha', hb'; subst; cbn; reflexivity.
+      +
+        (* Z.log2_lt_pow2 can only handle the latter *)
+        assert (hge0 : 0 = Z.land a b \/ 0 < Z.land a b).
+        assert (h : 0 <= Z.land a b).
+        apply Z.land_nonneg. lia.
+        apply Z.le_lteq in h. lia.
+
+        destruct hge0.
+        unfold modulus. lia.
+
+        apply Z.log2_lt_pow2. assumption.
+
+        assert (ha0le : 0 <= a) by lia.
+        assert (ha1le : 0 <= b) by lia.
+        assert (h := Z.log2_land a b ha0le ha1le).
+
+        apply Z.le_lt_trans with (m := Z.max (Z.log2 a) (Z.log2 b)). lia.
+
+        assert (ham : a < modulus) by lia.
+        assert (hbm : b < modulus) by lia.
+        unfold modulus in ha, hb, ham, hbm.
+
+        apply Z.max_lub_lt.
+        *
+          assert (ha0gt : 0 = a \/ 0 < a). lia.
+          destruct ha0gt as [ha0 | hagt].
+          rewrite <- ha0. cbn. destruct SIZE; lia.
+          apply Z.log2_lt_pow2. assumption. lia.
+        *
+          assert (hb0gt : 0 = b \/ 0 < b). lia.
+          destruct hb0gt as [hb0 | hbgt].
+          rewrite <- hb0. cbn. destruct SIZE; lia.
+          apply Z.log2_lt_pow2. assumption. lia.
+  Qed.
+
   Lemma Z_lor_bounded (a b : Z) (ha : 0 <= a < modulus) (hb : 0 <= b < modulus) :
     0 <= Z.lor a b < modulus.
   Proof.
