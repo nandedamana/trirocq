@@ -25,10 +25,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Make sure no admitted proofs
+        run: |
+          test "$(rgrep --include '*.v' --exclude-dir=verification Admitted /__w/trirocq/trirocq/|wc -l)" -eq 0
+
       - name: Enable CompCert-related
         run: |
           sed -i 's/# NONFREE//' trirocq.opam
           sed -i 's/# NEEDSCOMPCERT//' trirocq.opam
+          rm /__w/trirocq/trirocq/dune # this dune file ignores verification/
 
       - name: Dune build
         run: |
@@ -36,3 +41,7 @@ jobs:
           pwd
           chown -R rocq:rocq .
           su -s /bin/bash rocq -c 'whoami; pwd; source ~/.profile && cd /__w/trirocq/trirocq && opam install . --deps-only -y && dune build'
+
+      - name: Make sure CompCert-related parts are built
+        run: |
+          test -f /__w/trirocq/trirocq/_build/default/verification/VerifAdd.vo

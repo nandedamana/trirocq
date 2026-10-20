@@ -8,30 +8,30 @@ From trirocq.Z Require Import
 
 Local Open Scope Z_scope.
 
-(* A custom definition of bvec_mul was necessary back when
+(* A custom definition of uint_mul was necessary back when
  * I was using list+length-based bit vectors, that too
  * denoted as nat, because Rocq's definition of nat mul
  * doesn't follow the long-multiplication structure
- * used in tnum_mul. When using Z-based bvec, this gap
+ * used in tnum_mul. When using Z-based uint, this gap
  * is reduced, but the abstraction is still useful.
  *)
-Section bvec_mul.
+Section uint_mul.
   (* A version in which a is unpadded after rshift.
    * This makes defining it easier in Rocq, because at least one
    * parameter (the size of the vector a) is decreasing.
    *)
-  Fixpoint bvec_mul_loop m (a : bvec m) {struct m} :=
-    match m return bvec m -> forall n, bvec (S n) -> bvec (S n) -> bvec (S n) with
-    | O => fun (a : bvec 0) n (b acc : bvec (S n)) => acc
-    | S mp => fun (a : bvec (S mp)) n (b acc : bvec (S n)) =>
-                match (bvec_denote a) return (bvec (S n)) with
+  Fixpoint uint_mul_loop m (a : uint m) {struct m} :=
+    match m return uint m -> forall n, uint (S n) -> uint (S n) -> uint (S n) with
+    | O => fun (a : uint 0) n (b acc : uint (S n)) => acc
+    | S mp => fun (a : uint (S mp)) n (b acc : uint (S n)) =>
+                match (uint_denote a) return (uint (S n)) with
                 | Z0 => acc
                 | Zpos _ =>
-                    let nxta := bvec_rshift1_shrink a in
-                    let nxtb := bvec_lshift b 1%nat in
-                    match (bvec_lsb a) with
-                    | false => bvec_mul_loop _ nxta _ nxtb acc
-                    | true => bvec_mul_loop _ nxta _ nxtb (bvec_add acc b)
+                    let nxta := uint_rshift1_shrink a in
+                    let nxtb := uint_lshift b 1%nat in
+                    match (uint_lsb a) with
+                    | false => uint_mul_loop _ nxta _ nxtb acc
+                    | true => uint_mul_loop _ nxta _ nxtb (uint_add acc b)
                     end
                 | Zneg _ => acc (* Absurd case; handled in the proof *)
                 end
@@ -57,16 +57,16 @@ Section bvec_mul.
     rewrite Z_div_mult_full; lia.
   Qed.
 
-  Lemma bvec_mul_loop_correct : forall m (a : bvec m) n (b acc : bvec (S n)),
-      bvec_denote (bvec_mul_loop m a n b acc) =
-        (bvec_denote acc + bvec_denote a * bvec_denote b) mod (2 ^ Z.of_nat (S n)).
+  Lemma uint_mul_loop_correct : forall m (a : uint m) n (b acc : uint (S n)),
+      uint_denote (uint_mul_loop m a n b acc) =
+        (uint_denote acc + uint_denote a * uint_denote b) mod (2 ^ Z.of_nat (S n)).
   Proof.
     induction m.
     -
       destruct a as [a ha]. destruct b as [b hb].
       destruct acc as [acc hacc].
 
-      unfold bvec_mul_loop. cbn.
+      unfold uint_mul_loop. cbn.
       assert (a = 0). change (modulus 0) with 1 in ha.
       lia.
       subst. cbn.
@@ -77,13 +77,13 @@ Section bvec_mul.
         by (unfold modulus; lia).
       assumption.
     -
-      unfold bvec_mul_loop. fold bvec_mul_loop.
+      unfold uint_mul_loop. fold uint_mul_loop.
       intros.
 
       destruct a as [a ha]. destruct b as [b hb].
       destruct acc as [acc hacc].
 
-      simpl bvec_denote at 2.
+      simpl uint_denote at 2.
       destruct a as [ | ap | an ] eqn : ades.
       + (* a = 0 *)
         simpl.
@@ -95,9 +95,9 @@ Section bvec_mul.
       + (* a is +ve *)
         assert (heo := Z.Even_or_Odd (Z.pos ap)).
 
-        destruct (bvec_lsb _) eqn : hlsba;
+        destruct (uint_lsb _) eqn : hlsba;
           rewrite IHm;
-          unfold bvec_denote, bvec_lshift, bvec_rshift1_shrink;
+          unfold uint_denote, uint_lshift, uint_rshift1_shrink;
           simpl;
           replace (Z.pow_pos 2 (PosDef.Pos.of_succ_nat n)) with (modulus (S n))
           by (unfold modulus; lia).
@@ -237,16 +237,16 @@ Section bvec_mul.
         lia.
   Qed.
 
-  Definition bvec_mul {n} (a b : bvec (S n)) :=
-    bvec_mul_loop _ a _ b (zerovec (S n)).
+  Definition uint_mul {n} (a b : uint (S n)) :=
+    uint_mul_loop _ a _ b (zerovec (S n)).
 
-  Lemma bvec_mul_correct : forall n (a b : bvec (S n)),
-      bvec_denote (bvec_mul a b) =
-        (bvec_denote a * bvec_denote b) mod modulus (S n).
+  Lemma uint_mul_correct : forall n (a b : uint (S n)),
+      uint_denote (uint_mul a b) =
+        (uint_denote a * uint_denote b) mod modulus (S n).
   Proof.
-    intros. unfold bvec_mul.
-    rewrite bvec_mul_loop_correct.
+    intros. unfold uint_mul.
+    rewrite uint_mul_loop_correct.
     cbn.
     reflexivity.
   Qed.
-End bvec_mul.
+End uint_mul.

@@ -41,12 +41,12 @@ Section linux_tnum_multiplication.
     match m return tnum.t m -> forall n, tnum.t (S n) -> tnum.t (S n) -> tnum.t (S n) with
     | 0%nat => fun (a : tnum.t 0) n (b acc : tnum.t (S n)) => acc
     | S mp => fun (a : tnum.t (S mp)) n (b acc : tnum.t (S n)) =>
-                match (bvec_denote (tnum.v a)), (bvec_denote (tnum.m a)) return (tnum.t (S n)) with
+                match (uint_denote (tnum.v a)), (uint_denote (tnum.m a)) return (tnum.t (S n)) with
                 | 0, 0 => acc
                 | _, _ =>
-                    let nxt_acc := match bvec_lsb (tnum.v a) with
+                    let nxt_acc := match uint_lsb (tnum.v a) with
                                    | true => tnum_add acc b
-                                   | false => match bvec_lsb (tnum.m a) with
+                                   | false => match uint_lsb (tnum.m a) with
                                               | true => tnum_union acc (tnum_add acc b)
                                               | false => acc
                                               end
@@ -90,9 +90,9 @@ Section linux_tnum_multiplication.
     - intros a n b acc wfa wfb wfc.
       unfold tnum_mul_loop.
       fold tnum_mul_loop.
-      destruct (bvec_denote (tnum.v a));
+      destruct (uint_denote (tnum.v a));
         repeat crush_tnum_mul_loop_wellformed.
-      destruct (bvec_denote (tnum.m a));
+      destruct (uint_denote (tnum.m a));
         repeat crush_tnum_mul_loop_wellformed.
   Qed.
 
@@ -112,12 +112,12 @@ Section linux_tnum_multiplication.
             | [ _ : ingamma ?a ?A |- ingamma ?a (tnum_union ?A ?B) ] => apply tnum_union_sound_l
             end; auto).
 
-  Lemma knownlsb n (a : bvec (S n)) (A : tnum.t (S n)) :
+  Lemma knownlsb n (a : uint (S n)) (A : tnum.t (S n)) :
     ingamma a A ->
-    bvec_lsb (tnum.m A) = zero ->
-    bvec_lsb a = bvec_lsb (tnum.v A).
+    uint_lsb (tnum.m A) = zero ->
+    uint_lsb a = uint_lsb (tnum.v A).
   Proof.
-    unfold bvec_lsb.
+    unfold uint_lsb.
     unfold ingamma. unfold tnum.ith_m, tnum.ith_v.
     intro ig. specialize (ig _ (PeanoNat.Nat.lt_0_succ n)).
     assumption.
@@ -125,33 +125,33 @@ Section linux_tnum_multiplication.
 
   Lemma lsb_wellformed n (A : tnum.t (S n)) :
     tnum.wellformed A ->
-    bit_and (bvec_lsb (tnum.v A)) (bvec_lsb (tnum.m A)) = zero.
+    bit_and (uint_lsb (tnum.v A)) (uint_lsb (tnum.m A)) = zero.
   Proof.
-    unfold tnum.wellformed, bvec_lsb.
+    unfold tnum.wellformed, uint_lsb.
     intro ig. specialize (ig _ (PeanoNat.Nat.lt_0_succ n)).
-    repeat destruct (bvec_ith _ _); auto.
+    repeat destruct (uint_ith _ _); auto.
   Qed.
 
-  Lemma lsb_denote_0 : forall n (a : bvec (S n)),
-      bvec_denote a = 0 -> bvec_lsb a = zero.
+  Lemma lsb_denote_0 : forall n (a : uint (S n)),
+      uint_denote a = 0 -> uint_lsb a = zero.
   Proof.
     destruct a as [xs hlenx].
     destruct xs; try easy.
   Qed.
 
-  Lemma denote_known_tnum : forall n (a : bvec n) (A : tnum.t n),
+  Lemma denote_known_tnum : forall n (a : uint n) (A : tnum.t n),
       ingamma a A ->
-      bvec_denote (tnum.m A) = 0 ->
-      bvec_denote a = bvec_denote (tnum.v A).
+      uint_denote (tnum.m A) = 0 ->
+      uint_denote a = uint_denote (tnum.v A).
   Proof.
     intros n a A iga msk0.
     f_equal.
-    apply bvec_eq_by_ith.
+    apply uint_eq_by_ith.
     revert msk0 iga.
     destruct a as [xs hlenx].
     destruct A as [[vs hlenv] [ms hlenm]].
-    unfold ingamma, tnum.ith_v, tnum.ith_m, bvec_ith.
-    simpl. unfold bvec_denote. simpl.
+    unfold ingamma, tnum.ith_v, tnum.ith_m, uint_ith.
+    simpl. unfold uint_denote. simpl.
 
     intros ms0 hm i hi.
     assert (ms0bits : forall n : Z, Z.testbit ms n = false).
@@ -168,18 +168,18 @@ Section linux_tnum_multiplication.
       | [ |- _ ] => try bool_imp_easy
       end.
 
-  Lemma bvec_denote_bounded {SIZE} (a : bvec SIZE) :
-    0 <= bvec_denote a < modulus SIZE.
+  Lemma uint_denote_bounded {SIZE} (a : uint SIZE) :
+    0 <= uint_denote a < modulus SIZE.
   Proof.
     destruct a; auto.
   Qed.
 
   Lemma tnum_mul_loop_sound :
-    forall {m} (A : tnum.t m) (a : bvec m) {n} (B C : tnum.t (S n)) (b c : bvec (S n)),
+    forall {m} (A : tnum.t m) (a : uint m) {n} (B C : tnum.t (S n)) (b c : uint (S n)),
       tnum.wellformed A -> tnum.wellformed B -> tnum.wellformed C ->
       ingamma a A -> ingamma b B -> ingamma c C ->
       let R := tnum_mul_loop _ A _ B C in
-      let r := bvec_mul_loop _ a _ b c in
+      let r := uint_mul_loop _ a _ b c in
       ingamma r R.
   Proof.
     induction m.
@@ -191,21 +191,21 @@ Section linux_tnum_multiplication.
       assert (htlsb := lsb_wellformed _ A wfa).
       assert (hblsb := lsb_denote_0 _ a).
 
-      assert (hig_rsh : ingamma (bvec_rshift1_shrink a) (tnum_rshift1_shrink A)).
+      assert (hig_rsh : ingamma (uint_rshift1_shrink a) (tnum_rshift1_shrink A)).
       unfold tnum_rshift1_shrink.
       apply tnum_rshift1_shrink_sound; auto.
 
-      assert (hig_lsh :  ingamma (bvec_lshift b 1%nat) (tnum_lshift B 1%nat)).
+      assert (hig_lsh :  ingamma (uint_lshift b 1%nat) (tnum_lshift B 1%nat)).
       apply tnum_lshift_sound; auto.
 
       assert (hbmul0 :
-               bvec_denote a = 0 ->
-               c = bvec_mul_loop m (bvec_rshift1_shrink a) n (bvec_lshift b 1%nat) c).
+               uint_denote a = 0 ->
+               c = uint_mul_loop m (uint_rshift1_shrink a) n (uint_lshift b 1%nat) c).
       intro h.
-      unfold bvec_mul_loop.
+      unfold uint_mul_loop.
       destruct m. reflexivity.
-      assert (h2 : bvec_denote (bvec_rshift1_shrink a) = 0).
-      unfold bvec_rshift1_shrink, bvec_rshift, bvec_trunc, bvec2Z. simpl.
+      assert (h2 : uint_denote (uint_rshift1_shrink a) = 0).
+      unfold uint_rshift1_shrink, uint_rshift, uint_trunc, uint2Z. simpl.
       destruct a as [a' ha] eqn : ades in h; try easy.
       rewrite ades. cbn -[Z.pow].
       simpl in h.
@@ -213,18 +213,18 @@ Section linux_tnum_multiplication.
       rewrite h2; auto.
 
       (* Gets rid of neg *)
-      assert (hbounda := bvec_denote_bounded a).
-      assert (hboundtvA := bvec_denote_bounded (tnum.v A)).
-      assert (hboundtmA := bvec_denote_bounded (tnum.m A)).
+      assert (hbounda := uint_denote_bounded a).
+      assert (hboundtvA := uint_denote_bounded (tnum.v A)).
+      assert (hboundtmA := uint_denote_bounded (tnum.m A)).
 
       (* So that `auto` can pick it (needed in several cases) *)
       pose (tnum_rshift1_shrink_wellformed A).
       pose (tnum_lshift_wellformed B).
 
-      destruct (bvec_denote (tnum.v A)); try easy; (* easy to get rid of neg *)
-        destruct (bvec_denote (tnum.m A)); try easy;
-        destruct (bvec_denote a);
-        repeat destruct (bvec_lsb _);
+      destruct (uint_denote (tnum.v A)); try easy; (* easy to get rid of neg *)
+        destruct (uint_denote (tnum.m A)); try easy;
+        destruct (uint_denote a);
+        repeat destruct (uint_lsb _);
         unfold bit_and in htlsb; simpl in htlsb;
         (* lia will get rid of goals where I have
          *  something like `0 = 0 -> S n0 = 0` in the context.
@@ -250,7 +250,7 @@ Section linux_tnum_multiplication.
           crush_tnum_mul_loop_sound.
   Qed.
 
-  Lemma tnum_mul_sound (n : nat) : sound2 (S n) bvec_mul tnum_mul.
+  Lemma tnum_mul_sound (n : nat) : sound2 (S n) uint_mul tnum_mul.
     unfold sound2.
     unfold tnum_mul.
     intros.
@@ -262,3 +262,46 @@ Section linux_tnum_multiplication.
       unfold ingamma. auto.
   Qed.
 End linux_tnum_multiplication.
+
+Section tnum_mul_less_branch.
+  (* Use `a.value | a.mask` instead of `a.value || a.mask`
+   * (the latter results in an additional branch due to the short-circuit
+   * semantics of C, making verification harder).
+   *)
+  Fixpoint tnum_mul_loop_less_branch m (a : tnum.t m) :=
+    match m return tnum.t m -> forall n, tnum.t (S n) -> tnum.t (S n) -> tnum.t (S n) with
+    | 0%nat => fun (a : tnum.t 0) n (b acc : tnum.t (S n)) => acc
+    | S mp => fun (a : tnum.t (S mp)) n (b acc : tnum.t (S n)) =>
+                match (Z.lor (uint_denote (tnum.v a)) (uint_denote (tnum.m a))) return (tnum.t (S n)) with
+                | 0 => acc
+                | _ =>
+                    let nxt_acc := match uint_lsb (tnum.v a) with
+                                   | true => tnum_add acc b
+                                   | false => match uint_lsb (tnum.m a) with
+                                              | true => tnum_union acc (tnum_add acc b)
+                                              | false => acc
+                                              end
+                                   end in
+                    let nxt_a := tnum_rshift1_shrink a in
+                    let nxt_b := tnum_lshift b 1%nat in
+                    tnum_mul_loop_less_branch _ nxt_a _ nxt_b nxt_acc
+                end
+    end a.
+
+  Lemma tnum_mul_loop_less_branchify : forall m (a : tnum.t m),
+    tnum_mul_loop _ a = tnum_mul_loop_less_branch _ a.
+  Proof.
+    induction m; auto.
+
+    intro a.
+    unfold tnum_mul_loop, tnum_mul_loop_less_branch.
+
+    rewrite IHm.
+
+    destruct (uint_denote (tnum.v a));
+      destruct (uint_denote (tnum.m a));
+      try rewrite Z.lor_0_l;
+      try rewrite Z.lor_0_r;
+      auto.
+  Qed.
+End tnum_mul_less_branch.

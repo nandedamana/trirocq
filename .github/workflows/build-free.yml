@@ -25,6 +25,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Make sure no admitted proofs
+        run: |
+          test "$(rgrep --include '*.v' --exclude-dir=verification Admitted /__w/trirocq/trirocq/|wc -l)" -eq 0
+
       - name: Dune build
         run: |
           whoami
