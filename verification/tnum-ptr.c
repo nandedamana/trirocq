@@ -133,3 +133,10 @@ void tnum_mul_loop(u64 m, struct tnum *a, struct tnum *b, struct tnum *r)
 		}
 	}
 }
+
+void tnum_mul(struct tnum *a, struct tnum *b, struct tnum *r)
+{
+	r->value = 0u;
+	r->mask = 0u;
+	tnum_mul_loop(64, a, b, r);
+}
