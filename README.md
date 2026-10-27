@@ -78,6 +78,12 @@ and install `coq-*` packages). If you are unable to install a recent
 version of dune via opam, you can build it from the
 [source](https://github.com/ocaml/dune).
 
+## Research
+
+The Arxiv version of our paper *Improved Tristate Multiplication With
+Formalization in Rocq* can be found at
+[arxiv.org/abs/2609.39009](https://arxiv.org/abs/2609.39009).
+
 ## Licensing
 
 The file `verification/tnum.c` contains code from the Linux kernel,
