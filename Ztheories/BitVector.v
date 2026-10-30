@@ -341,20 +341,14 @@ Section uint.
     reflexivity.
   Qed.
 
-  Lemma uint_lshift_pf (a : uint) (n : POS) :
-    0 <= (Z.shiftl a n) mod modulus < modulus.
-  Proof.
-    split.
-    - apply Z.mod_pos_bound. unfold modulus. lia.
-    - apply Z.mod_bound_pos; try (unfold modulus; lia).
-      rewrite Z.shiftl_mul_pow2; try (unfold POS2Z; lia).
-      destruct a. cbn. unfold modulus in a. lia.
-  Qed.
-
-  Definition uint_lshift (a : uint) (n : POS) : uint.
-    exists ((Z.shiftl a n) mod modulus).
-    apply uint_lshift_pf.
+  Definition uint_repr (a : Z) : uint.
+    exists (a mod modulus).
+    apply Z.mod_pos_bound.
+    unfold modulus. lia.
   Defined.
+
+  Definition uint_lshift (a : uint) (n : POS) : uint :=
+    uint_repr (Z.shiftl a n).
 
   Lemma uint_rshift_pf (a : uint) (n : POS) :
     0 <= Z.shiftr a n < modulus.
@@ -395,7 +389,6 @@ End uint.
 Definition uint_denote {SIZE} (a : uint SIZE) :=
   uint2Z _ a.
 
-(* TODO uint_lsb *)
 Arguments uint_ith {SIZE} _ _.
 Arguments uint_lsb {SIZE} _.
 Arguments uint_and {SIZE} _ _.

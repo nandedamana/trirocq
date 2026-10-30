@@ -178,10 +178,8 @@ Section tnum_shift.
   Definition tnum_rshift (P : tnum.t SIZE) (n : POS) : tnum.t SIZE.
   Proof.
     exists.
-    - exists (uint_rshift (tnum.v P) n).
-      apply uint_rshift_pf.
-    - exists (uint_rshift (tnum.m P) n).
-      apply uint_rshift_pf.
+    - exact (uint_rshift (tnum.v P) n).
+    - exact (uint_rshift (tnum.m P) n).
   Defined.
 
   Lemma highbits_pos_bound_Z x :
