@@ -588,6 +588,23 @@ Section uint_addition.
   Qed.
 End uint_addition.
 
+Section uint_subtraction.
+  Context {SIZE : nat}.
+
+  Lemma uint_sub_pf (x y : Z) :
+    0 <= (x - y) mod (modulus SIZE) < modulus SIZE.
+  Proof.
+    intros.
+    apply Z.mod_pos_bound. unfold modulus. lia.
+  Qed.
+
+  Definition uint_sub (x y : uint SIZE) : uint SIZE.
+    destruct x as [x hx], y as [y hy].
+    exists ((x - y) mod (modulus SIZE)).
+    apply uint_sub_pf; lia.
+  Defined.
+End uint_subtraction.
+
 Section poking.
   Definition uint_set_ith {SIZE} (x : uint SIZE) (i : POS) : uint SIZE.
     destruct x as [xs hlen].
