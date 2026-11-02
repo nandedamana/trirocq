@@ -474,12 +474,10 @@ Section uint_addition.
   Context {SIZE : nat}.
 
   Lemma uint_add_pf (x y : Z) :
-    0 <= x < modulus SIZE ->
-    0 <= y < modulus SIZE ->
     0 <= (x + y) mod (modulus SIZE) < modulus SIZE.
   Proof.
     intros.
-    apply Z.mod_pos_bound. lia.
+    apply Z.mod_pos_bound. unfold modulus. lia.
   Qed.
 
   Definition uint_add (x y : uint SIZE) : uint SIZE.
