@@ -412,6 +412,19 @@ Arguments uint_xor {SIZE} _ _.
 Arguments uint_lshift {SIZE} _ _.
 Arguments uint_rshift {SIZE} _ _.
 
+Section assert_uint_rshift_is_logical.
+  Definition uint_const_8 : uint 4.
+    exists 8. unfold modulus. lia.
+  Defined.
+
+  Lemma uint_rshift_is_logical :
+    uint_rshift uint_const_8 1%nat = uint_repr 4 4.
+  Proof.
+    apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+    auto.
+  Qed.
+End assert_uint_rshift_is_logical.
+
 Section uint_trunc.
   Definition uint_trunc {n} (p : uint n) {m} (hm : (m <= n)%nat) : uint m.
     destruct p as [p hp].
