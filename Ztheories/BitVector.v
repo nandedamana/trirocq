@@ -347,6 +347,20 @@ Section uint.
     unfold modulus. lia.
   Defined.
 
+  Definition uint_div (a b : uint) : uint.
+    exact (uint_repr (a / b)).
+  Defined.
+
+  Definition uint_mod (a b : uint) : uint.
+    exact (uint_repr (a mod b)).
+  Defined.
+
+  (** Named [uint_mul_direct] because a custom definition goes
+      by the name [uint_mul] in [BitMul.v]. *)
+  Definition uint_mul_direct (a b : uint) : uint.
+    exact (uint_repr (a * b)).
+  Defined.
+
   Definition uint_lshift (a : uint) (n : POS) : uint :=
     uint_repr (Z.shiftl a n).
 
