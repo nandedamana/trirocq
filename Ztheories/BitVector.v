@@ -390,6 +390,17 @@ Section uint.
   Definition uint_msb (x : uint) :=
     uint_ith x (SIZE - 1)%nat.
 
+  Definition uint_mul a b :=
+    uint_repr (a * b).
+
+  (** Truncated/Round-toward-zero division (unlike Z.div) *)
+  Definition uint_quot a b :=
+    uint_repr (Z.quot a b).
+
+  (** Truncated/Round-toward-zero modulo (unlike Z.mod) *)
+  Definition uint_rem a b :=
+    uint_repr (Z.rem a b).
+
   Section signedops.
     (** Interpret a uint as signed *)
     Definition uint2Z_signed (a : uint) : Z :=
@@ -400,6 +411,17 @@ Section uint.
     Proof.
       intro msb0. unfold uint2Z_signed. rewrite msb0. auto.
     Qed.
+
+    Definition uint_mul_signed a b :=
+      uint_repr ((uint2Z_signed a) * (uint2Z_signed b)).
+
+    (** Truncated/Round-toward-zero division (unlike Z.div) *)
+    Definition uint_quot_signed a b :=
+      uint_repr (Z.quot (uint2Z_signed a) (uint2Z_signed b)).
+
+    (** Truncated/Round-toward-zero modulo (unlike Z.mod) *)
+    Definition uint_rem_signed a b :=
+      uint_repr (Z.rem (uint2Z_signed a) (uint2Z_signed b)).
 
     Definition uint_arshift (a : uint) (n : POS) :=
       uint_repr (Z.shiftr (uint2Z_signed a) n).
@@ -431,6 +453,8 @@ Arguments uint_xor {SIZE} _ _.
 Arguments uint_lshift {SIZE} _ _.
 Arguments uint_arshift {SIZE} _ _.
 Arguments uint_rshift {SIZE} _ _.
+Arguments uint_quot_signed {SIZE} _ _.
+Arguments uint_rem_signed {SIZE} _ _.
 
 (* Kept separate because I need to fix SIZE, which is not possible
    where these operations are defined.
@@ -471,6 +495,27 @@ Section tests.
   Proof.
     apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
     auto.
+  Qed.
+
+  (** 1001 / 0010 (-7 / 2) -> -3 *)
+  Example uint_quot_signed_test_1 :
+    uint2Z_signed 4 (uint_quot_signed (uint_repr 4 9) (uint_repr 4 2)) = -3.
+  Proof.
+    compute. reflexivity.
+  Qed.
+
+  (** 0111 / 1110 (7 / -2) -> -3 *)
+  Example uint_quot_signed_test_2 :
+    uint2Z_signed 4 (uint_quot_signed (uint_repr 4 7) (uint_repr 4 14)) = -3.
+  Proof.
+    compute. reflexivity.
+  Qed.
+
+  (** 1001 / 1110 (7 % -2) -> 1 *)
+  Example uint_rem_signed_test_2 :
+    uint2Z_signed 4 (uint_rem_signed (uint_repr 4 7) (uint_repr 4 14)) = 1.
+  Proof.
+    compute. reflexivity.
   Qed.
 End tests.
 
