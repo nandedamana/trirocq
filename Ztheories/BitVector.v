@@ -391,6 +391,7 @@ Section uint.
     uint_ith x (SIZE - 1)%nat.
 
   Section signedops.
+    (** Interpret a uint as signed *)
     Definition uint2Z_signed (a : uint) : Z :=
       if (Bool.eqb (uint_msb a) false) then a else (a - modulus).
 
@@ -399,6 +400,9 @@ Section uint.
     Proof.
       intro msb0. unfold uint2Z_signed. rewrite msb0. auto.
     Qed.
+
+    Definition uint_arshift (a : uint) (n : POS) :=
+      uint_repr (Z.shiftr (uint2Z_signed a) n).
   End signedops.
 
   Definition zerovec : uint.
@@ -425,34 +429,50 @@ Arguments uint_neg {SIZE} _.
 Arguments uint_or {SIZE} _ _.
 Arguments uint_xor {SIZE} _ _.
 Arguments uint_lshift {SIZE} _ _.
+Arguments uint_arshift {SIZE} _ _.
 Arguments uint_rshift {SIZE} _ _.
 
-(** 0110 -> 6 *)
-Example uint2Z_signed_0110 :
-  uint2Z_signed 4 (uint_repr 4 6) = 6.
-Proof.
-  compute. reflexivity.
-Qed.
+(* Kept separate because I need to fix SIZE, which is not possible
+   where these operations are defined.
+ *)
+Section tests.
+  (** 0110 -> 6 *)
+  Example uint2Z_signed_0110 :
+    uint2Z_signed 4 (uint_repr 4 6) = 6.
+  Proof.
+    compute. reflexivity.
+  Qed.
 
-(** 1110 -> -2 *)
-Example uint2Z_signed_1110 :
-  uint2Z_signed 4 (uint_repr 4 14) = -2.
-Proof.
-  compute. reflexivity.
-Qed.
-
-Section assert_uint_rshift_is_logical.
-  Definition uint_const_8 : uint 4.
-    exists 8. unfold modulus. lia.
-  Defined.
+  (** 1110 -> -2 *)
+  Example uint2Z_signed_1110 :
+    uint2Z_signed 4 (uint_repr 4 14) = -2.
+  Proof.
+    compute. reflexivity.
+  Qed.
 
   Lemma uint_rshift_is_logical :
-    uint_rshift uint_const_8 1%nat = uint_repr 4 4.
+    uint_rshift (uint_repr 4 8) 1%nat = uint_repr 4 4.
   Proof.
     apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
     auto.
   Qed.
-End assert_uint_rshift_is_logical.
+
+  (** 0110 >> 1 -> 0011 *)
+  Lemma uint_arshift_is_arithmetic_0110 :
+    uint_arshift (uint_repr 4 6) 1%nat = uint_repr 4 3.
+  Proof.
+    apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+    auto.
+  Qed.
+
+  (** 1110 >> 1 -> 1111 *)
+  Lemma uint_arshift_is_arithmetic_1110 :
+    uint_arshift (uint_repr 4 14) 1%nat = uint_repr 4 15.
+  Proof.
+    apply Logic.ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+    auto.
+  Qed.
+End tests.
 
 Section uint_trunc.
   Definition uint_trunc {n} (p : uint n) {m} (hm : (m <= n)%nat) : uint m.
