@@ -384,6 +384,23 @@ Section uint.
     apply uint_rshift_pf.
   Defined.
 
+  Definition uint_lsb (x : uint) :=
+    uint_ith x 0%nat.
+
+  Definition uint_msb (x : uint) :=
+    uint_ith x (SIZE - 1)%nat.
+
+  Section signedops.
+    Definition uint2Z_signed (a : uint) : Z :=
+      if (Bool.eqb (uint_msb a) false) then a else (a - modulus).
+
+    Lemma uint2Z_signed_pos_id (a : uint) :
+      uint_msb a = false -> uint2Z_signed a = a.
+    Proof.
+      intro msb0. unfold uint2Z_signed. rewrite msb0. auto.
+    Qed.
+  End signedops.
+
   Definition zerovec : uint.
     exists 0. unfold modulus. lia.
   Defined.
@@ -392,9 +409,6 @@ Section uint.
     unfold uint_ith, zerovec. simpl.
     apply Z.bits_0.
   Qed.
-
-  Definition uint_lsb (x : uint) :=
-    uint_ith x 0%nat.
 End uint.
 
 (* TODO use uint_denote instead of uint2Z in all files
@@ -405,12 +419,27 @@ Definition uint_denote {SIZE} (a : uint SIZE) :=
 
 Arguments uint_ith {SIZE} _ _.
 Arguments uint_lsb {SIZE} _.
+Arguments uint_msb {SIZE} _.
 Arguments uint_and {SIZE} _ _.
 Arguments uint_neg {SIZE} _.
 Arguments uint_or {SIZE} _ _.
 Arguments uint_xor {SIZE} _ _.
 Arguments uint_lshift {SIZE} _ _.
 Arguments uint_rshift {SIZE} _ _.
+
+(** 0110 -> 6 *)
+Example uint2Z_signed_0110 :
+  uint2Z_signed 4 (uint_repr 4 6) = 6.
+Proof.
+  compute. reflexivity.
+Qed.
+
+(** 1110 -> -2 *)
+Example uint2Z_signed_1110 :
+  uint2Z_signed 4 (uint_repr 4 14) = -2.
+Proof.
+  compute. reflexivity.
+Qed.
 
 Section assert_uint_rshift_is_logical.
   Definition uint_const_8 : uint 4.
