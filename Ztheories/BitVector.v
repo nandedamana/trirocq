@@ -453,6 +453,8 @@ Arguments uint_xor {SIZE} _ _.
 Arguments uint_lshift {SIZE} _ _.
 Arguments uint_arshift {SIZE} _ _.
 Arguments uint_rshift {SIZE} _ _.
+Arguments uint_quot {SIZE} _ _.
+Arguments uint_rem {SIZE} _ _.
 Arguments uint_quot_signed {SIZE} _ _.
 Arguments uint_rem_signed {SIZE} _ _.
 
